@@ -1,0 +1,54 @@
+name: Fetch Torvik Ratings
+
+on:
+  schedule:
+    - cron: '0 14 * * *'  # 10am ET daily
+  workflow_dispatch:        # allows manual trigger from GitHub UI
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Torvik and push to Gist
+        run: |
+          python3 - <<'EOF'
+          import urllib.request
+          import json
+          import urllib.error
+
+          YEAR = 2026
+          GIST_ID = "44dd1f1464e3d7e2689b25ba758d4ea9"
+          TOKEN = "${{ secrets.GIST_TOKEN }}"
+
+          # Fetch from Torvik
+          url = f"https://barttorvik.com/trank.php?json=1&year={YEAR}"
+          req = urllib.request.Request(url, headers={
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              "Accept": "application/json",
+          })
+          with urllib.request.urlopen(req, timeout=30) as r:
+              data = r.read().decode("utf-8")
+
+          # Verify it's valid JSON
+          parsed = json.loads(data)
+          print(f"Fetched {len(parsed)} teams from Torvik")
+
+          # Push to Gist
+          payload = json.dumps({
+              "files": {
+                  "torvik-ratings.json": {"content": data}
+              }
+          }).encode("utf-8")
+          gist_req = urllib.request.Request(
+              f"https://api.github.com/gists/{GIST_ID}",
+              data=payload,
+              method="PATCH",
+              headers={
+                  "Authorization": f"token {TOKEN}",
+                  "Accept": "application/vnd.github.v3+json",
+                  "Content-Type": "application/json",
+              }
+          )
+          with urllib.request.urlopen(gist_req) as r:
+              print(f"Gist updated: {r.status}")
+          EOF
