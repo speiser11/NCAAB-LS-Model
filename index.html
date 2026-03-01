@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCAAB Model</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0e10;--surface:#18181c;--surface2:#22222a;--border:#2a2a35;--text:#e8e8f0;--muted:#7a7a8a;--green:#34c96b;--red:#e05252;--yellow:#f5a623;--blue:#4a9eff;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;font-size:14px;}
+/* ── Header ── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:.7rem 1rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+.header h1{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;flex:1;min-width:120px;}
+input[type=date]{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .6rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer;}
+.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .65rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer;white-space:nowrap;}
+.btn:hover{border-color:var(--blue);color:var(--blue);}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#000;font-weight:600;}
+/* ── Status bar ── */
+.status-bar{display:flex;gap:1rem;padding:.45rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);font-size:.65rem;color:var(--muted);flex-wrap:wrap;}
+.sc{display:flex;align-items:center;gap:.3rem;}
+.sc.ok{color:var(--green);}
+.sc.err{color:var(--red);}
+.sc.warn{color:var(--yellow);}
+/* ── Layout ── */
+.container{max-width:900px;margin:0 auto;padding:1rem;}
+.game-list{display:flex;flex-direction:column;gap:.75rem;}
+.loading{text-align:center;padding:3rem;color:var(--muted);}
+.err-banner{background:#1a0808;border:1px solid #4a1010;border-radius:8px;padding:.65rem .9rem;color:var(--red);font-size:.75rem;margin-bottom:.75rem;}
+/* ── Game card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;}
+.matchup{font-size:.9rem;line-height:1.4;}
+.matchup .away{color:var(--muted);}
+.game-meta{font-size:.62rem;color:var(--muted);text-align:right;line-height:1.6;}
+.game-meta .live{color:var(--red);font-weight:700;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.line-block{background:var(--surface2);border-radius:8px;padding:.6rem .75rem;}
+.line-block h3{font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.45rem;}
+.line-row{display:flex;align-items:center;gap:.4rem;margin-bottom:.25rem;font-size:.8rem;}
+.line-row:last-child{margin-bottom:0;}
+.lt{font-size:.62rem;color:var(--muted);width:2.4rem;flex-shrink:0;}
+.lv{font-weight:500;}
+.edge{padding:.1rem .35rem;border-radius:4px;font-size:.72rem;margin-left:auto;}
+.edge.strong{background:#0c2018;color:var(--green);font-weight:700;}
+.edge.mod{background:#2a1f08;color:var(--yellow);}
+.edge.neg{color:var(--muted);}
+.val-tag{display:inline-block;font-size:.6rem;padding:.1rem .4rem;border-radius:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:.2rem;}
+.val-tag.home,.val-tag.away{background:#0e1e2e;color:var(--blue);}
+.val-tag.over{background:#0c2018;color:var(--green);}
+.val-tag.under{background:#2a0e0e;color:var(--red);}
+.no-line{color:var(--muted);font-size:.7rem;font-style:italic;}
+.ratings-strip{display:flex;gap:1rem;margin-top:.6rem;font-size:.62rem;color:var(--muted);flex-wrap:wrap;}
+.r-team{display:flex;flex-direction:column;gap:.1rem;}
+.r-team .r-name{font-size:.65rem;color:var(--text);}
+.no-match{color:var(--red);font-size:.62rem;margin-top:.4rem;}
+/* ── Settings modal ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;width:90%;max-width:420px;}
+.modal h2{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:1rem;}
+.field{margin-bottom:.85rem;}
+.field label{display:block;font-size:.68rem;color:var(--muted);margin-bottom:.3rem;}
+.field input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.45rem .7rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:.8rem;}
+.field input:focus{outline:none;border-color:var(--blue);}
+.field small{display:block;font-size:.62rem;color:var(--muted);margin-top:.25rem;}
+.modal-footer{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;}
+/* ── Responsive ── */
+@media(max-width:540px){
+  .grid-2{grid-template-columns:1fr;}
+  .header{gap:.5rem;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>NCAAB Model</h1>
+  <input type="date" id="date-pick" onchange="onDateChange()">
+  <button class="btn" onclick="refresh()">↻ Refresh</button>
+  <button class="btn" onclick="openSettings()">⚙ Settings</button>
+</div>
+
+<div class="status-bar">
+  <span class="sc" id="st-ratings">Ratings: —</span>
+  <span class="sc" id="st-games">Games: —</span>
+  <span class="sc" id="st-odds">Odds: —</span>
+</div>
+
+<div class="container">
+  <div id="err-area"></div>
+  <div id="game-list" class="loading">Loading…</div>
+</div>
+
+<!-- Settings -->
+<div class="overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h2>Settings</h2>
+    <div class="field">
+      <label>Torvik Proxy URL</label>
+      <input type="text" id="inp-proxy-url" placeholder="https://torvik-xxxxxxxx-uc.a.run.app">
+      <small>Your Firebase Cloud Function URL (from firebase deploy output).</small>
+    </div>
+    <div class="field">
+      <label>The Odds API Key</label>
+      <input type="text" id="inp-odds-key" placeholder="Get a free key at the-odds-api.com">
+      <small>Free tier: 500 requests/month. Odds are cached 30 min to save requests.</small>
+    </div>
+    <div class="field">
+      <label>Home Court Advantage (pts)</label>
+      <input type="number" id="inp-home-court" value="3.5" step="0.5" min="0" max="10">
+      <small>Typical NCAAB home court: 3–4 pts. Neutral site games get 0.</small>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+      <button class="btn primary" onclick="saveSettings()">Save & Refresh</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIG & STATE
+// ══════════════════════════════════════════════════════════
+const ESPN_URL  = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard';
+const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
+const TORVIK    = 'https://barttorvik.com/trank.php?json=1';
+
+// Try multiple CORS proxies in sequence — returns parsed JSON or throws
+async function fetchViaProxy(url) {
+  const attempts = [
+    // 1. Direct (works if Torvik ever adds CORS headers, or from localhost)
+    async () => {
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+    // 2. corsproxy.io — returns raw response
+    async () => {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+    // 3. allorigins — wraps in {contents:"..."}
+    async () => {
+      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
+      const w = await r.json();
+      return typeof w.contents === 'string' ? JSON.parse(w.contents) : (() => { throw new Error('empty'); })();
+    },
+    // 4. thingproxy
+    async () => {
+      const r = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+  ];
+  const errors = [];
+  for (const attempt of attempts) {
+    try { return await attempt(); } catch(e) { errors.push(e.message); }
+  }
+  throw new Error('All proxies failed: ' + errors.join(' | '));
+}
+
+let ratings  = {};  // normalized_key → {raw, adjO, adjD, adjT, barthag}
+let espnList = [];  // ESPN game objects
+let oddsList = [];  // Odds API objects
+let oddsLeft = null;
+
+let cfg = {
+  proxyUrl:  localStorage.getItem('ncaab_proxy_url')  || '',
+  oddsKey:   localStorage.getItem('ncaab_odds_key')   || '',
+  homeCourt: parseFloat(localStorage.getItem('ncaab_hc') || '3.5'),
+};
+
+// ══════════════════════════════════════════════════════════
+// TEAM NAME NORMALIZATION
+// ══════════════════════════════════════════════════════════
+// Known aliases: map common variants → one canonical key
+const ALIAS = {
+  'connecticut':'uconn','uconn huskies':'uconn',
+  'north carolina state':'nc state','nc state wolfpack':'nc state','n.c. state':'nc state',
+  'southern california':'usc','usc trojans':'usc',
+  'louisiana state':'lsu','lsu tigers':'lsu',
+  'virginia commonwealth':'vcu','vcu rams':'vcu',
+  'central florida':'ucf','ucf knights':'ucf',
+  'southern methodist':'smu','smu mustangs':'smu',
+  "texas a&m":'texas am',"texas a&m aggies":'texas am',
+  'ole miss':'mississippi','mississippi rebels':'mississippi',
+  'pittsburgh':'pitt','pitt panthers':'pitt',
+  'miami (fl)':'miami fl','miami florida':'miami fl','miami hurricanes':'miami fl',
+  'miami (oh)':'miami oh','miami ohio':'miami oh','miami redhawks':'miami oh',
+  'penn':'pennsylvania','penn quakers':'pennsylvania',
+  'umass':'massachusetts','massachusetts minutemen':'massachusetts',
+  'cal':'california','california golden bears':'california',
+  "hawai'i":'hawaii','hawaii rainbow warriors':'hawaii',
+  "saint mary's (ca)":"saint mary's","st. mary's (ca)":"saint mary's","st mary's":"saint mary's",
+  'byu':'brigham young','byu cougars':'brigham young',
+  'unlv rebels':'unlv','louisville cardinals':'louisville',
+  'unc wilmington':'unc wilmington','uncw seahawks':'unc wilmington',
+  'ut martin':'tennessee martin','utep miners':'utep','utsa roadrunners':'utsa',
+  'fiu':'florida international','florida international panthers':'florida international',
+  'fau':'florida atlantic','florida atlantic owls':'florida atlantic',
+  'uab blazers':'uab','uic flames':'uic','uta mavericks':'ut arlington',
+  'ut arlington':'ut arlington','texas arlington':'ut arlington',
+  'umkc':'kansas city','kansas city roos':'kansas city',
+  'siu edwardsville':'siue','siue cougars':'siue',
+  'loyola (il)':'loyola chicago','loyola chicago ramblers':'loyola chicago',
+  "st. john's (ny)":"st. john's","st john's red storm":"st. john's",
+  'njit':'njit','njit highlanders':'njit',
+  'tcu horned frogs':'tcu','ut rio grande valley':'utrgv',
+  'southeast missouri state':'se missouri state',
+  'long island university':'liu','liu sharks':'liu',
+  'ipfw':'purdue fort wayne','purdue fort wayne mastodons':'purdue fort wayne',
+  'uc irvine anteaters':'uc irvine','uc santa barbara gauchos':'uc santa barbara',
+  'uc san diego tritons':'uc san diego','uc davis aggies':'uc davis',
+  'uc riverside highlanders':'uc riverside',
+  'gardner-webb':'gardner webb','gardner webb runnin bulldogs':'gardner webb',
+  'mount st. mary\'s':'mount st. marys','mount st. marys mountaineers':'mount st. marys',
+  "saint peter's":"saint peter's","saint peter's peacocks":"saint peter's",
+};
+
+function normTeam(raw) {
+  if (!raw) return '';
+  let s = raw.toLowerCase()
+    .replace(/[\u2018\u2019''`]/g,"'")
+    .replace(/\s*\([^)]{0,6}\)\s*/g,' ')  // strip (NY), (FL) etc.
+    .replace(/[^a-z0-9\s'&.-]/g,'')
+    .replace(/\s+/g,' ')
+    .trim();
+  return ALIAS[s] || s;
+}
+
+// Find Torvik key that best matches a full team name (ESPN or Odds API)
+function matchTeam(fullName) {
+  const norm = normTeam(fullName);
+  if (ratings[norm]) return norm;
+
+  // Strip trailing words one at a time (removes mascot progressively)
+  const words = norm.split(' ');
+  for (let len = words.length - 1; len >= 1; len--) {
+    const shorter = words.slice(0, len).join(' ');
+    if (ratings[shorter]) return shorter;
+  }
+
+  // Fuzzy: Dice coefficient on shared words
+  const nw = words.filter(w => w.length > 2);
+  let best = 0, bestKey = null;
+  for (const key of Object.keys(ratings)) {
+    const kw = key.split(' ').filter(w => w.length > 2);
+    const shared = nw.filter(w => kw.includes(w)).length;
+    if (!shared) continue;
+    const score = (2 * shared) / (nw.length + kw.length);
+    if (score > best && score >= 0.5) { best = score; bestKey = key; }
+  }
+  return bestKey;
+}
+
+// ══════════════════════════════════════════════════════════
+// DATA: TORVIK RATINGS
+// ══════════════════════════════════════════════════════════
+function getSeasonYear() {
+  const m = new Date().getMonth(); // 0=Jan … 7=Aug
+  return m >= 7 ? new Date().getFullYear() + 1 : new Date().getFullYear();
+}
+
+async function loadTorvik() {
+  // 6-hour localStorage cache
+  const cached = localStorage.getItem('torvik_ratings');
+  const ts     = parseInt(localStorage.getItem('torvik_ts') || '0');
+  if (cached && Date.now() - ts < 6 * 3600 * 1000) {
+    ratings = JSON.parse(cached);
+    setSt('st-ratings', `Ratings: ${Object.keys(ratings).length} teams (cached)`, 'ok');
+    return;
+  }
+  if (!cfg.proxyUrl) {
+    setSt('st-ratings', 'Ratings: no proxy URL', 'warn');
+    showErr('Add your Firebase proxy URL in Settings to load Torvik ratings.');
+    return;
+  }
+  setSt('st-ratings', 'Ratings: loading…', '');
+  const url = `${cfg.proxyUrl}?year=${getSeasonYear()}`;
+  let data;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      throw new Error(`HTTP ${r.status}: ${body.error || JSON.stringify(body)}`);
+    }
+    data = await r.json();
+  } catch(e) {
+    setSt('st-ratings', 'Ratings: failed', 'err');
+    showErr('Could not load Torvik ratings: ' + e.message);
+    return;
+  }
+  ratings = parseTorvik(data);
+  const n = Object.keys(ratings).length;
+  if (n < 20) {
+    setSt('st-ratings', 'Ratings: parse error', 'err');
+    // Log first record to console so we can fix field mapping
+    console.warn('Torvik parse issue. First raw record:', Array.isArray(data) ? data[0] : data);
+    showErr('Torvik data loaded but could not parse ratings. Open console for raw data to help debug field mapping.');
+    return;
+  }
+  localStorage.setItem('torvik_ratings', JSON.stringify(ratings));
+  localStorage.setItem('torvik_ts', Date.now().toString());
+  setSt('st-ratings', `Ratings: ${n} teams`, 'ok');
+}
+
+function parseTorvik(data) {
+  const out = {};
+  const rows = Array.isArray(data) ? data
+             : Array.isArray(data?.teams) ? data.teams
+             : Array.isArray(data?.data)  ? data.data
+             : [];
+  rows.forEach(row => {
+    try {
+      let team, adjO, adjD, adjT, barthag;
+      if (Array.isArray(row)) {
+        // Common Torvik array layout:
+        // [rank, team, conf, record, barthag, adjOE, adjDE, efg%, to%, or%, ftr%, def_efg%, def_to%, def_or%, def_ftr%, adjT, wab]
+        if (typeof row[0] === 'number' && typeof row[1] === 'string') {
+          team = row[1]; barthag = row[4]; adjO = row[5]; adjD = row[6]; adjT = row[15];
+        } else if (typeof row[0] === 'string') {
+          // No rank column: [team, conf, ...]
+          team = row[0]; adjO = row[4]; adjD = row[5]; adjT = row[14];
+        }
+      } else if (row && typeof row === 'object') {
+        team    = row.team || row.Team;
+        adjO    = row.adjoe  || row.adjOE  || row.AdjOE  || row.adj_oe;
+        adjD    = row.adjde  || row.adjDE  || row.AdjDE  || row.adj_de;
+        adjT    = row.adj_t  || row.adjT   || row.AdjT   || row.tempo;
+        barthag = row.barthag || row.Barthag || 0;
+      }
+      adjO = parseFloat(adjO); adjD = parseFloat(adjD); adjT = parseFloat(adjT) || 68;
+      if (!team || adjO < 60 || adjO > 155 || adjD < 60 || adjD > 155) return;
+      const key = normTeam(team);
+      out[key] = { raw: team, adjO, adjD, adjT, barthag: parseFloat(barthag) || 0 };
+    } catch(e) { /* skip malformed row */ }
+  });
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════
+// DATA: ESPN GAMES
+// ══════════════════════════════════════════════════════════
+async function loadESPN(dateStr) {
+  const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dateStr}`);
+  const d = await r.json();
+  espnList = (d.events || []).map(ev => {
+    const comp = ev.competitions?.[0];
+    const cs   = comp?.competitors || [];
+    const home = cs.find(c => c.homeAway === 'home');
+    const away = cs.find(c => c.homeAway === 'away');
+    return {
+      id:          ev.id,
+      home:        home?.team?.displayName || '',
+      away:        away?.team?.displayName || '',
+      homeScore:   home?.score || '0',
+      awayScore:   away?.score || '0',
+      time:        ev.date,
+      statusName:  comp?.status?.type?.name || '',
+      shortDetail: comp?.status?.type?.shortDetail || '',
+      neutral:     comp?.neutralSite || false,
+    };
+  });
+  setSt('st-games', `Games: ${espnList.length}`, espnList.length ? 'ok' : 'warn');
+}
+
+// ══════════════════════════════════════════════════════════
+// DATA: THE ODDS API
+// ══════════════════════════════════════════════════════════
+async function loadOdds(isoDate) {
+  if (!cfg.oddsKey) { setSt('st-odds', 'Odds: no API key', 'warn'); oddsList = []; return; }
+
+  // 30-min session cache
+  const cc = sessionStorage.getItem('odds_cache');
+  const ct = parseInt(sessionStorage.getItem('odds_ts') || '0');
+  if (cc && Date.now() - ct < 30 * 60 * 1000) {
+    oddsList = JSON.parse(cc);
+    setSt('st-odds', `Odds: ${oddsList.length} games (cached)`, 'ok');
+    return;
+  }
+
+  const url = `${ODDS_BASE}/odds/?apiKey=${cfg.oddsKey}`
+    + `&regions=us&markets=spreads,totals&oddsFormat=american`
+    + `&commenceTimeFrom=${isoDate}T00:00:00Z&commenceTimeTo=${isoDate}T23:59:59Z`;
+
+  try {
+    const r = await fetch(url);
+    oddsLeft = r.headers.get('x-requests-remaining');
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      setSt('st-odds', `Odds: error ${r.status}`, 'err');
+      showErr(`Odds API: ${e.message || r.statusText}`);
+      oddsList = []; return;
+    }
+    oddsList = await r.json();
+    sessionStorage.setItem('odds_cache', JSON.stringify(oddsList));
+    sessionStorage.setItem('odds_ts', Date.now().toString());
+    setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
+  } catch(e) {
+    setSt('st-odds', 'Odds: fetch error', 'err');
+    oddsList = [];
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// MODEL
+// ══════════════════════════════════════════════════════════
+// Predict game: returns { margin, total, hScore, aScore, hRating, aRating }
+// margin > 0 → home team wins by that many (after home court adj)
+function predict(homeKey, awayKey, neutral) {
+  const h = ratings[homeKey], a = ratings[awayKey];
+  if (!h || !a) return null;
+
+  const poss   = (h.adjT + a.adjT) / 2;
+  // Expected pts: (adjO × opp_adjD / 100) × possessions / 100
+  const hScore = (h.adjO * a.adjD / 100) * poss / 100;
+  const aScore = (a.adjO * h.adjD / 100) * poss / 100;
+
+  const hc     = neutral ? 0 : cfg.homeCourt;
+  const margin = (hScore - aScore) + hc;  // positive = home favored
+
+  return {
+    margin:  Math.round(margin  * 10) / 10,
+    total:   Math.round((hScore + aScore) * 10) / 10,
+    hScore:  Math.round((hScore + hc / 2) * 10) / 10,
+    aScore:  Math.round((aScore - hc / 2) * 10) / 10,
+    hRating: h,
+    aRating: a,
+  };
+}
+
+// Extract consensus (averaged) line from all bookmakers for a given market
+function getLine(bookmakers, market, homeTeamKey) {
+  const allPts = {};
+  for (const bm of bookmakers) {
+    const mkt = bm.markets?.find(m => m.key === market);
+    if (!mkt) continue;
+    for (const o of mkt.outcomes || []) {
+      const k = matchTeam(o.name) || normTeam(o.name);
+      if (!allPts[k]) allPts[k] = [];
+      allPts[k].push(o.point);
+    }
+  }
+  if (!Object.keys(allPts).length) return null;
+
+  if (market === 'spreads') {
+    // Return home team's average spread point
+    const homePts = allPts[homeTeamKey];
+    if (!homePts?.length) return null;
+    const avg = homePts.reduce((s, p) => s + p, 0) / homePts.length;
+    return { point: Math.round(avg * 2) / 2 }; // round to nearest 0.5
+  }
+  if (market === 'totals') {
+    const overPts = (allPts['over'] || allPts[Object.keys(allPts).find(k => k.includes('over'))] || []);
+    if (!overPts.length) return null;
+    const avg = overPts.reduce((s, p) => s + p, 0) / overPts.length;
+    return { point: Math.round(avg * 2) / 2 };
+  }
+  return null;
+}
+
+// ══════════════════════════════════════════════════════════
+// ASSEMBLE: pair ESPN + Torvik + Odds
+// ══════════════════════════════════════════════════════════
+function assembleGames() {
+  return espnList.map(g => {
+    const hKey = matchTeam(g.home);
+    const aKey = matchTeam(g.away);
+    const pred = predict(hKey, aKey, g.neutral);
+
+    // Match odds game by team name
+    const oddsGame = oddsList.find(og => {
+      const oh = matchTeam(og.home_team);
+      const oa = matchTeam(og.away_team);
+      return (oh && oh === hKey) || (oa && oa === aKey);
+    });
+
+    let vegasSpread = null, vegasTotal = null;
+    if (oddsGame) {
+      vegasSpread = getLine(oddsGame.bookmakers, 'spreads', hKey);
+      vegasTotal  = getLine(oddsGame.bookmakers, 'totals',  hKey);
+    }
+
+    return { ...g, hKey, aKey, pred, vegasSpread, vegasTotal };
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════════
+function fmtSpread(n) {
+  if (n == null) return '—';
+  const v = parseFloat(n);
+  return v > 0 ? `+${v}` : String(v);
+}
+
+function edgeCls(e) {
+  const a = Math.abs(e);
+  return a >= 3 ? 'strong' : a >= 1.5 ? 'mod' : 'neg';
+}
+
+function renderCard(g) {
+  const { pred, vegasSpread, vegasTotal } = g;
+  const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
+  const final = g.statusName === 'STATUS_FINAL';
+
+  // ── Game header ──
+  const gameTime = g.time ? new Date(g.time).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : '';
+  const statusStr = live ? `<span class="live">● LIVE</span> ${g.shortDetail}`
+                  : final ? `Final  ${g.awayScore}–${g.homeScore}`
+                  : gameTime;
+
+  // ── Spread block ──
+  let spreadHtml;
+  if (!pred) {
+    spreadHtml = `<div class="no-line">No ratings matched</div>`;
+  } else {
+    // model margin > 0 → home is better → home spread is negative in standard convention
+    const modelHomeSpread = -pred.margin;
+    const modelStr = fmtSpread(modelHomeSpread.toFixed(1));
+
+    if (vegasSpread) {
+      // vegasSpread.point is the home team's spread (negative = home favored)
+      const vegasPoint = vegasSpread.point;
+      // Edge = model margin minus Vegas implied margin
+      // model margin = -modelHomeSpread, Vegas implied = -vegasPoint
+      const edge = (-modelHomeSpread) - (-vegasPoint); // positive → home has more value than Vegas gives
+      const cls  = edgeCls(edge);
+      const valTeam = edge > 0
+        ? `<span class="val-tag home">${shortName(g.home)} value</span>`
+        : edge < 0
+          ? `<span class="val-tag away">${shortName(g.away)} value</span>`
+          : '';
+      spreadHtml = `
+        <div class="line-row"><span class="lt">Model</span><span class="lv">${modelStr}</span></div>
+        <div class="line-row">
+          <span class="lt">Vegas</span><span class="lv">${fmtSpread(vegasPoint)}</span>
+          <span class="edge ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
+        </div>
+        ${Math.abs(edge) >= 1.5 ? `<div class="line-row">${valTeam}</div>` : ''}
+      `;
+    } else {
+      spreadHtml = `
+        <div class="line-row"><span class="lt">Model</span><span class="lv">${modelStr}</span></div>
+        <div class="no-line">No Vegas line</div>
+      `;
+    }
+  }
+
+  // ── Total block ──
+  let totalHtml;
+  if (!pred) {
+    totalHtml = `<div class="no-line">No ratings matched</div>`;
+  } else {
+    const modelTot = pred.total.toFixed(1);
+    if (vegasTotal) {
+      const edge = pred.total - vegasTotal.point;
+      const cls  = edgeCls(edge);
+      const dir  = edge > 0 ? 'Over' : 'Under';
+      totalHtml = `
+        <div class="line-row"><span class="lt">Model</span><span class="lv">${modelTot}</span></div>
+        <div class="line-row">
+          <span class="lt">Vegas</span><span class="lv">${vegasTotal.point}</span>
+          <span class="edge ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
+        </div>
+        ${Math.abs(edge) >= 1.5 ? `<div class="line-row"><span class="val-tag ${dir.toLowerCase()}">${dir} value</span></div>` : ''}
+      `;
+    } else {
+      totalHtml = `
+        <div class="line-row"><span class="lt">Model</span><span class="lv">${modelTot}</span></div>
+        <div class="no-line">No Vegas line</div>
+      `;
+    }
+  }
+
+  // ── Ratings strip ──
+  const ratingsHtml = pred
+    ? `<div class="ratings-strip">
+        <div class="r-team">
+          <span class="r-name">${shortName(g.away)}</span>
+          <span>O ${pred.aRating.adjO.toFixed(1)} · D ${pred.aRating.adjD.toFixed(1)} · T ${pred.aRating.adjT.toFixed(1)}</span>
+        </div>
+        <div class="r-team">
+          <span class="r-name">${shortName(g.home)}</span>
+          <span>O ${pred.hRating.adjO.toFixed(1)} · D ${pred.hRating.adjD.toFixed(1)} · T ${pred.hRating.adjT.toFixed(1)}</span>
+        </div>
+      </div>`
+    : `<div class="no-match">⚠ No Torvik match — ${g.away} @ ${g.home}</div>`;
+
+  return `
+    <div class="card">
+      <div class="card-head">
+        <div class="matchup">
+          <span class="away">${esc(g.away)}</span>
+          <span style="color:var(--muted)"> @ </span>
+          <span>${esc(g.home)}</span>
+          ${g.neutral ? ' <span style="font-size:.6rem;color:var(--muted)">(neutral)</span>' : ''}
+        </div>
+        <div class="game-meta">${statusStr}</div>
+      </div>
+      <div class="grid-2">
+        <div class="line-block"><h3>Spread (home)</h3>${spreadHtml}</div>
+        <div class="line-block"><h3>Total</h3>${totalHtml}</div>
+      </div>
+      ${ratingsHtml}
+    </div>
+  `;
+}
+
+function render(games) {
+  const el = document.getElementById('game-list');
+  if (!games.length) { el.innerHTML = '<div class="loading">No games found for this date.</div>'; return; }
+
+  // Sort: biggest edge (spread or total) first
+  games.sort((a, b) => {
+    const edgeA = bestEdge(a), edgeB = bestEdge(b);
+    return edgeB - edgeA;
+  });
+
+  el.innerHTML = '<div class="game-list">' + games.map(renderCard).join('') + '</div>';
+}
+
+function bestEdge(g) {
+  if (!g.pred) return 0;
+  let e = 0;
+  if (g.vegasSpread) {
+    const edge = Math.abs((-g.pred.margin) - (-g.vegasSpread.point));
+    if (edge > e) e = edge;
+  }
+  if (g.vegasTotal) {
+    const edge = Math.abs(g.pred.total - g.vegasTotal.point);
+    if (edge > e) e = edge;
+  }
+  return e;
+}
+
+// ══════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function shortName(full) {
+  if (!full) return '?';
+  const w = full.split(' ');
+  return w.length >= 2 ? w.slice(-2).join(' ') : full;
+}
+function setSt(id, txt, cls) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = txt;
+  el.className = 'sc' + (cls ? ` ${cls}` : '');
+}
+function showErr(msg) {
+  const area = document.getElementById('err-area');
+  const d = document.createElement('div');
+  d.className = 'err-banner';
+  d.textContent = msg;
+  area.appendChild(d);
+  setTimeout(() => d.remove(), 12000);
+}
+
+// ══════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('inp-proxy-url').value  = cfg.proxyUrl;
+  document.getElementById('inp-odds-key').value   = cfg.oddsKey;
+  document.getElementById('inp-home-court').value = cfg.homeCourt;
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
+function saveSettings() {
+  cfg.proxyUrl  = document.getElementById('inp-proxy-url').value.trim().replace(/\/$/, '');
+  cfg.oddsKey   = document.getElementById('inp-odds-key').value.trim();
+  cfg.homeCourt = parseFloat(document.getElementById('inp-home-court').value) || 3.5;
+  localStorage.setItem('ncaab_proxy_url', cfg.proxyUrl);
+  localStorage.setItem('ncaab_odds_key', cfg.oddsKey);
+  localStorage.setItem('ncaab_hc', cfg.homeCourt);
+  closeSettings();
+  refresh();
+}
+
+// ══════════════════════════════════════════════════════════
+// MAIN
+// ══════════════════════════════════════════════════════════
+function getDateStr() {
+  const v = document.getElementById('date-pick').value;
+  return v ? v.replace(/-/g, '') : todayStr();
+}
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+function toISODate(dateStr) {
+  return `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+}
+
+async function refresh() {
+  document.getElementById('err-area').innerHTML = '';
+  document.getElementById('game-list').innerHTML = '<div class="loading">Loading…</div>';
+
+  const dateStr = getDateStr();
+  const isoDate = toISODate(dateStr);
+
+  try {
+    await Promise.all([
+      loadTorvik(),
+      loadESPN(dateStr),
+      loadOdds(isoDate),
+    ]);
+    render(assembleGames());
+  } catch(e) {
+    document.getElementById('game-list').innerHTML = '<div class="loading">Error loading data.</div>';
+    showErr(e.message || 'Unknown error');
+    console.error(e);
+  }
+}
+
+function onDateChange() {
+  sessionStorage.removeItem('odds_cache');
+  sessionStorage.removeItem('odds_ts');
+  refresh();
+}
+
+// Init
+(function init() {
+  document.getElementById('date-pick').value = new Date().toISOString().slice(0, 10);
+  refresh();
+})();
+</script>
+</body>
+</html>
