@@ -97,11 +97,6 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
   <div class="modal">
     <h2>Settings</h2>
     <div class="field">
-      <label>Torvik Proxy URL</label>
-      <input type="text" id="inp-proxy-url" placeholder="https://torvik-xxxxxxxx-uc.a.run.app">
-      <small>Your Firebase Cloud Function URL (from firebase deploy output).</small>
-    </div>
-    <div class="field">
       <label>The Odds API Key</label>
       <input type="text" id="inp-odds-key" placeholder="Get a free key at the-odds-api.com">
       <small>Free tier: 500 requests/month. Odds are cached 30 min to save requests.</small>
@@ -167,7 +162,6 @@ let oddsList = [];  // Odds API objects
 let oddsLeft = null;
 
 let cfg = {
-  proxyUrl:  localStorage.getItem('ncaab_proxy_url')  || '',
   oddsKey:   localStorage.getItem('ncaab_odds_key')   || '',
   homeCourt: parseFloat(localStorage.getItem('ncaab_hc') || '3.5'),
 };
@@ -263,6 +257,8 @@ function getSeasonYear() {
   return m >= 7 ? new Date().getFullYear() + 1 : new Date().getFullYear();
 }
 
+const GIST_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
+
 async function loadTorvik() {
   // 6-hour localStorage cache
   const cached = localStorage.getItem('torvik_ratings');
@@ -272,20 +268,11 @@ async function loadTorvik() {
     setSt('st-ratings', `Ratings: ${Object.keys(ratings).length} teams (cached)`, 'ok');
     return;
   }
-  if (!cfg.proxyUrl) {
-    setSt('st-ratings', 'Ratings: no proxy URL', 'warn');
-    showErr('Add your Firebase proxy URL in Settings to load Torvik ratings.');
-    return;
-  }
   setSt('st-ratings', 'Ratings: loading…', '');
-  const url = `${cfg.proxyUrl}?year=${getSeasonYear()}`;
   let data;
   try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (!r.ok) {
-      const body = await r.json().catch(() => ({}));
-      throw new Error(`HTTP ${r.status}: ${body.error || JSON.stringify(body)}`);
-    }
+    const r = await fetch(GIST_URL, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     data = await r.json();
   } catch(e) {
     setSt('st-ratings', 'Ratings: failed', 'err');
@@ -664,17 +651,14 @@ function showErr(msg) {
 // SETTINGS
 // ══════════════════════════════════════════════════════════
 function openSettings() {
-  document.getElementById('inp-proxy-url').value  = cfg.proxyUrl;
   document.getElementById('inp-odds-key').value   = cfg.oddsKey;
   document.getElementById('inp-home-court').value = cfg.homeCourt;
   document.getElementById('settings-overlay').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
 function saveSettings() {
-  cfg.proxyUrl  = document.getElementById('inp-proxy-url').value.trim().replace(/\/$/, '');
   cfg.oddsKey   = document.getElementById('inp-odds-key').value.trim();
   cfg.homeCourt = parseFloat(document.getElementById('inp-home-court').value) || 3.5;
-  localStorage.setItem('ncaab_proxy_url', cfg.proxyUrl);
   localStorage.setItem('ncaab_odds_key', cfg.oddsKey);
   localStorage.setItem('ncaab_hc', cfg.homeCourt);
   closeSettings();
