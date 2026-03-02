@@ -54,6 +54,19 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 .r-team{display:flex;flex-direction:column;gap:.1rem;}
 .r-team .r-name{font-size:.65rem;color:var(--text);}
 .no-match{color:var(--red);font-size:.62rem;margin-top:.4rem;}
+/* ── Top picks bar ── */
+.top-picks-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:.55rem 1rem;}
+.top-picks-title{font-size:.58rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:.35rem;}
+.picks-row{display:flex;gap:.4rem;flex-wrap:wrap;}
+.pick-chip{display:inline-flex;align-items:center;gap:.45rem;border:1px solid var(--border);border-radius:6px;padding:.22rem .55rem;font-size:.73rem;white-space:nowrap;}
+.pick-chip.hot{border-color:var(--green);background:#091a0f;}
+.pick-chip.warm{border-color:var(--yellow);background:#1a1204;}
+.pe{font-size:.62rem;color:var(--muted);}
+.pick-chip.hot .pe{color:var(--green);}
+.pick-chip.warm .pe{color:var(--yellow);}
+/* ── Card edge indicators ── */
+.card.edge-hot{border-left:3px solid var(--green);}
+.card.edge-warm{border-left:3px solid var(--yellow);}
 /* ── Settings modal ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
 .overlay.open{display:flex;}
@@ -81,6 +94,7 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
   <button class="btn" onclick="openSettings()">⚙ Settings</button>
 </div>
 
+<div id="top-picks-bar" class="top-picks-bar" style="display:none"></div>
 <div class="status-bar">
   <span class="sc" id="st-ratings">Ratings: —</span>
   <span class="sc" id="st-games">Games: —</span>
@@ -529,9 +543,9 @@ function renderCard(g) {
       const edge = (-modelHomeSpread) - (-vegasPoint); // positive → home has more value than Vegas gives
       const cls  = edgeCls(edge);
       const valTeam = edge > 0
-        ? `<span class="val-tag home">${shortName(g.home)} value</span>`
+        ? `<span class="val-tag home">${displayName(g.hKey, g.home)} value</span>`
         : edge < 0
-          ? `<span class="val-tag away">${shortName(g.away)} value</span>`
+          ? `<span class="val-tag away">${displayName(g.aKey, g.away)} value</span>`
           : '';
       spreadHtml = `
         <div class="line-row"><span class="lt">Model</span><span class="lv">${modelStr}</span></div>
@@ -579,23 +593,26 @@ function renderCard(g) {
   const ratingsHtml = pred
     ? `<div class="ratings-strip">
         <div class="r-team">
-          <span class="r-name">${shortName(g.away)}</span>
+          <span class="r-name">${displayName(g.aKey, g.away)}</span>
           <span>O ${pred.aRating.adjO.toFixed(1)} · D ${pred.aRating.adjD.toFixed(1)} · T ${pred.aRating.adjT.toFixed(1)}</span>
         </div>
         <div class="r-team">
-          <span class="r-name">${shortName(g.home)}</span>
+          <span class="r-name">${displayName(g.hKey, g.home)}</span>
           <span>O ${pred.hRating.adjO.toFixed(1)} · D ${pred.hRating.adjD.toFixed(1)} · T ${pred.hRating.adjT.toFixed(1)}</span>
         </div>
       </div>`
     : `<div class="no-match">⚠ No Torvik match — ${g.away} @ ${g.home}</div>`;
 
+  const be = bestEdge(g);
+  const edgeCardCls = be >= 3 ? ' edge-hot' : be >= 1.5 ? ' edge-warm' : '';
+
   return `
-    <div class="card">
+    <div class="card${edgeCardCls}">
       <div class="card-head">
         <div class="matchup">
-          <span class="away">${esc(g.away)}</span>
+          <span class="away">${esc(displayName(g.aKey, g.away))}</span>
           <span style="color:var(--muted)"> @ </span>
-          <span>${esc(g.home)}</span>
+          <span>${esc(displayName(g.hKey, g.home))}</span>
           ${g.neutral ? ' <span style="font-size:.6rem;color:var(--muted)">(neutral)</span>' : ''}
         </div>
         <div class="game-meta">${statusStr}</div>
@@ -609,16 +626,54 @@ function renderCard(g) {
   `;
 }
 
+function renderTopPicks(games) {
+  const bar = document.getElementById('top-picks-bar');
+  const chips = [];
+  for (const g of games) {  // already sorted by bestEdge
+    if (!g.pred) continue;
+    let bestLabel = null, bestE = 0;
+
+    if (g.vegasSpread) {
+      const se = g.pred.margin + g.vegasSpread.point;
+      if (Math.abs(se) > bestE) {
+        bestE = Math.abs(se);
+        const favKey  = se > 0 ? g.hKey  : g.aKey;
+        const favFull = se > 0 ? g.home  : g.away;
+        const pt      = se > 0 ? g.vegasSpread.point : -g.vegasSpread.point;
+        bestLabel = `${displayName(favKey, favFull)} ${fmtSpread(pt.toFixed(1))}`;
+      }
+    }
+    if (g.vegasTotal) {
+      const te = g.pred.total - g.vegasTotal.point;
+      if (Math.abs(te) > bestE) {
+        bestE = Math.abs(te);
+        bestLabel = `${te > 0 ? 'O' : 'U'} ${g.vegasTotal.point}`;
+      }
+    }
+
+    if (bestE < 1.5 || !bestLabel) continue;
+    const cls = bestE >= 3 ? 'hot' : 'warm';
+    chips.push(`<span class="pick-chip ${cls}">${esc(bestLabel)} <span class="pe">+${bestE.toFixed(1)}</span></span>`);
+    if (chips.length >= 5) break;
+  }
+
+  if (!chips.length) { bar.style.display = 'none'; return; }
+  bar.style.display = '';
+  bar.innerHTML = `<div class="top-picks-title">Top Picks</div><div class="picks-row">${chips.join('')}</div>`;
+}
+
 function render(games) {
   const el = document.getElementById('game-list');
-  if (!games.length) { el.innerHTML = '<div class="loading">No games found for this date.</div>'; return; }
+  if (!games.length) {
+    document.getElementById('top-picks-bar').style.display = 'none';
+    el.innerHTML = '<div class="loading">No games found for this date.</div>';
+    return;
+  }
 
   // Sort: biggest edge (spread or total) first
-  games.sort((a, b) => {
-    const edgeA = bestEdge(a), edgeB = bestEdge(b);
-    return edgeB - edgeA;
-  });
+  games.sort((a, b) => bestEdge(b) - bestEdge(a));
 
+  renderTopPicks(games);
   el.innerHTML = '<div class="game-list">' + games.map(renderCard).join('') + '</div>';
 }
 
@@ -626,7 +681,7 @@ function bestEdge(g) {
   if (!g.pred) return 0;
   let e = 0;
   if (g.vegasSpread) {
-    const edge = Math.abs((-g.pred.margin) - (-g.vegasSpread.point));
+    const edge = Math.abs(g.pred.margin + g.vegasSpread.point);
     if (edge > e) e = edge;
   }
   if (g.vegasTotal) {
@@ -640,10 +695,11 @@ function bestEdge(g) {
 // HELPERS
 // ══════════════════════════════════════════════════════════
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function shortName(full) {
-  if (!full) return '?';
-  const w = full.split(' ');
-  return w.length >= 2 ? w.slice(-2).join(' ') : full;
+const ALLCAPS = new Set(['nc','unc','ucla','usc','uab','utsa','utep','fiu','fau','siue','liu','njit','utrgv','smu','tcu','byu','unlv','lsu','vcu','uc','uta','uic','usf','umbc','ipfw']);
+function displayName(key, fallback) {
+  if (key) return key.split(' ').map(w => ALLCAPS.has(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const w = (fallback||'').split(' ');
+  return w.length >= 3 ? w.slice(0,-1).join(' ') : (fallback || '?');
 }
 function setSt(id, txt, cls) {
   const el = document.getElementById(id);
