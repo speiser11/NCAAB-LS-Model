@@ -219,9 +219,11 @@ function normTeam(raw) {
     .replace(/[\u2018\u2019''`]/g,"'")
     .replace(/\s*\([^)]{0,6}\)\s*/g,' ')  // strip (NY), (FL) etc.
     .replace(/[^a-z0-9\s'&.-]/g,'')
+    .replace(/([a-z])\.([a-z])\./g, '$1$2')  // n.c. → nc
     .replace(/\s+/g,' ')
     .trim()
-    .replace(/\bst\b(?!\.)/g, 'state');  // expand "st" → "state" but not "st."
+    .replace(/ st\.$/, ' state')          // "iowa st." → "iowa state"
+    .replace(/\bst\b(?!\.)/g, 'state');   // standalone "st" → "state"
   return ALIAS[s] || s;
 }
 
@@ -473,8 +475,6 @@ function assembleGames() {
     if (oddsGame) {
       vegasSpread = getLine(oddsGame.bookmakers, 'spreads', hKey);
       vegasTotal  = getLine(oddsGame.bookmakers, 'totals',  hKey);
-      if (g.home.includes('State') || g.away.includes('Duke'))
-        console.log(`${g.away} @ ${g.home} | hKey:${hKey} aKey:${aKey} | spread:${vegasSpread?.point} total:${vegasTotal?.point}`);
     }
 
     return { ...g, hKey, aKey, pred, vegasSpread, vegasTotal };
