@@ -27,7 +27,12 @@ jobs:
               "Accept": "application/json",
           })
           with urllib.request.urlopen(req, timeout=30) as r:
+              print(f"HTTP status: {r.status}")
+              print(f"Content-Type: {r.headers.get('Content-Type')}")
               data = r.read().decode("utf-8")
+
+          print(f"Response length: {len(data)}")
+          print(f"First 300 chars: {data[:300]}")
 
           # Verify it's valid JSON
           parsed = json.loads(data)
