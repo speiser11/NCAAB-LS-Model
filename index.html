@@ -220,7 +220,8 @@ function normTeam(raw) {
     .replace(/\s*\([^)]{0,6}\)\s*/g,' ')  // strip (NY), (FL) etc.
     .replace(/[^a-z0-9\s'&.-]/g,'')
     .replace(/\s+/g,' ')
-    .trim();
+    .trim()
+    .replace(/\bst\b(?!\.)/g, 'state');  // expand "st" → "state" but not "st."
   return ALIAS[s] || s;
 }
 
@@ -452,8 +453,6 @@ function getLine(bookmakers, market, homeTeamKey) {
 // ASSEMBLE: pair ESPN + Torvik + Odds
 // ══════════════════════════════════════════════════════════
 function assembleGames() {
-  console.log('ESPN teams:', espnList.map(g => `${g.away} @ ${g.home}`));
-  console.log('Odds API games:', oddsList.map(g => `${g.away_team} @ ${g.home_team}`));
   return espnList.map(g => {
     const hKey = matchTeam(g.home);
     const aKey = matchTeam(g.away);
