@@ -44,13 +44,46 @@ jobs:
 
           today = date.today().isoformat()  # e.g. 2026-03-02
 
-          # Push to Gist: overwrite current + store dated snapshot
-          payload = json.dumps({
-              "files": {
-                  "torvik-ratings.json": {"content": data},
-                  f"torvik-{today}.json": {"content": data},
-              }
-          }).encode("utf-8")
+          # Fetch NCAAB odds
+          odds_key = "${{ secrets.ODDS_API_KEY }}"
+          odds_data = []
+          if odds_key:
+              try:
+                  odds_url = (
+                      f"https://api.the-odds-api.com/v4/sports/basketball_ncaab/odds/"
+                      f"?apiKey={odds_key}&regions=us&markets=spreads,totals&oddsFormat=american"
+                  )
+                  odds_resp = requests.get(odds_url, timeout=15)
+                  if odds_resp.ok:
+                      for game in odds_resp.json():
+                          home, away = game.get('home_team',''), game.get('away_team','')
+                          spread_pts, total_pts = [], []
+                          for bm in game.get('bookmakers', []):
+                              for mkt in bm.get('markets', []):
+                                  if mkt['key'] == 'spreads':
+                                      for o in mkt.get('outcomes', []):
+                                          if o['name'] == home:
+                                              spread_pts.append(o['point'])
+                                  elif mkt['key'] == 'totals':
+                                      for o in mkt.get('outcomes', []):
+                                          if o['name'] == 'Over':
+                                              total_pts.append(o['point'])
+                          odds_data.append({
+                              'home': home, 'away': away,
+                              'spread': round(sum(spread_pts)/len(spread_pts)*2)/2 if spread_pts else None,
+                              'total':  round(sum(total_pts) /len(total_pts) *2)/2 if total_pts  else None,
+                          })
+                      print(f"Fetched odds for {len(odds_data)} games")
+              except Exception as e:
+                  print(f"Odds fetch failed: {e}")
+
+          # Push to Gist: overwrite current + store dated snapshots
+          gist_files = {
+              "torvik-ratings.json":          {"content": data},
+              f"torvik-{today}.json":         {"content": data},
+              f"ncaab-odds-{today}.json":     {"content": json.dumps(odds_data)},
+          }
+          payload = json.dumps({"files": gist_files}).encode("utf-8")
           gist_req = urllib.request.Request(
               f"https://api.github.com/gists/{GIST_ID}",
               data=payload,
