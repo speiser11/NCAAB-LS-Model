@@ -9,13 +9,10 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Install cloudscraper
-        run: pip install cloudscraper
-
       - name: Fetch Torvik and push to Gist
         run: |
           python3 - <<'EOF'
-          import cloudscraper
+          import requests
           import json
           import urllib.request
 
@@ -23,14 +20,26 @@ jobs:
           GIST_ID = "44dd1f1464e3d7e2689b25ba758d4ea9"
           TOKEN = "${{ secrets.GIST_TOKEN }}"
 
-          # Fetch from Torvik (bypasses Cloudflare JS challenge)
-          scraper = cloudscraper.create_scraper()
           url = f"https://barttorvik.com/trank.php?json=1&year={YEAR}"
-          r = scraper.get(url, timeout=30)
-          print(f"HTTP status: {r.status_code}")
-          data = r.text
+          headers = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Referer": "https://barttorvik.com/",
+          }
+
+          session = requests.Session()
+          session.headers.update(headers)
+
+          # Step 1: GET to receive the bot-check page + set cookies
+          r1 = session.get(url, timeout=30)
+          print(f"Step 1 status: {r1.status_code}")
+
+          # Step 2: POST simulating the JS form auto-submit
+          r2 = session.post(url, data={"js_test_submitted": "1"}, timeout=30)
+          print(f"Step 2 status: {r2.status_code}")
+          data = r2.text
           print(f"Response length: {len(data)}")
-          print(f"First 400 chars: {data[:400]}")
+          print(f"First 200 chars: {data[:200]}")
 
           # Verify it's valid JSON
           parsed = json.loads(data)
