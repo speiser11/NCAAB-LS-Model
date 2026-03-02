@@ -452,6 +452,8 @@ function getLine(bookmakers, market, homeTeamKey) {
 // ASSEMBLE: pair ESPN + Torvik + Odds
 // ══════════════════════════════════════════════════════════
 function assembleGames() {
+  console.log('ESPN teams:', espnList.map(g => `${g.away} @ ${g.home}`));
+  console.log('Odds API games:', oddsList.map(g => `${g.away_team} @ ${g.home_team}`));
   return espnList.map(g => {
     const hKey = matchTeam(g.home);
     const aKey = matchTeam(g.away);
