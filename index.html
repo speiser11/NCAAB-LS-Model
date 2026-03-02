@@ -78,9 +78,22 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 .field input:focus{outline:none;border-color:var(--blue);}
 .field small{display:block;font-size:.62rem;color:var(--muted);margin-top:.25rem;}
 .modal-footer{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;}
+/* ── Four Factors ── */
+.factors-wrap{margin-top:.6rem;}
+.factors-title{font-size:.55rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.3rem;}
+.factors-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;}
+.factor-cell{background:var(--surface2);border-radius:6px;padding:.35rem .5rem;}
+.factor-name{font-size:.55rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:.25rem;}
+.fm-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.1rem;font-size:.67rem;}
+.fm-side{font-size:.58rem;color:var(--muted);}
+.fm-val{font-weight:600;}
+.fm-val.pos{color:var(--green);}
+.fm-val.neg{color:var(--red);}
+.fm-val.neu{color:var(--muted);}
 /* ── Responsive ── */
 @media(max-width:540px){
   .grid-2{grid-template-columns:1fr;}
+  .factors-grid{grid-template-columns:repeat(2,1fr);}
   .header{gap:.5rem;}
 }
 </style>
@@ -325,11 +338,14 @@ function parseTorvik(data) {
   rows.forEach(row => {
     try {
       let team, adjO, adjD, adjT, barthag;
+      let oEfg, oTo, oOr, oFtr, dEfg, dTo, dOr, dFtr;
       if (Array.isArray(row)) {
         // Common Torvik array layout:
         // [rank, team, conf, record, barthag, adjOE, adjDE, efg%, to%, or%, ftr%, def_efg%, def_to%, def_or%, def_ftr%, adjT, wab]
         if (typeof row[0] === 'number' && typeof row[1] === 'string') {
-          team = row[1]; barthag = row[4]; adjO = row[5]; adjD = row[6]; adjT = row[15];
+          team = row[1]; barthag = row[4]; adjO = row[5]; adjD = row[6];
+          oEfg = row[7]; oTo = row[8]; oOr = row[9]; oFtr = row[10];
+          dEfg = row[11]; dTo = row[12]; dOr = row[13]; dFtr = row[14]; adjT = row[15];
         } else if (typeof row[0] === 'string') {
           // [team, adjOE, adjDE, barthag, record, wins, games, ...]
           team = row[0]; adjO = row[1]; adjD = row[2]; barthag = row[3]; adjT = row[15];
@@ -340,11 +356,21 @@ function parseTorvik(data) {
         adjD    = row.adjde  || row.adjDE  || row.AdjDE  || row.adj_de;
         adjT    = row.adj_t  || row.adjT   || row.AdjT   || row.tempo;
         barthag = row.barthag || row.Barthag || 0;
+        oEfg = row.efg || row.efg_pct || row.oefg; oTo = row.tov || row.tov_pct || row.oto;
+        oOr  = row.orb || row.orb_pct || row.oor;  oFtr = row.ftr || row.ft_rate || row.oftr;
+        dEfg = row.def_efg || row.defEfg || row.defefg; dTo = row.def_tov || row.deftov || row.dto;
+        dOr  = row.def_orb || row.deforb || row.dor;    dFtr = row.def_ftr || row.defftr || row.dftr;
       }
       adjO = parseFloat(adjO); adjD = parseFloat(adjD); adjT = parseFloat(adjT) || 68;
       if (!team || adjO < 60 || adjO > 155 || adjD < 60 || adjD > 155) return;
       const key = normTeam(team);
-      out[key] = { raw: team, adjO, adjD, adjT, barthag: parseFloat(barthag) || 0 };
+      out[key] = {
+        raw: team, adjO, adjD, adjT, barthag: parseFloat(barthag) || 0,
+        oEfg: parseFloat(oEfg) || 0, oTo: parseFloat(oTo) || 0,
+        oOr:  parseFloat(oOr)  || 0, oFtr: parseFloat(oFtr) || 0,
+        dEfg: parseFloat(dEfg) || 0, dTo: parseFloat(dTo) || 0,
+        dOr:  parseFloat(dOr)  || 0, dFtr: parseFloat(dFtr) || 0,
+      };
     } catch(e) { /* skip malformed row */ }
   });
   return out;
@@ -515,6 +541,36 @@ function edgeCls(e) {
   return a >= 3 ? 'strong' : a >= 1.5 ? 'mod' : 'neg';
 }
 
+function renderFactors(g) {
+  const { pred } = g;
+  if (!pred) return '';
+  const a = pred.aRating, h = pred.hRating;
+  if (!a.oEfg || !h.oEfg) return ''; // four factors not in data
+
+  // For each factor: compute matchup delta = offense value vs what opponent's defense allows
+  // Positive = offense exceeds what defense allows (good for offense), except TO% where negative is good
+  const factors = [
+    { name: 'eFG%',  aDelta: a.oEfg - h.dEfg, hDelta: h.oEfg - a.dEfg, invert: false, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) },
+    { name: 'TO%',   aDelta: a.oTo  - h.dTo,  hDelta: h.oTo  - a.dTo,  invert: true,  fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) },
+    { name: 'OR%',   aDelta: a.oOr  - h.dOr,  hDelta: h.oOr  - a.dOr,  invert: false, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) },
+    { name: 'FTR',   aDelta: a.oFtr - h.dFtr, hDelta: h.oFtr - a.dFtr, invert: false, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) },
+  ];
+
+  function edgeCls(delta, invert) {
+    const v = invert ? -delta : delta;
+    return v >= 1 ? 'pos' : v <= -1 ? 'neg' : 'neu';
+  }
+
+  const cells = factors.map(f => `
+    <div class="factor-cell">
+      <div class="factor-name">${f.name}</div>
+      <div class="fm-row"><span class="fm-side">A</span><span class="fm-val ${edgeCls(f.aDelta, f.invert)}">${f.fmt(f.aDelta)}</span></div>
+      <div class="fm-row"><span class="fm-side">H</span><span class="fm-val ${edgeCls(f.hDelta, f.invert)}">${f.fmt(f.hDelta)}</span></div>
+    </div>`).join('');
+
+  return `<div class="factors-wrap"><div class="factors-title">Four Factors Matchup</div><div class="factors-grid">${cells}</div></div>`;
+}
+
 function renderCard(g) {
   const { pred, vegasSpread, vegasTotal } = g;
   const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
@@ -622,6 +678,7 @@ function renderCard(g) {
         <div class="line-block"><h3>Total</h3>${totalHtml}</div>
       </div>
       ${ratingsHtml}
+      ${renderFactors(g)}
     </div>
   `;
 }
