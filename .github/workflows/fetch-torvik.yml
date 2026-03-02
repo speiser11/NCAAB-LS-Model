@@ -29,6 +29,8 @@ jobs:
           r = scraper.get(url, timeout=30)
           print(f"HTTP status: {r.status_code}")
           data = r.text
+          print(f"Response length: {len(data)}")
+          print(f"First 400 chars: {data[:400]}")
 
           # Verify it's valid JSON
           parsed = json.loads(data)
