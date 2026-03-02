@@ -15,6 +15,7 @@ jobs:
           import requests
           import json
           import urllib.request
+          from datetime import date
 
           YEAR = 2026
           GIST_ID = "44dd1f1464e3d7e2689b25ba758d4ea9"
@@ -41,10 +42,13 @@ jobs:
           parsed = json.loads(data)
           print(f"Fetched {len(parsed)} teams from Torvik")
 
-          # Push to Gist
+          today = date.today().isoformat()  # e.g. 2026-03-02
+
+          # Push to Gist: overwrite current + store dated snapshot
           payload = json.dumps({
               "files": {
-                  "torvik-ratings.json": {"content": data}
+                  "torvik-ratings.json": {"content": data},
+                  f"torvik-{today}.json": {"content": data},
               }
           }).encode("utf-8")
           gist_req = urllib.request.Request(
