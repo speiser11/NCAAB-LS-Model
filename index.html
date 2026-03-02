@@ -308,8 +308,8 @@ function parseTorvik(data) {
         if (typeof row[0] === 'number' && typeof row[1] === 'string') {
           team = row[1]; barthag = row[4]; adjO = row[5]; adjD = row[6]; adjT = row[15];
         } else if (typeof row[0] === 'string') {
-          // No rank column: [team, conf, ...]
-          team = row[0]; adjO = row[4]; adjD = row[5]; adjT = row[14];
+          // [team, adjOE, adjDE, barthag, record, wins, games, ...]
+          team = row[0]; adjO = row[1]; adjD = row[2]; barthag = row[3]; adjT = row[15];
         }
       } else if (row && typeof row === 'object') {
         team    = row.team || row.Team;
