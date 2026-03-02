@@ -31,15 +31,11 @@ jobs:
           session.headers.update(headers)
 
           # Step 1: GET to receive the bot-check page + set cookies
-          r1 = session.get(url, timeout=30)
-          print(f"Step 1 status: {r1.status_code}")
+          session.get(url, timeout=30)
 
           # Step 2: POST simulating the JS form auto-submit
           r2 = session.post(url, data={"js_test_submitted": "1"}, timeout=30)
-          print(f"Step 2 status: {r2.status_code}")
           data = r2.text
-          print(f"Response length: {len(data)}")
-          print(f"First 200 chars: {data[:200]}")
 
           # Verify it's valid JSON
           parsed = json.loads(data)
