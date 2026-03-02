@@ -473,6 +473,8 @@ function assembleGames() {
     if (oddsGame) {
       vegasSpread = getLine(oddsGame.bookmakers, 'spreads', hKey);
       vegasTotal  = getLine(oddsGame.bookmakers, 'totals',  hKey);
+      if (g.home.includes('State') || g.away.includes('Duke'))
+        console.log(`${g.away} @ ${g.home} | hKey:${hKey} aKey:${aKey} | spread:${vegasSpread?.point} total:${vegasTotal?.point}`);
     }
 
     return { ...g, hKey, aKey, pred, vegasSpread, vegasTotal };
