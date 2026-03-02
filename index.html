@@ -866,6 +866,23 @@ async function fetchESPNFinal(dateStr) {
   }).filter(g => g.statusName === 'STATUS_FINAL');
 }
 
+const GIST_RAW = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw';
+
+async function fetchStoredOdds(isoDate) {
+  try {
+    const r = await fetch(`${GIST_RAW}/ncaab-odds-${isoDate}.json`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch(e) { return []; }
+}
+
+function matchStoredOdds(oddsArr, hKey, aKey) {
+  return oddsArr.find(o => {
+    const oh = matchTeam(o.home), oa = matchTeam(o.away);
+    return (oh === hKey) || (oa === aKey);
+  }) || null;
+}
+
 async function runBacktest() {
   const from = document.getElementById('bt-from').value;
   const to   = document.getElementById('bt-to').value;
@@ -877,28 +894,53 @@ async function runBacktest() {
   document.getElementById('bt-results').innerHTML = '<div class="loading">Fetching results…</div>';
   const all = [];
   for (const dateStr of dates) {
+    const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
     try {
-      const games = await fetchESPNFinal(dateStr);
+      const [games, storedOdds] = await Promise.all([fetchESPNFinal(dateStr), fetchStoredOdds(isoDate)]);
       for (const g of games) {
         const hKey = matchTeam(g.home), aKey = matchTeam(g.away);
         const pred = predict(hKey, aKey, g.neutral);
         if (!pred) continue;
-        const actual = g.homeScore - g.awayScore;
-        const error  = Math.abs(actual - pred.margin);
+        const actual     = g.homeScore - g.awayScore;
+        const actualTot  = g.homeScore + g.awayScore;
+        const error      = Math.abs(actual - pred.margin);
+        const odds       = matchStoredOdds(storedOdds, hKey, aKey);
+
+        // ATS: did model's favored side cover the Vegas spread?
+        let atsResult = null;
+        if (odds?.spread != null) {
+          const coverMargin = actual + odds.spread; // >0 = home covered
+          if (coverMargin === 0) { atsResult = 'push'; }
+          else { atsResult = (pred.margin >= 0) === (coverMargin > 0); } // model bet home ↔ home covered
+        }
+
+        // O/U: model total vs Vegas total
+        let ouResult = null;
+        if (odds?.total != null) {
+          if (actualTot === odds.total) { ouResult = 'push'; }
+          else { ouResult = (pred.total > odds.total) === (actualTot > odds.total); }
+        }
+
         all.push({ dateStr, away: g.away, home: g.home, aKey, hKey,
-          awayScore: g.awayScore, homeScore: g.homeScore,
-          actual, predicted: pred.margin, error,
-          correctSide: (actual > 0) === (pred.margin > 0) });
+          awayScore: g.awayScore, homeScore: g.homeScore, actualTot,
+          actual, predicted: pred.margin, predTotal: pred.total,
+          vegasSpread: odds?.spread, vegasTotal: odds?.total,
+          error, correctSide: (actual > 0) === (pred.margin > 0),
+          atsResult, ouResult });
       }
     } catch(e) { /* skip failed date */ }
   }
 
   if (!all.length) { document.getElementById('bt-results').innerHTML = '<div class="loading">No games with predictions found in that range.</div>'; return; }
 
-  const mae      = all.reduce((s,g) => s + g.error, 0) / all.length;
-  const within35 = all.filter(g => g.error <= 3.5).length / all.length * 100;
-  const within7  = all.filter(g => g.error <= 7).length   / all.length * 100;
-  const correct  = all.filter(g => g.correctSide).length  / all.length * 100;
+  const mae       = all.reduce((s,g) => s + g.error, 0) / all.length;
+  const within35  = all.filter(g => g.error <= 3.5).length / all.length * 100;
+  const within7   = all.filter(g => g.error <= 7).length   / all.length * 100;
+  const correct   = all.filter(g => g.correctSide).length  / all.length * 100;
+  const atsGames  = all.filter(g => g.atsResult != null && g.atsResult !== 'push');
+  const ouGames   = all.filter(g => g.ouResult  != null && g.ouResult  !== 'push');
+  const atsWins   = atsGames.filter(g => g.atsResult === true).length;
+  const ouWins    = ouGames.filter(g => g.ouResult  === true).length;
 
   const stats = `<div class="bt-stats">
     <div class="bt-stat"><div class="bt-stat-val">${all.length}</div><div class="bt-stat-lbl">Games</div></div>
@@ -906,25 +948,36 @@ async function runBacktest() {
     <div class="bt-stat"><div class="bt-stat-val">${within35.toFixed(0)}%</div><div class="bt-stat-lbl">Within 3.5</div></div>
     <div class="bt-stat"><div class="bt-stat-val">${within7.toFixed(0)}%</div><div class="bt-stat-lbl">Within 7</div></div>
     <div class="bt-stat"><div class="bt-stat-val">${correct.toFixed(0)}%</div><div class="bt-stat-lbl">Correct Side</div></div>
+    ${atsGames.length ? `<div class="bt-stat"><div class="bt-stat-val">${atsWins}-${atsGames.length-atsWins}</div><div class="bt-stat-lbl">ATS</div></div>` : ''}
+    ${ouGames.length  ? `<div class="bt-stat"><div class="bt-stat-val">${ouWins}-${ouGames.length-ouWins}</div><div class="bt-stat-lbl">O/U</div></div>` : ''}
   </div>`;
 
   const rows = [...all].sort((a,b) => b.error - a.error).map(g => {
     const predFav = g.predicted >= 0 ? displayName(g.hKey,g.home) : displayName(g.aKey,g.away);
     const predPt  = Math.abs(g.predicted).toFixed(1);
     const errCls  = g.error <= 3.5 ? 'pos' : g.error <= 7 ? 'neu' : 'neg';
+    const atsTd   = g.atsResult == null ? '<td class="fm-val neu">—</td>'
+                  : g.atsResult === 'push' ? '<td class="fm-val neu">P</td>'
+                  : `<td class="fm-val ${g.atsResult ? 'pos' : 'neg'}">${g.atsResult ? '✓' : '✗'}</td>`;
+    const ouTd    = g.ouResult == null ? '<td class="fm-val neu">—</td>'
+                  : g.ouResult === 'push' ? '<td class="fm-val neu">P</td>'
+                  : `<td class="fm-val ${g.ouResult ? 'pos' : 'neg'}">${g.ouResult ? '✓' : '✗'}</td>`;
+    const spreadStr = g.vegasSpread != null ? `${g.vegasSpread > 0 ? '+' : ''}${g.vegasSpread}` : '—';
+    const totalStr  = g.vegasTotal  != null ? g.vegasTotal : '—';
     return `<tr>
       <td class="bt-date">${g.dateStr.slice(4,6)}/${g.dateStr.slice(6,8)}</td>
       <td>${esc(displayName(g.aKey,g.away))} @ ${esc(displayName(g.hKey,g.home))}</td>
-      <td>${g.awayScore}–${g.homeScore}</td>
-      <td>${esc(predFav)} -${predPt}</td>
+      <td>${g.awayScore}–${g.homeScore} (${g.actualTot})</td>
+      <td>${esc(predFav)} -${predPt} · ${g.predTotal.toFixed(0)}</td>
+      <td>${spreadStr} / ${totalStr}</td>
       <td class="fm-val ${errCls}">${g.error.toFixed(1)}</td>
-      <td class="fm-val ${g.correctSide ? 'pos' : 'neg'}">${g.correctSide ? '✓' : '✗'}</td>
+      ${atsTd}${ouTd}
     </tr>`;
   }).join('');
 
   document.getElementById('bt-results').innerHTML = stats + `
     <table class="bt-table">
-      <thead><tr><th>Date</th><th>Matchup</th><th>Result</th><th>Model Pick</th><th>Err</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>Matchup</th><th>Result (Tot)</th><th>Model</th><th>Line / O·U</th><th>Err</th><th>ATS</th><th>O/U</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
