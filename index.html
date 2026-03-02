@@ -369,9 +369,13 @@ async function loadOdds(isoDate) {
     return;
   }
 
+  // Use noon UTC as boundaries so all US game times (ET through PT) are captured
+  const nextDay = new Date(isoDate + 'T00:00:00Z');
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  const nextIso = nextDay.toISOString().slice(0, 10);
   const url = `${ODDS_BASE}/odds/?apiKey=${cfg.oddsKey}`
     + `&regions=us&markets=spreads,totals&oddsFormat=american`
-    + `&commenceTimeFrom=${isoDate}T00:00:00Z&commenceTimeTo=${isoDate}T23:59:59Z`;
+    + `&commenceTimeFrom=${isoDate}T12:00:00Z&commenceTimeTo=${nextIso}T12:00:00Z`;
 
   try {
     const r = await fetch(url);
