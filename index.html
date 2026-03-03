@@ -457,6 +457,114 @@ input[type=date]{
 .compact-list .card-ft{display:none;}
 .compact-list .factors-wrap{display:none;}
 
+/* ── Clickable team name ── */
+.team-link{cursor:pointer;transition:color .12s;}
+.team-link:hover{color:var(--blue);text-decoration:underline;text-underline-offset:2px;}
+
+/* ── Conference group headers (By Conf sort) ── */
+.conf-group-section{margin-bottom:1.75rem;}
+.conf-group-hd{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.5rem 0 .5rem;
+  border-bottom:2px solid var(--border);
+  margin-bottom:.85rem;
+}
+.conf-group-name{
+  font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1.5px;color:var(--text);
+}
+.conf-group-count{
+  font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:.05rem .4rem;
+}
+.conf-group-edge{
+  font-family:'DM Mono',monospace;font-size:.6rem;
+  color:var(--green);margin-left:auto;
+}
+
+/* ── Team stats panel ── */
+.tm-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  z-index:300;
+}
+.tm-overlay.open{display:block;}
+.tm-panel{
+  position:fixed;top:0;right:0;bottom:0;
+  width:min(420px,100vw);
+  background:var(--surface);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  box-shadow:-8px 0 40px rgba(0,0,0,.5);
+  transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;
+}
+.tm-overlay.open .tm-panel{transform:translateX(0);}
+.tm-hd{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border);
+  background:var(--surface2);flex-shrink:0;
+}
+.tm-hd-left{display:flex;flex-direction:column;gap:.25rem;}
+.tm-name{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:1.5px;line-height:1;}
+.tm-meta{display:flex;align-items:center;gap:.5rem;font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);}
+.tm-close{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  width:28px;height:28px;border-radius:6px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:.8rem;
+  transition:all .15s;flex-shrink:0;margin-top:.1rem;
+}
+.tm-close:hover{border-color:var(--text);color:var(--text);}
+.tm-body{overflow-y:auto;flex:1;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:1rem;}
+.tm-section{display:flex;flex-direction:column;gap:.55rem;}
+.tm-section-title{
+  font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--muted);padding-bottom:.35rem;
+  border-bottom:1px solid var(--border);
+}
+.tm-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;}
+.tm-kpi{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:.6rem .5rem;text-align:center;
+}
+.tm-kpi-val{
+  font-family:'Bebas Neue',sans-serif;font-size:1.4rem;line-height:1;
+  margin-bottom:.2rem;
+}
+.tm-kpi-lbl{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);}
+.tm-kpi.kpi-good .tm-kpi-val{color:var(--green);}
+.tm-kpi.kpi-bad  .tm-kpi-val{color:var(--red);}
+.tm-kpi.kpi-neu  .tm-kpi-val{color:var(--text);}
+.tm-ff-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:.68rem;}
+.tm-ff-table th{
+  text-align:left;color:var(--muted);font-size:.57rem;text-transform:uppercase;
+  letter-spacing:.4px;padding:.3rem .4rem;border-bottom:1px solid var(--border);
+}
+.tm-ff-table td{padding:.32rem .4rem;border-bottom:1px solid var(--border);}
+.tm-ff-table tr:last-child td{border-bottom:none;}
+.tm-ff-table .ff-lbl{color:var(--muted);}
+.tm-ff-table .ff-good{color:var(--green);font-weight:600;}
+.tm-ff-table .ff-bad{color:var(--red);font-weight:600;}
+.tm-ff-table .ff-neu{color:var(--text);}
+.tm-interp{
+  font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);
+  line-height:1.55;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:.65rem .75rem;
+}
+.tm-game-card{
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:.7rem .85rem;display:flex;flex-direction:column;gap:.35rem;
+}
+.tm-game-matchup{font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;}
+.tm-game-row{
+  font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.tm-game-row .val{color:var(--text);}
+.tm-game-row .edge-val{font-weight:700;}
+.tm-game-row .edge-val.good{color:var(--green);}
+.tm-game-row .edge-val.warn{color:var(--yellow);}
+.tm-no-data{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted);font-style:italic;text-align:center;padding:1rem;}
+
 /* ── Responsive ── */
 @media(max-width:640px){
   .site-header{grid-template-columns:auto 1fr;row-gap:.5rem;padding:.6rem .9rem;}
@@ -511,6 +619,7 @@ input[type=date]{
       <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge</button>
       <button class="sort-pill" data-sort="time" onclick="setSort('time')">Time</button>
       <button class="sort-pill" data-sort="rank" onclick="setSort('rank')">Ranked</button>
+      <button class="sort-pill" data-sort="conf" onclick="setSort('conf')">By Conf</button>
     </div>
     <div class="subnav-sep"></div>
     <div class="conf-dropdown" id="conf-dropdown" style="display:none">
@@ -535,6 +644,20 @@ input[type=date]{
 <div class="container">
   <div id="err-area"></div>
   <div id="game-list" class="loading">Loading…</div>
+</div>
+
+<!-- Team stats panel -->
+<div class="tm-overlay" id="tm-overlay" onclick="if(event.target===this)closeTeamModal()">
+  <div class="tm-panel" id="tm-panel">
+    <div class="tm-hd">
+      <div class="tm-hd-left">
+        <span class="tm-name" id="tm-name"></span>
+        <div class="tm-meta" id="tm-meta"></div>
+      </div>
+      <button class="tm-close" onclick="closeTeamModal()">✕</button>
+    </div>
+    <div class="tm-body" id="tm-body"><div class="tm-no-data">Loading…</div></div>
+  </div>
 </div>
 
 <!-- Settings -->
@@ -1328,9 +1451,9 @@ function renderCard(g) {
     <div class="card${edgeCardCls}${rankedCls}" id="game-${g.id}">
       <div class="card-hd">
         <div class="card-hd-teams">
-          ${awayRankBadge}<span class="team-away">${esc(displayName(g.aKey, g.away))}</span>
+          ${awayRankBadge}<span class="team-away team-link" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${esc(displayName(g.aKey, g.away))}</span>
           <span class="card-vs">@</span>
-          ${homeRankBadge}<span class="team-home">${esc(displayName(g.hKey, g.home))}</span>
+          ${homeRankBadge}<span class="team-home team-link" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${esc(displayName(g.hKey, g.home))}</span>
           ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}
         </div>
         <div style="display:flex;align-items:center;gap:.4rem;">${rankedMatchupBadge}${statusBadge}</div>
@@ -1666,6 +1789,12 @@ function render(games) {
       const bMin = Math.min(b.homeRank || 99, b.awayRank || 99);
       return aMin !== bMin ? aMin - bMin : bestEdge(b) - bestEdge(a);
     });
+  } else if (filters.sort === 'conf') {
+    visible.sort((a, b) => {
+      const ac = a.hConf || a.aConf || 'zzz';
+      const bc = b.hConf || b.aConf || 'zzz';
+      return ac !== bc ? ac.localeCompare(bc) : bestEdge(b) - bestEdge(a);
+    });
   } else {
     visible.sort((a, b) => bestEdge(b) - bestEdge(a));
   }
@@ -1675,13 +1804,43 @@ function render(games) {
     return;
   }
 
-  // Group by status
+  // All-games live status (for live refresh timer)
+  const anyLive = visible.some(g => g.statusName==='STATUS_IN_PROGRESS'||g.statusName==='STATUS_HALFTIME');
+  if (anyLive) startLiveRefresh(); else stopLiveRefresh();
+
+  const compactCls = filters.compact ? 'compact-list' : '';
+
+  // ── By-Conference grouping ─────────────────────────────
+  if (filters.sort === 'conf') {
+    const confMap = new Map();
+    for (const g of visible) {
+      const key = (g.hConf && g.hConf === g.aConf) ? g.hConf
+                : (g.hConf || g.aConf || 'Non-Conf');
+      if (!confMap.has(key)) confMap.set(key, []);
+      confMap.get(key).push(g);
+    }
+    const sections = [...confMap.entries()]
+      .sort(([a],[b]) => a.localeCompare(b))
+      .map(([conf, list]) => {
+        const topE = Math.max(...list.map(bestEdge).filter(e=>e>0), 0);
+        const edgePart = topE >= 1.5 ? `<span class="conf-group-edge">Best edge +${topE.toFixed(1)}</span>` : '';
+        return `<div class="conf-group-section">
+          <div class="conf-group-hd">
+            <span class="conf-group-name">${esc(conf)}</span>
+            <span class="conf-group-count">${list.length} game${list.length>1?'s':''}</span>
+            ${edgePart}
+          </div>
+          ${list.map(renderCard).join('')}
+        </div>`;
+      }).join('');
+    el.innerHTML = `<div class="game-list-inner ${compactCls}">${sections}</div>`;
+    return;
+  }
+
+  // ── Standard Live / Upcoming / Final grouping ──────────
   const live     = visible.filter(g => g.statusName==='STATUS_IN_PROGRESS'||g.statusName==='STATUS_HALFTIME');
   const final    = visible.filter(g => g.statusName==='STATUS_FINAL');
   const upcoming = visible.filter(g => !live.includes(g) && !final.includes(g));
-
-  // Manage live refresh timer
-  if (live.length) startLiveRefresh(); else stopLiveRefresh();
 
   function group(label, dot, list) {
     if (!list.length) return '';
@@ -1698,12 +1857,150 @@ function render(games) {
     </div>`;
   }
 
-  const compactCls = filters.compact ? 'compact-list' : '';
   el.innerHTML = `<div class="game-list-inner ${compactCls}">
     ${group('Live', 'live', live)}
     ${group('Upcoming', 'upcoming', upcoming)}
     ${group('Final', 'final', final)}
   </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+// TEAM STATS PANEL
+// ══════════════════════════════════════════════════════════
+function closeTeamModal() {
+  document.getElementById('tm-overlay').classList.remove('open');
+}
+
+function showTeamModal(key, rawName) {
+  const overlay = document.getElementById('tm-overlay');
+  const nameEl  = document.getElementById('tm-name');
+  const metaEl  = document.getElementById('tm-meta');
+  const bodyEl  = document.getElementById('tm-body');
+
+  const r = key ? ratings[key] : null;
+  const displayN = key ? displayName(key, rawName) : (rawName || '?');
+
+  nameEl.textContent = displayN;
+  metaEl.innerHTML = r
+    ? `<span>${esc(r.conf || '—')}</span><span style="color:var(--border)">·</span><span>Barthag <strong style="color:var(--text)">${r.barthag.toFixed(3)}</strong></span>`
+    : `<span style="color:var(--red)">No ratings data</span>`;
+
+  overlay.classList.add('open');
+
+  if (!r) {
+    bodyEl.innerHTML = `<div class="tm-no-data">No Torvik ratings found for this team.<br>They may not be in the current dataset.</div>`;
+    return;
+  }
+
+  // Efficiency labels
+  const offLabel = r.adjO > 115 ? 'Elite' : r.adjO > 108 ? 'Good' : r.adjO > 100 ? 'Average' : 'Below avg';
+  const defLabel = r.adjD < 92  ? 'Elite' : r.adjD < 98  ? 'Good' : r.adjD < 105 ? 'Average' : 'Below avg';
+  const tempoLabel = r.adjT > 74 ? 'Very fast' : r.adjT > 70 ? 'Fast' : r.adjT > 67 ? 'Average' : 'Slow';
+
+  const offKpi = r.adjO > 110 ? 'kpi-good' : r.adjO < 98 ? 'kpi-bad' : 'kpi-neu';
+  const defKpi = r.adjD < 96  ? 'kpi-good' : r.adjD > 108 ? 'kpi-bad' : 'kpi-neu';
+  const barthagKpi = r.barthag > 0.85 ? 'kpi-good' : r.barthag < 0.5 ? 'kpi-bad' : 'kpi-neu';
+
+  // Win probability interpretation
+  const winPct = Math.round(r.barthag * 100);
+  const tier = r.barthag > 0.95 ? 'National title contender' : r.barthag > 0.85 ? 'Elite program' : r.barthag > 0.7 ? 'Tournament-caliber' : r.barthag > 0.5 ? 'Mid-major level' : 'Below D1 average';
+  const interp = `${offLabel} offense · ${defLabel} defense · ${tempoLabel} tempo. ${tier} (${winPct}% win prob vs avg D1).`;
+
+  // Four factors helper
+  const pct = v => v ? `${(v*100).toFixed(1)}%` : '—';
+  const ffVal = (v, goodHigh, threshold) => {
+    if (!v) return `<span class="ff-neu">—</span>`;
+    const isGood = goodHigh ? v > threshold : v < threshold;
+    return `<span class="${isGood ? 'ff-good' : 'ff-bad'}">${pct(v)}</span>`;
+  };
+
+  // Today's game involving this team
+  const todayGame = _lastGames.find(g => g.hKey === key || g.aKey === key);
+  let todayHtml = '';
+  if (todayGame) {
+    const isHome = todayGame.hKey === key;
+    const oppKey  = isHome ? todayGame.aKey : todayGame.hKey;
+    const oppName = isHome ? todayGame.away : todayGame.home;
+    const opp = displayName(oppKey, oppName);
+    const site = todayGame.neutral ? 'vs (N)' : isHome ? 'vs' : '@';
+    const gameTime = todayGame.time ? new Date(todayGame.time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+    const { pred, vegasSpread, vegasTotal, statusName, homeScore, awayScore } = todayGame;
+
+    let modelRow = '', vegasRow = '', edgeRow = '', scoreRow = '';
+    if (pred) {
+      const modelMargin = isHome ? -pred.margin : pred.margin; // from this team's perspective (negative = favored)
+      modelRow = `<div class="tm-game-row"><span>Model line</span><span class="val">${fmtSpread((-modelMargin).toFixed(1))}</span></div>`;
+    }
+    if (vegasSpread) {
+      const vLine = isHome ? vegasSpread.point : -vegasSpread.point;
+      vegasRow = `<div class="tm-game-row"><span>Vegas line</span><span class="val">${fmtSpread(vLine.toFixed(1))}</span></div>`;
+      if (pred) {
+        const rawEdge = pred.margin + vegasSpread.point;
+        const teamEdge = isHome ? rawEdge : -rawEdge;
+        const cls = Math.abs(teamEdge) >= 3 ? 'good' : 'warn';
+        const dir = teamEdge > 0 ? `Back ${displayN.split(' ').slice(-1)[0]}` : `Fade ${displayN.split(' ').slice(-1)[0]}`;
+        edgeRow = `<div class="tm-game-row"><span>Edge</span><span class="edge-val ${cls}">${dir} +${Math.abs(teamEdge).toFixed(1)}</span></div>`;
+      }
+    }
+    if (vegasTotal && pred) {
+      const dir = pred.total > vegasTotal.point ? 'OVER' : 'UNDER';
+      const diff = Math.abs(pred.total - vegasTotal.point);
+      modelRow += `<div class="tm-game-row"><span>Model total</span><span class="val">${pred.total.toFixed(1)} (${dir} ${vegasTotal.point}, +${diff.toFixed(1)})</span></div>`;
+    }
+    const isLive  = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME';
+    const isFinal = statusName === 'STATUS_FINAL';
+    if (isLive || isFinal) {
+      const hs = parseInt(homeScore)||0, as = parseInt(awayScore)||0;
+      const ts = isHome ? hs : as, os = isHome ? as : hs;
+      scoreRow = `<div class="tm-game-row"><span>${isFinal?'Final':'Score'}</span><span class="val">${displayN.split(' ').slice(-1)[0]} ${ts} – ${opp.split(' ').slice(-1)[0]} ${os}</span></div>`;
+    }
+
+    todayHtml = `<div class="tm-section">
+      <div class="tm-section-title">Today's Game</div>
+      <div class="tm-game-card">
+        <div class="tm-game-matchup">${esc(displayN)} ${site} ${esc(opp)}</div>
+        ${gameTime ? `<div class="tm-game-row"><span>Time</span><span class="val">${gameTime}</span></div>` : ''}
+        ${scoreRow}${modelRow}${vegasRow}${edgeRow}
+      </div>
+    </div>`;
+  }
+
+  bodyEl.innerHTML = `
+    <div class="tm-section">
+      <div class="tm-section-title">Efficiency Ratings</div>
+      <div class="tm-kpi-row">
+        <div class="tm-kpi ${offKpi}">
+          <div class="tm-kpi-val">${r.adjO.toFixed(1)}</div>
+          <div class="tm-kpi-lbl">AdjO</div>
+        </div>
+        <div class="tm-kpi ${defKpi}">
+          <div class="tm-kpi-val">${r.adjD.toFixed(1)}</div>
+          <div class="tm-kpi-lbl">AdjD</div>
+        </div>
+        <div class="tm-kpi kpi-neu">
+          <div class="tm-kpi-val">${r.adjT.toFixed(1)}</div>
+          <div class="tm-kpi-lbl">Tempo</div>
+        </div>
+        <div class="tm-kpi ${barthagKpi}">
+          <div class="tm-kpi-val">${(r.barthag*100).toFixed(0)}%</div>
+          <div class="tm-kpi-lbl">Win Prob</div>
+        </div>
+      </div>
+      <div class="tm-interp">${interp}</div>
+    </div>
+    <div class="tm-section">
+      <div class="tm-section-title">Four Factors</div>
+      <table class="tm-ff-table">
+        <thead><tr><th>Factor</th><th>Offense</th><th>Defense</th></tr></thead>
+        <tbody>
+          <tr><td class="ff-lbl">eFG%</td><td>${ffVal(r.oEfg, true, 0.52)}</td><td>${ffVal(r.dEfg, false, 0.50)}</td></tr>
+          <tr><td class="ff-lbl">TO%</td><td>${ffVal(r.oTo, false, 0.18)}</td><td>${ffVal(r.dTo, true, 0.20)}</td></tr>
+          <tr><td class="ff-lbl">OReb%</td><td>${ffVal(r.oOr, true, 0.30)}</td><td>${ffVal(r.dOr, false, 0.28)}</td></tr>
+          <tr><td class="ff-lbl">FT Rate</td><td>${ffVal(r.oFtr, true, 0.30)}</td><td>${ffVal(r.dFtr, false, 0.32)}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    ${todayHtml}`;
 }
 
 function bestEdge(g) {
@@ -1974,6 +2271,9 @@ function onDateChange() {
   document.getElementById('date-pick').value = new Date().toISOString().slice(0, 10);
   document.addEventListener('click', e => {
     if (!e.target.closest('#conf-dropdown')) closeConfDropdown();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeTeamModal(); closeConfDropdown(); }
   });
   refresh();
 })();
