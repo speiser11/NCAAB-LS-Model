@@ -352,17 +352,27 @@ input[type=date]{
 }
 
 /* ── Conference filter row ── */
-.conf-filter-row{
-  display:flex;align-items:center;gap:.35rem;
-  padding:.45rem 1.25rem;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+/* ── Conference dropdown ── */
+.conf-dropdown{position:relative;}
+.conf-dropdown-btn.active{border-color:var(--blue);color:var(--blue);background:rgba(74,158,255,.1);}
+.conf-dropdown-menu{
+  position:absolute;top:calc(100% + 6px);left:0;z-index:200;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:.35rem;min-width:150px;max-height:320px;overflow-y:auto;
+  box-shadow:0 6px 24px rgba(0,0,0,.4);
+  display:flex;flex-direction:column;gap:.2rem;
 }
-.conf-filter-row::-webkit-scrollbar{display:none;}
-.conf-filter-label{
-  font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;
-  letter-spacing:.7px;color:var(--muted);flex-shrink:0;margin-right:.15rem;
+.conf-dropdown-menu::-webkit-scrollbar{width:4px;}
+.conf-dropdown-menu::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+.conf-opt{
+  text-align:left;font-family:'DM Mono',monospace;font-size:.7rem;
+  padding:.3rem .55rem;border-radius:6px;border:none;cursor:pointer;
+  background:transparent;color:var(--text);white-space:nowrap;
 }
+.conf-opt:hover{background:var(--surface2);}
+.conf-opt.on{background:rgba(74,158,255,.12);color:var(--blue);font-weight:700;}
+.conf-opt-clear{color:var(--muted);}
+.conf-opt-clear.on{color:var(--text);}
 
 /* ── Compact mode ── */
 .compact-list .card-ft{display:none;}
@@ -376,7 +386,7 @@ input[type=date]{
   .header{gap:.5rem;padding:.65rem 1rem;}
   .filter-sort{margin-left:0;width:100%;}
   .container{padding:1rem .85rem;}
-  .conf-filter-row{padding:.45rem .85rem;}
+  .conf-dropdown-menu{max-height:240px;}
 }
 </style>
 </head>
@@ -409,9 +419,11 @@ input[type=date]{
     <option value="rank">Sort: Ranked First</option>
     <option value="time">Sort: Game Time</option>
   </select>
-</div>
-<div class="conf-filter-row" id="conf-filter-row" style="display:none">
-  <span class="conf-filter-label">Conf</span>
+  <div class="filter-sep"></div>
+  <div class="conf-dropdown" id="conf-dropdown" style="display:none">
+    <button class="filter-chip conf-dropdown-btn" id="conf-dropdown-btn" onclick="toggleConfDropdown(event)">Conferences ▾</button>
+    <div class="conf-dropdown-menu" id="conf-dropdown-menu" style="display:none"></div>
+  </div>
 </div>
 
 <div class="container">
@@ -1398,25 +1410,48 @@ function toggleFilter(key) {
 }
 function setSort(val) { filters.sort = val; render(_lastGames); }
 
+function toggleConfDropdown(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('conf-dropdown-menu');
+  menu.style.display = menu.style.display === 'none' ? '' : 'none';
+}
+
+function closeConfDropdown() {
+  const menu = document.getElementById('conf-dropdown-menu');
+  if (menu) menu.style.display = 'none';
+}
+
 function setConference(c) {
   filters.conference = filters.conference === c ? '' : c;
-  document.querySelectorAll('.conf-pill').forEach(el =>
-    el.classList.toggle('on', el.dataset.conf === filters.conference)
-  );
+  closeConfDropdown();
+  _updateConfDropdownState();
   render(_lastGames);
 }
 
+function _updateConfDropdownState() {
+  const btn = document.getElementById('conf-dropdown-btn');
+  if (!btn) return;
+  btn.textContent = filters.conference ? `${filters.conference} ✕` : 'Conferences ▾';
+  btn.classList.toggle('active', !!filters.conference);
+  document.querySelectorAll('.conf-opt[data-conf]').forEach(el =>
+    el.classList.toggle('on', el.dataset.conf === filters.conference)
+  );
+}
+
 function updateConferenceFilter(games) {
-  const row = document.getElementById('conf-filter-row');
+  const wrap = document.getElementById('conf-dropdown');
+  const menu = document.getElementById('conf-dropdown-menu');
   const confs = [...new Set(
     games.flatMap(g => [g.hConf, g.aConf]).filter(c => c && c.length > 0)
   )].sort();
-  if (!confs.length) { row.style.display = 'none'; return; }
-  row.style.display = '';
-  row.innerHTML = `<span class="conf-filter-label">Conf</span>` +
+  if (!confs.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  menu.innerHTML =
+    `<button class="conf-opt conf-opt-clear${!filters.conference ? ' on' : ''}" onclick="setConference('')">All Conferences</button>` +
     confs.map(c =>
-      `<button class="filter-chip conf-pill${filters.conference === c ? ' on' : ''}" data-conf="${c}" onclick="setConference('${c}')">${c}</button>`
+      `<button class="conf-opt${filters.conference === c ? ' on' : ''}" data-conf="${c}" onclick="setConference('${c}')">${c}</button>`
     ).join('');
+  _updateConfDropdownState();
 }
 
 let _lastGames = [];
@@ -1759,6 +1794,9 @@ function onDateChange() {
 (function init() {
   initTheme();
   document.getElementById('date-pick').value = new Date().toISOString().slice(0, 10);
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#conf-dropdown')) closeConfDropdown();
+  });
   refresh();
 })();
 </script>
