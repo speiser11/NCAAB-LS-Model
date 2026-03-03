@@ -871,10 +871,11 @@ async function fetchViaProxy(url) {
   throw new Error('All proxies failed: ' + errors.join(' | '));
 }
 
-let ratings  = {};  // normalized_key → {raw, adjO, adjD, adjT, barthag}
-let espnList = [];  // ESPN game objects
-let oddsList = [];  // Odds API objects
-let oddsLeft = null;
+let ratings    = {};  // normalized_key → {raw, adjO, adjD, adjT, barthag}
+let espnList   = [];  // ESPN game objects
+let oddsList   = [];  // Odds API objects
+let oddsLeft   = null;
+let confIdMap  = {};  // ESPN conferenceId → short name (built dynamically)
 
 let cfg = {
   oddsKey:    localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
@@ -1069,6 +1070,32 @@ function parseTorvik(data) {
 }
 
 // ══════════════════════════════════════════════════════════
+// DATA: ESPN CONFERENCES  (one call per session, builds confIdMap)
+// ══════════════════════════════════════════════════════════
+async function loadConferences() {
+  const cached = sessionStorage.getItem('espn_confs');
+  if (cached) { confIdMap = JSON.parse(cached); return; }
+  try {
+    const r = await fetch(
+      'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/groups?limit=100',
+      { signal: AbortSignal.timeout(6000) }
+    );
+    const d = await r.json();
+    const groups = d.groups || [];
+    const map = {};
+    groups.forEach(g => {
+      const id = g.groupId || g.id;
+      if (id) map[String(id)] = g.shortName || g.name || '';
+    });
+    // Merge into static fallback so any gaps in ESPN's list still resolve
+    confIdMap = { ...CONF_ID_MAP, ...map };
+    sessionStorage.setItem('espn_confs', JSON.stringify(confIdMap));
+  } catch(e) {
+    confIdMap = { ...CONF_ID_MAP }; // fall back to static map silently
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 // DATA: ESPN GAMES
 // ══════════════════════════════════════════════════════════
 async function loadESPN(dateStr) {
@@ -1234,8 +1261,8 @@ function assembleGames() {
 
     return {
       ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
-      hConf: CONF_ID_MAP[g.homeConfId] || (hKey && ratings[hKey]?.conf) || '',
-      aConf: CONF_ID_MAP[g.awayConfId] || (aKey && ratings[aKey]?.conf) || '',
+      hConf: confIdMap[g.homeConfId] || (hKey && ratings[hKey]?.conf) || '',
+      aConf: confIdMap[g.awayConfId] || (aKey && ratings[aKey]?.conf) || '',
     };
   });
 }
@@ -2387,6 +2414,7 @@ async function refresh() {
 
   try {
     await Promise.all([
+      loadConferences(),
       loadTorvik(),
       loadESPN(dateStr),
       loadOdds(isoDate),
