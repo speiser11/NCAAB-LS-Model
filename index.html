@@ -6,7 +6,24 @@
 <title>NCAAB Model</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0e0e10;--surface:#18181c;--surface2:#22222a;--border:#2a2a35;--text:#e8e8f0;--muted:#7a7a8a;--green:#34c96b;--red:#e05252;--yellow:#f5a623;--blue:#4a9eff;}
+:root,[data-theme="dark"]{
+  --bg:#0e0e10;--surface:#18181c;--surface2:#22222a;--border:#2a2a35;
+  --text:#e8e8f0;--muted:#7a7a8a;
+  --green:#34c96b;--red:#e05252;--yellow:#f5a623;--blue:#4a9eff;
+  --surface-green:#0c2018;--border-green:#1a4030;
+  --surface-red:#2a0e0e;--border-red:#4a1010;
+  --surface-yellow:#2a1f08;--border-yellow:#4a3510;
+  --surface-blue:#0e1e2e;--border-blue:#1a3050;
+}
+[data-theme="light"]{
+  --bg:#f2f3f7;--surface:#ffffff;--surface2:#eaeaf0;--border:#d0d0dc;
+  --text:#1a1a2e;--muted:#7070a0;
+  --green:#1a8a40;--red:#d93025;--yellow:#b86e00;--blue:#1a6fd4;
+  --surface-green:#e8f8ef;--border-green:#1a8a40;
+  --surface-red:#fde8e8;--border-red:#d93025;
+  --surface-yellow:#fff8e1;--border-yellow:#b86e00;
+  --surface-blue:#e8f0fe;--border-blue:#1a6fd4;
+}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;font-size:14px;}
 /* ── Header ── */
@@ -26,7 +43,7 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 .container{max-width:900px;margin:0 auto;padding:1rem;}
 .game-list{display:flex;flex-direction:column;gap:.75rem;}
 .loading{text-align:center;padding:3rem;color:var(--muted);}
-.err-banner{background:#1a0808;border:1px solid #4a1010;border-radius:8px;padding:.65rem .9rem;color:var(--red);font-size:.75rem;margin-bottom:.75rem;}
+.err-banner{background:var(--surface-red);border:1px solid var(--border-red);border-radius:8px;padding:.65rem .9rem;color:var(--red);font-size:.75rem;margin-bottom:.75rem;}
 /* ── Game card ── */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;}
 .card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;}
@@ -42,13 +59,13 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 .lt{font-size:.62rem;color:var(--muted);width:2.4rem;flex-shrink:0;}
 .lv{font-weight:500;}
 .edge{padding:.1rem .35rem;border-radius:4px;font-size:.72rem;margin-left:auto;}
-.edge.strong{background:#0c2018;color:var(--green);font-weight:700;}
-.edge.mod{background:#2a1f08;color:var(--yellow);}
+.edge.strong{background:var(--surface-green);color:var(--green);font-weight:700;}
+.edge.mod{background:var(--surface-yellow);color:var(--yellow);}
 .edge.neg{color:var(--muted);}
 .val-tag{display:inline-block;font-size:.6rem;padding:.1rem .4rem;border-radius:3px;text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:.2rem;}
-.val-tag.home,.val-tag.away{background:#0e1e2e;color:var(--blue);}
-.val-tag.over{background:#0c2018;color:var(--green);}
-.val-tag.under{background:#2a0e0e;color:var(--red);}
+.val-tag.home,.val-tag.away{background:var(--surface-blue);color:var(--blue);}
+.val-tag.over{background:var(--surface-green);color:var(--green);}
+.val-tag.under{background:var(--surface-red);color:var(--red);}
 .no-line{color:var(--muted);font-size:.7rem;font-style:italic;}
 .ratings-strip{display:flex;gap:1rem;margin-top:.6rem;font-size:.62rem;color:var(--muted);flex-wrap:wrap;}
 .r-team{display:flex;flex-direction:column;gap:.1rem;}
@@ -59,8 +76,8 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 .top-picks-title{font-size:.58rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:.35rem;}
 .picks-row{display:flex;gap:.4rem;flex-wrap:wrap;}
 .pick-chip{display:inline-flex;align-items:center;gap:.45rem;border:1px solid var(--border);border-radius:6px;padding:.22rem .55rem;font-size:.73rem;white-space:nowrap;}
-.pick-chip.hot{border-color:var(--green);background:#091a0f;}
-.pick-chip.warm{border-color:var(--yellow);background:#1a1204;}
+.pick-chip.hot{border-color:var(--green);background:var(--surface-green);}
+.pick-chip.warm{border-color:var(--yellow);background:var(--surface-yellow);}
 .pe{font-size:.62rem;color:var(--muted);}
 .pick-chip.hot .pe{color:var(--green);}
 .pick-chip.warm .pe{color:var(--yellow);}
@@ -118,6 +135,7 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
   <h1>NCAAB Model</h1>
   <input type="date" id="date-pick" onchange="onDateChange()">
   <button class="btn" onclick="refresh()">↻ Refresh</button>
+  <button class="btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
   <button class="btn" onclick="openSettings()">⚙ Settings</button>
   <button class="btn" id="bt-toggle" onclick="toggleBacktest()">📊 Backtest</button>
 </div>
@@ -178,6 +196,19 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 <script>
 // ══════════════════════════════════════════════════════════
 // CONFIG & STATE
+// ── Theme ──────────────────────────────────────────────────
+function initTheme(){
+  const saved = localStorage.getItem('ncaab_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('theme-btn').textContent = saved === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme(){
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('ncaab_theme', next);
+  document.getElementById('theme-btn').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+
 // ══════════════════════════════════════════════════════════
 const ESPN_URL  = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard';
 const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
@@ -456,15 +487,24 @@ async function loadOdds(isoDate) {
     + `&commenceTimeFrom=${isoDate}T12:00:00Z&commenceTimeTo=${nextIso}T12:00:00Z`;
 
   try {
-    const r = await fetch(url);
-    oddsLeft = r.headers.get('x-requests-remaining');
-    if (!r.ok) {
-      const e = await r.json().catch(() => ({}));
-      setSt('st-odds', `Odds: error ${r.status}`, 'err');
-      showErr(`Odds API: ${e.message || r.statusText}`);
-      oddsList = []; return;
+    // Try direct fetch first (works when server sets CORS headers),
+    // fall back through proxies if blocked (e.g. opened as file://)
+    let data;
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      oddsLeft = r.headers.get('x-requests-remaining');
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        setSt('st-odds', `Odds: error ${r.status}`, 'err');
+        showErr(`Odds API: ${e.message || r.statusText}`);
+        oddsList = []; return;
+      }
+      data = await r.json();
+    } catch {
+      // Direct fetch blocked — try via proxy
+      data = await fetchViaProxy(url);
     }
-    oddsList = await r.json();
+    oddsList = Array.isArray(data) ? data : [];
     sessionStorage.setItem('odds_cache', JSON.stringify(oddsList));
     sessionStorage.setItem('odds_ts', Date.now().toString());
     setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
@@ -546,6 +586,9 @@ function assembleGames() {
       const oa = matchTeam(og.away_team);
       return (oh && oh === hKey) || (oa && oa === aKey);
     });
+    if (!oddsGame && oddsList.length > 0) {
+      console.log(`NO ODDS MATCH: ESPN="${g.away} @ ${g.home}" | hKey=${hKey} aKey=${aKey}`);
+    }
 
     let vegasSpread = null, vegasTotal = null;
     if (oddsGame) {
@@ -1026,6 +1069,7 @@ function onDateChange() {
 
 // Init
 (function init() {
+  initTheme();
   document.getElementById('date-pick').value = new Date().toISOString().slice(0, 10);
   refresh();
 })();
