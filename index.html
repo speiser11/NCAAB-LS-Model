@@ -31,18 +31,128 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;}
 
-/* ── Header ── */
-.header{
+/* ── Site Header ── */
+.site-header{
   background:var(--surface);border-bottom:1px solid var(--border);
-  padding:.8rem 1.25rem;display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;
-  position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2);
+  padding:.65rem 1.25rem;
+  display:grid;grid-template-columns:auto 1fr auto;
+  align-items:center;gap:1rem;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 16px rgba(0,0,0,.3);
 }
-.header h1{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;flex:1;min-width:120px;}
-.header h1 .accent{color:var(--blue);}
+.brand{display:flex;align-items:baseline;gap:.15rem;text-decoration:none;}
+.brand-ncaab{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:2px;color:var(--text);}
+.brand-model{font-family:'Bebas Neue',sans-serif;font-size:1.55rem;letter-spacing:2px;color:var(--blue);}
+.header-search{display:flex;align-items:center;}
+.search-wrap{position:relative;display:flex;align-items:center;width:100%;max-width:360px;}
+.search-icon{position:absolute;left:.75rem;color:var(--muted);font-size:.95rem;pointer-events:none;line-height:1;}
+.team-search{
+  width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  padding:.38rem .9rem .38rem 2.1rem;border-radius:20px;
+  font-family:'Inter',sans-serif;font-size:.8rem;
+  transition:border-color .15s,box-shadow .15s;
+}
+.team-search::placeholder{color:var(--muted);}
+.team-search:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(74,158,255,.12);}
+.search-clear{
+  position:absolute;right:.55rem;background:none;border:none;color:var(--muted);
+  cursor:pointer;font-size:.75rem;width:18px;height:18px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;transition:color .15s;
+}
+.search-clear:hover{color:var(--text);}
+.header-actions{display:flex;align-items:center;gap:.4rem;}
+.icon-btn{
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  width:32px;height:32px;border-radius:8px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.85rem;transition:all .15s;flex-shrink:0;
+}
+.icon-btn:hover{border-color:var(--text);color:var(--text);}
+.icon-btn.active{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
 input[type=date]{
   background:var(--surface2);border:1px solid var(--border);color:var(--text);
-  padding:.35rem .7rem;border-radius:8px;font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer;
+  padding:.35rem .65rem;border-radius:8px;font-family:'DM Mono',monospace;
+  font-size:.73rem;cursor:pointer;height:32px;
 }
+
+/* ── Sub-nav (tabs + filters) ── */
+.sub-nav{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:stretch;
+  position:sticky;top:54px;z-index:90;
+  overflow-x:auto;scrollbar-width:none;
+}
+.sub-nav::-webkit-scrollbar{display:none;}
+.status-tabs{display:flex;flex-shrink:0;}
+.stab{
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--muted);padding:.6rem .9rem;
+  font-family:'Inter',sans-serif;font-size:.78rem;font-weight:500;
+  cursor:pointer;display:flex;align-items:center;gap:.35rem;
+  transition:color .15s,border-color .15s;white-space:nowrap;
+}
+.stab:hover{color:var(--text);}
+.stab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.stab-count{
+  font-family:'DM Mono',monospace;font-size:.6rem;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:.05rem .38rem;color:var(--muted);
+  transition:all .15s;
+}
+.stab.active .stab-count{background:var(--surface-blue);border-color:var(--border-blue);color:var(--blue);}
+.stab-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.5s infinite;flex-shrink:0;}
+.stab-divider{width:1px;background:var(--border);margin:.5rem 0;flex-shrink:0;}
+.sub-nav-right{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.45rem .9rem;margin-left:auto;flex-shrink:0;
+}
+.sort-pills{
+  display:flex;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;padding:.15rem;gap:.1rem;
+}
+.sort-pill{
+  background:none;border:none;color:var(--muted);
+  padding:.18rem .55rem;border-radius:6px;
+  font-family:'Inter',sans-serif;font-size:.7rem;font-weight:500;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.sort-pill:hover{color:var(--text);}
+.sort-pill.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.chip-btn{
+  background:transparent;border:1px solid var(--border);color:var(--muted);
+  padding:.2rem .58rem;border-radius:6px;
+  font-family:'Inter',sans-serif;font-size:.7rem;font-weight:500;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.chip-btn:hover{border-color:var(--text);color:var(--text);}
+.chip-btn.on,.chip-btn.active{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
+.subnav-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;}
+
+/* ── Day summary ── */
+.day-summary{
+  display:flex;align-items:center;gap:.6rem;
+  padding:.35rem 1.25rem;
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);
+  flex-wrap:wrap;
+}
+.ds-live{color:var(--red);font-weight:600;display:flex;align-items:center;gap:.3rem;}
+.ds-live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);display:inline-block;animation:pulse 1.5s infinite;}
+.ds-sep{color:var(--border);margin:0 .05rem;}
+.ds-edge{color:var(--green);font-weight:600;}
+
+/* ── Status bar (data load indicators) ── */
+.status-bar{
+  display:flex;gap:1rem;padding:.3rem 1.25rem;
+  background:var(--surface2);border-bottom:1px solid var(--border);
+  font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);flex-wrap:wrap;
+}
+.sc{display:flex;align-items:center;gap:.25rem;}
+.sc.ok{color:var(--green);}
+.sc.err{color:var(--red);}
+.sc.warn{color:var(--yellow);}
+
+/* ── Legacy btn (used in modals) ── */
 .btn{
   background:var(--surface2);border:1px solid var(--border);color:var(--text);
   padding:.35rem .7rem;border-radius:8px;font-family:'Inter',sans-serif;
@@ -51,37 +161,6 @@ input[type=date]{
 .btn:hover{border-color:var(--blue);color:var(--blue);}
 .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600;}
 .btn.active{border-color:var(--blue);color:var(--blue);}
-
-/* ── Status bar ── */
-.status-bar{
-  display:flex;gap:1.25rem;padding:.45rem 1.25rem;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted);flex-wrap:wrap;
-}
-.sc{display:flex;align-items:center;gap:.3rem;}
-.sc.ok{color:var(--green);}
-.sc.err{color:var(--red);}
-.sc.warn{color:var(--yellow);}
-
-/* ── Filter bar ── */
-.filter-bar{
-  display:flex;align-items:center;gap:.4rem;
-  padding:.55rem 1.25rem;background:var(--surface);
-  border-bottom:1px solid var(--border);flex-wrap:wrap;
-}
-.filter-chip{
-  background:transparent;border:1px solid var(--border);color:var(--muted);
-  padding:.25rem .65rem;border-radius:20px;font-family:'Inter',sans-serif;
-  font-size:.72rem;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap;
-}
-.filter-chip:hover{border-color:var(--text);color:var(--text);}
-.filter-chip.on{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
-.filter-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;margin:0 .2rem;}
-.filter-sort{
-  background:var(--surface2);border:1px solid var(--border);color:var(--text);
-  padding:.25rem .6rem;border-radius:8px;font-family:'Inter',sans-serif;
-  font-size:.72rem;cursor:pointer;margin-left:auto;
-}
 
 /* ── Layout ── */
 .container{max-width:900px;margin:0 auto;padding:1.25rem;}
@@ -379,51 +458,78 @@ input[type=date]{
 .compact-list .factors-wrap{display:none;}
 
 /* ── Responsive ── */
-@media(max-width:540px){
+@media(max-width:640px){
+  .site-header{grid-template-columns:auto 1fr;row-gap:.5rem;padding:.6rem .9rem;}
+  .header-search{grid-column:1/-1;order:3;}
+  .header-actions{gap:.3rem;}
+  .search-wrap{max-width:100%;}
+  .brand-ncaab,.brand-model{font-size:1.3rem;}
   .card-bd{grid-template-columns:1fr;}
   .mblock-div{width:100%;height:1px;margin:0;}
   .factors-grid{grid-template-columns:repeat(2,1fr);}
-  .header{gap:.5rem;padding:.65rem 1rem;}
-  .filter-sort{margin-left:0;width:100%;}
   .container{padding:1rem .85rem;}
   .conf-dropdown-menu{max-height:240px;}
+  .sub-nav-right{padding:.35rem .7rem;}
+  .stab{padding:.55rem .65rem;font-size:.73rem;}
 }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>NCAAB <span class="accent">Model</span></h1>
-  <input type="date" id="date-pick" onchange="onDateChange()">
-  <button class="btn" onclick="refresh()">↻ Refresh</button>
-  <button class="btn" id="theme-btn" onclick="toggleTheme()">🌙</button>
-  <button class="btn" onclick="openSettings()">⚙ Settings</button>
-  <button class="btn" id="bt-toggle" onclick="toggleBacktest()">📊 Backtest</button>
+<div class="site-header">
+  <div class="brand">
+    <span class="brand-ncaab">NCAAB</span><span class="brand-model">Model</span>
+  </div>
+  <div class="header-search">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="team-search" id="team-search" type="search" placeholder="Search teams…" oninput="onSearch(this.value)" autocomplete="off">
+      <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none" title="Clear">✕</button>
+    </div>
+  </div>
+  <div class="header-actions">
+    <input type="date" id="date-pick" onchange="onDateChange()">
+    <button class="icon-btn" onclick="refresh()" title="Refresh data">↻</button>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    <button class="icon-btn" onclick="openSettings()" title="Settings">⚙</button>
+    <button class="icon-btn" id="bt-toggle" onclick="toggleBacktest()" title="Backtest">📊</button>
+  </div>
 </div>
 
 <div id="top-picks-bar" class="top-picks-bar" style="display:none"></div>
+
+<div class="sub-nav" id="sub-nav">
+  <div class="status-tabs">
+    <button class="stab active" data-tab="all" onclick="setTab('all')">All <span class="stab-count" id="tc-all">—</span></button>
+    <button class="stab" data-tab="live" onclick="setTab('live')"><span class="stab-dot"></span>Live <span class="stab-count" id="tc-live"></span></button>
+    <button class="stab" data-tab="upcoming" onclick="setTab('upcoming')">Upcoming <span class="stab-count" id="tc-upcoming"></span></button>
+    <button class="stab" data-tab="final" onclick="setTab('final')">Final <span class="stab-count" id="tc-final"></span></button>
+  </div>
+  <div class="stab-divider"></div>
+  <div class="sub-nav-right">
+    <div class="sort-pills">
+      <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge</button>
+      <button class="sort-pill" data-sort="time" onclick="setSort('time')">Time</button>
+      <button class="sort-pill" data-sort="rank" onclick="setSort('rank')">Ranked</button>
+    </div>
+    <div class="subnav-sep"></div>
+    <div class="conf-dropdown" id="conf-dropdown" style="display:none">
+      <button class="chip-btn conf-dropdown-btn" id="conf-dropdown-btn" onclick="toggleConfDropdown(event)">Conf ▾</button>
+      <div class="conf-dropdown-menu" id="conf-dropdown-menu" style="display:none"></div>
+    </div>
+    <button class="chip-btn" id="fc-odds" onclick="toggleFilter('hasOdds')">Odds Only</button>
+    <button class="chip-btn" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 1.5</button>
+    <button class="chip-btn" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
+    <div class="subnav-sep"></div>
+    <button class="chip-btn" id="fc-compact" onclick="toggleFilter('compact')" title="Compact view">⊟</button>
+  </div>
+</div>
+
+<div class="day-summary" id="day-summary" style="display:none"></div>
 <div class="status-bar">
   <span class="sc" id="st-ratings">Ratings: —</span>
   <span class="sc" id="st-games">Games: —</span>
   <span class="sc" id="st-odds">Odds: —</span>
-</div>
-<div class="filter-bar" id="filter-bar">
-  <button class="filter-chip" id="fc-compact" onclick="toggleFilter('compact')" title="Hide ratings & four factors">⊟ Compact</button>
-  <div class="filter-sep"></div>
-  <button class="filter-chip" id="fc-odds" onclick="toggleFilter('hasOdds')">Has Odds</button>
-  <button class="filter-chip" id="fc-final" onclick="toggleFilter('hideFinal')">Hide Finished</button>
-  <button class="filter-chip" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 1.5</button>
-  <button class="filter-chip" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
-  <select class="filter-sort" id="fc-sort" onchange="setSort(this.value)">
-    <option value="edge">Sort: Best Edge</option>
-    <option value="rank">Sort: Ranked First</option>
-    <option value="time">Sort: Game Time</option>
-  </select>
-  <div class="filter-sep"></div>
-  <div class="conf-dropdown" id="conf-dropdown" style="display:none">
-    <button class="filter-chip conf-dropdown-btn" id="conf-dropdown-btn" onclick="toggleConfDropdown(event)">Conferences ▾</button>
-    <div class="conf-dropdown-menu" id="conf-dropdown-menu" style="display:none"></div>
-  </div>
 </div>
 
 <div class="container">
@@ -1395,9 +1501,9 @@ function renderAccuracyBadges({ yd, wk, mo }) {
 }
 
 // ── Filter state ──────────────────────────────────────────
-const filters = { compact:false, hasOdds:false, hideFinal:false, edgeOnly:false, onlyRanked:false, sort:'edge', conference:'' };
+const filters = { compact:false, hasOdds:false, edgeOnly:false, onlyRanked:false, sort:'edge', conference:'', tab:'all', search:'' };
 
-const FC_ID = { compact:'compact', hasOdds:'odds', hideFinal:'final', edgeOnly:'edge', onlyRanked:'ranked' };
+const FC_ID = { compact:'compact', hasOdds:'odds', edgeOnly:'edge', onlyRanked:'ranked' };
 
 function toggleFilter(key) {
   filters[key] = !filters[key];
@@ -1408,7 +1514,38 @@ function toggleFilter(key) {
   }
   render(_lastGames);
 }
-function setSort(val) { filters.sort = val; render(_lastGames); }
+
+function setSort(val) {
+  filters.sort = val;
+  document.querySelectorAll('.sort-pill').forEach(el =>
+    el.classList.toggle('active', el.dataset.sort === val)
+  );
+  render(_lastGames);
+}
+
+function setTab(tab) {
+  filters.tab = tab;
+  document.querySelectorAll('.stab').forEach(el =>
+    el.classList.toggle('active', el.dataset.tab === tab)
+  );
+  render(_lastGames);
+}
+
+function onSearch(val) {
+  filters.search = val.trim().toLowerCase();
+  const clr = document.getElementById('search-clear');
+  if (clr) clr.style.display = val ? '' : 'none';
+  render(_lastGames);
+}
+
+function clearSearch() {
+  filters.search = '';
+  const inp = document.getElementById('team-search');
+  if (inp) inp.value = '';
+  const clr = document.getElementById('search-clear');
+  if (clr) clr.style.display = 'none';
+  render(_lastGames);
+}
 
 function toggleConfDropdown(e) {
   if (e) e.stopPropagation();
@@ -1431,7 +1568,7 @@ function setConference(c) {
 function _updateConfDropdownState() {
   const btn = document.getElementById('conf-dropdown-btn');
   if (!btn) return;
-  btn.textContent = filters.conference ? `${filters.conference} ✕` : 'Conferences ▾';
+  btn.textContent = filters.conference ? `${filters.conference} ✕` : 'Conf ▾';
   btn.classList.toggle('active', !!filters.conference);
   document.querySelectorAll('.conf-opt[data-conf]').forEach(el =>
     el.classList.toggle('on', el.dataset.conf === filters.conference)
@@ -1468,15 +1605,54 @@ function render(games) {
   // Always render top picks from full unfiltered set
   renderTopPicks(games);
 
+  // Compute tab counts from full set
+  const allLive     = games.filter(g => g.statusName==='STATUS_IN_PROGRESS'||g.statusName==='STATUS_HALFTIME');
+  const allFinal    = games.filter(g => g.statusName==='STATUS_FINAL');
+  const allUpcoming = games.filter(g => !allLive.includes(g) && !allFinal.includes(g));
+  const setTC = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n || ''; };
+  setTC('tc-all', games.length);
+  setTC('tc-live', allLive.length);
+  setTC('tc-upcoming', allUpcoming.length);
+  setTC('tc-final', allFinal.length);
+
+  // Day summary
+  const topEdge = Math.max(...games.map(bestEdge).filter(e => e > 0), 0);
+  const sumEl = document.getElementById('day-summary');
+  if (sumEl) {
+    const livePart = allLive.length
+      ? `<span class="ds-live"><span class="ds-live-dot"></span>${allLive.length} Live</span><span class="ds-sep">·</span>` : '';
+    const edgePart = topEdge >= 1.5
+      ? `<span class="ds-sep">·</span><span class="ds-edge">Best edge +${topEdge.toFixed(1)}</span>` : '';
+    sumEl.innerHTML = `${livePart}<span>${games.length} games</span><span class="ds-sep">·</span><span>${allUpcoming.length} upcoming</span><span class="ds-sep">·</span><span>${allFinal.length} final</span>${edgePart}`;
+    sumEl.style.display = '';
+  }
+
   // Apply filters
   let visible = games.filter(g => {
     if (filters.hasOdds    && !g.vegasSpread && !g.vegasTotal)           return false;
-    if (filters.hideFinal  && g.statusName === 'STATUS_FINAL')           return false;
     if (filters.edgeOnly   && bestEdge(g) < 1.5)                         return false;
     if (filters.onlyRanked && g.homeRank > 25 && g.awayRank > 25)        return false;
     if (filters.conference && g.hConf !== filters.conference && g.aConf !== filters.conference) return false;
     return true;
   });
+
+  // Apply tab filter
+  if (filters.tab === 'live') {
+    visible = visible.filter(g => g.statusName==='STATUS_IN_PROGRESS'||g.statusName==='STATUS_HALFTIME');
+  } else if (filters.tab === 'upcoming') {
+    visible = visible.filter(g => g.statusName!=='STATUS_FINAL'&&g.statusName!=='STATUS_IN_PROGRESS'&&g.statusName!=='STATUS_HALFTIME');
+  } else if (filters.tab === 'final') {
+    visible = visible.filter(g => g.statusName==='STATUS_FINAL');
+  }
+
+  // Apply search
+  if (filters.search) {
+    const q = filters.search;
+    visible = visible.filter(g =>
+      g.home.toLowerCase().includes(q) || g.away.toLowerCase().includes(q) ||
+      (g.hKey && g.hKey.includes(q))   || (g.aKey && g.aKey.includes(q))
+    );
+  }
 
   // Populate conference filter from full game list
   updateConferenceFilter(games);
@@ -1600,6 +1776,8 @@ function toggleBacktest() {
   document.getElementById('bt-panel').style.display    = btMode ? '' : 'none';
   document.getElementById('top-picks-bar').style.display = btMode ? 'none' : '';
   document.getElementById('game-list').closest('.container').style.display = btMode ? 'none' : '';
+  document.getElementById('sub-nav').style.display  = btMode ? 'none' : '';
+  document.getElementById('day-summary').style.display = btMode ? 'none' : '';
   document.getElementById('bt-toggle').classList.toggle('active', btMode);
   if (btMode) {
     // default to last 7 days
