@@ -193,19 +193,33 @@ input[type=date]{
 .fm-val.neu{color:var(--muted);}
 
 /* ── Top picks bar ── */
-.top-picks-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:.6rem 1.25rem;}
-.top-picks-title{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:.4rem;}
-.picks-row{display:flex;gap:.4rem;flex-wrap:wrap;}
-.pick-chip{
-  display:inline-flex;align-items:center;gap:.45rem;
-  border:1px solid var(--border);border-radius:8px;
-  padding:.25rem .65rem;font-family:'DM Mono',monospace;font-size:.72rem;white-space:nowrap;
+.top-picks-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:.65rem 1.25rem .75rem;}
+.picks-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;margin-bottom:.55rem;}
+.top-picks-title{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);}
+.picks-accuracy{display:flex;gap:.35rem;flex-wrap:wrap;}
+.acc-badge{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.15rem .45rem;white-space:nowrap;}
+.acc-badge .acc-pct{font-weight:700;color:var(--text);}
+.acc-badge.acc-good .acc-pct{color:var(--green);}
+.acc-badge.acc-bad .acc-pct{color:var(--red);}
+.picks-row{display:flex;gap:.55rem;overflow-x:auto;padding-bottom:.2rem;scrollbar-width:none;}
+.picks-row::-webkit-scrollbar{display:none;}
+.pick-card{
+  flex-shrink:0;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:.65rem .9rem;width:185px;
+  transition:transform .12s,box-shadow .12s,border-color .12s;
 }
-.pick-chip.hot{border-color:var(--green);background:var(--surface-green);}
-.pick-chip.warm{border-color:var(--yellow);background:var(--surface-yellow);}
-.pe{font-size:.62rem;color:var(--muted);}
-.pick-chip.hot .pe{color:var(--green);}
-.pick-chip.warm .pe{color:var(--yellow);}
+.pick-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.25);}
+.pick-card.hot{border-color:var(--green);}
+.pick-card.warm{border-color:var(--yellow);}
+.pick-matchup{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pick-main{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pick-meta{display:flex;align-items:baseline;gap:.4rem;margin-bottom:.3rem;}
+.pick-edge{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;line-height:1;}
+.pick-card.hot .pick-edge{color:var(--green);}
+.pick-card.warm .pick-edge{color:var(--yellow);}
+.pick-type-tag{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.06rem .3rem;}
+.pick-why{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);line-height:1.4;}
 
 /* ── Settings modal ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
@@ -610,7 +624,13 @@ function getSeasonYear() {
 const GIST_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
 
 async function loadTorvik() {
-  // 6-hour localStorage cache
+  // 6-hour localStorage cache (v2 = conf bug fixed)
+  const CACHE_VER = '2';
+  if (localStorage.getItem('torvik_ver') !== CACHE_VER) {
+    localStorage.removeItem('torvik_ratings');
+    localStorage.removeItem('torvik_ts');
+    localStorage.setItem('torvik_ver', CACHE_VER);
+  }
   const cached = localStorage.getItem('torvik_ratings');
   const ts     = parseInt(localStorage.getItem('torvik_ts') || '0');
   if (cached && Date.now() - ts < 6 * 3600 * 1000) {
@@ -651,12 +671,11 @@ function parseTorvik(data) {
              : [];
   rows.forEach(row => {
     try {
-      let team, adjO, adjD, adjT, barthag;
+      let team, adjO, adjD, adjT, barthag, conf = '';
       let oEfg, oTo, oOr, oFtr, dEfg, dTo, dOr, dFtr;
       if (Array.isArray(row)) {
         // Common Torvik array layout:
         // [rank, team, conf, record, barthag, adjOE, adjDE, efg%, to%, or%, ftr%, def_efg%, def_to%, def_or%, def_ftr%, adjT, wab]
-        let conf = '';
         if (typeof row[0] === 'number' && typeof row[1] === 'string') {
           team = row[1]; conf = typeof row[2]==='string' ? row[2].trim() : '';
           barthag = row[4]; adjO = row[5]; adjD = row[6];
@@ -676,7 +695,7 @@ function parseTorvik(data) {
         oOr  = row.orb || row.orb_pct || row.oor;  oFtr = row.ftr || row.ft_rate || row.oftr;
         dEfg = row.def_efg || row.defEfg || row.defefg; dTo = row.def_tov || row.deftov || row.dto;
         dOr  = row.def_orb || row.deforb || row.dor;    dFtr = row.def_ftr || row.defftr || row.dftr;
-        var conf = row.conf || row.Conf || row.conference || '';
+        conf = row.conf || row.Conf || row.conference || '';
       }
       adjO = parseFloat(adjO); adjD = parseFloat(adjD); adjT = parseFloat(adjT) || 68;
       if (!team || adjO < 60 || adjO > 155 || adjD < 60 || adjD > 155) return;
@@ -1188,7 +1207,7 @@ function renderCard(g) {
   const rankedMatchupBadge = bothRanked ? `<span class="ranked-badge">Ranked Matchup</span>` : '';
 
   return `
-    <div class="card${edgeCardCls}${rankedCls}">
+    <div class="card${edgeCardCls}${rankedCls}" id="game-${g.id}">
       <div class="card-hd">
         <div class="card-hd-teams">
           ${awayRankBadge}<span class="team-away">${esc(displayName(g.aKey, g.away))}</span>
@@ -1216,40 +1235,151 @@ function renderCard(g) {
   `;
 }
 
+function scrollToGame(id) {
+  const el = document.getElementById('game-' + id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function renderTopPicks(games) {
   const bar = document.getElementById('top-picks-bar');
-  const chips = [];
-  for (const g of games) {  // already sorted by bestEdge
-    if (!g.pred) continue;
-    let bestLabel = null, bestE = 0;
+  if (!games.length) { bar.style.display = 'none'; return; }
 
+  // Collect all spread + total picks with edge >= 1.5
+  const picks = [];
+  for (const g of games) {
+    if (!g.pred) continue;
     if (g.vegasSpread) {
-      const se = g.pred.margin + g.vegasSpread.point;
-      if (Math.abs(se) > bestE) {
-        bestE = Math.abs(se);
-        const favKey  = se > 0 ? g.hKey  : g.aKey;
-        const favFull = se > 0 ? g.home  : g.away;
-        const pt      = se > 0 ? g.vegasSpread.point : -g.vegasSpread.point;
-        bestLabel = `${displayName(favKey, favFull)} ${fmtSpread(pt.toFixed(1))}`;
+      const se = g.pred.margin + g.vegasSpread.point; // >0 = model prefers home
+      const absE = Math.abs(se);
+      if (absE >= 1.5) {
+        const backHome = se > 0;
+        const favKey   = backHome ? g.hKey : g.aKey;
+        const favFull  = backHome ? g.home : g.away;
+        const lineVal  = backHome ? g.vegasSpread.point : -g.vegasSpread.point;
+        const modelVal = backHome ? -g.pred.margin : g.pred.margin;
+        const lastName = displayName(favKey, favFull).split(' ').slice(-1)[0];
+        picks.push({
+          g, edge: absE, type: 'spread',
+          main: `${lastName} ${fmtSpread(lineVal.toFixed(1))}`,
+          why: `Model ${fmtSpread(modelVal.toFixed(1))} · Vegas ${fmtSpread(lineVal.toFixed(1))} · ${absE.toFixed(1)}pt edge`,
+        });
       }
     }
     if (g.vegasTotal) {
       const te = g.pred.total - g.vegasTotal.point;
-      if (Math.abs(te) > bestE) {
-        bestE = Math.abs(te);
-        bestLabel = `${te > 0 ? 'O' : 'U'} ${g.vegasTotal.point}`;
+      const absE = Math.abs(te);
+      if (absE >= 1.5) {
+        picks.push({
+          g, edge: absE, type: 'total',
+          main: `${te > 0 ? 'OVER' : 'UNDER'} ${g.vegasTotal.point}`,
+          why: `Model ${g.pred.total.toFixed(1)} · Line ${g.vegasTotal.point} · ${absE.toFixed(1)}pt edge`,
+        });
       }
     }
+  }
+  picks.sort((a, b) => b.edge - a.edge);
+  const top5 = picks.slice(0, 5);
+  if (!top5.length) { bar.style.display = 'none'; return; }
 
-    if (bestE < 1.5 || !bestLabel) continue;
-    const cls = bestE >= 3 ? 'hot' : 'warm';
-    chips.push(`<span class="pick-chip ${cls}">${esc(bestLabel)} <span class="pe">+${bestE.toFixed(1)}</span></span>`);
-    if (chips.length >= 5) break;
+  const cards = top5.map(p => {
+    const cls = p.edge >= 3 ? 'hot' : 'warm';
+    const aShort = displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0];
+    const hShort = displayName(p.g.hKey, p.g.home).split(' ').slice(-1)[0];
+    const typeLabel = p.type === 'spread' ? 'ATS' : 'O/U';
+    return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.g.id}')">
+      <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
+      <div class="pick-main">${esc(p.main)}</div>
+      <div class="pick-meta">
+        <span class="pick-edge">+${p.edge.toFixed(1)}</span>
+        <span class="pick-type-tag">${typeLabel}</span>
+      </div>
+      <div class="pick-why">${esc(p.why)}</div>
+    </div>`;
+  }).join('');
+
+  bar.style.display = '';
+  bar.innerHTML = `
+    <div class="picks-header">
+      <span class="top-picks-title">Today's Top Picks</span>
+      <div class="picks-accuracy" id="picks-accuracy-row">
+        <span class="acc-badge" style="opacity:.5">Loading accuracy…</span>
+      </div>
+    </div>
+    <div class="picks-row">${cards}</div>`;
+
+  loadAccuracyStats();
+}
+
+// ── Historical accuracy scorecard ─────────────────────────
+let _accCache = null, _accCacheTs = 0;
+
+async function loadAccuracyStats() {
+  const now = Date.now();
+  if (_accCache && (now - _accCacheTs) < 30 * 60 * 1000) {
+    renderAccuracyBadges(_accCache);
+    return;
+  }
+  const toDateStr = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dy = String(d.getDate()).padStart(2,'0');
+    return `${y}${m}${dy}`;
+  };
+  const today = new Date();
+  const shiftDay = n => { const d = new Date(today); d.setDate(today.getDate() + n); return d; };
+  const dateRange = (start, end) => {
+    const dates = [], d = new Date(start);
+    while (d <= end) { dates.push(toDateStr(new Date(d))); d.setDate(d.getDate()+1); }
+    return dates;
+  };
+  const yest = shiftDay(-1);
+  const weekAgo = shiftDay(-7);
+  const monthAgo = shiftDay(-30);
+
+  async function scoreRange(dates) {
+    let w = 0, l = 0;
+    for (const dateStr of dates) {
+      try {
+        const games = await fetchESPNFinal(dateStr);
+        for (const g of games) {
+          const hKey = matchTeam(g.home), aKey = matchTeam(g.away);
+          const pred = predict(hKey, aKey, g.neutral);
+          if (!pred) continue;
+          const actual = g.homeScore - g.awayScore;
+          if (actual === 0) continue;
+          (pred.margin > 0) === (actual > 0) ? w++ : l++;
+        }
+      } catch(e) { /* skip */ }
+    }
+    return { w, l };
   }
 
-  if (!chips.length) { bar.style.display = 'none'; return; }
-  bar.style.display = '';
-  bar.innerHTML = `<div class="top-picks-title">Top Picks</div><div class="picks-row">${chips.join('')}</div>`;
+  try {
+    const [yd, wk, mo] = await Promise.all([
+      scoreRange([toDateStr(yest)]),
+      scoreRange(dateRange(weekAgo, yest)),
+      scoreRange(dateRange(monthAgo, yest)),
+    ]);
+    _accCache = { yd, wk, mo };
+    _accCacheTs = now;
+    renderAccuracyBadges(_accCache);
+  } catch(e) {
+    const row = document.getElementById('picks-accuracy-row');
+    if (row) row.innerHTML = '';
+  }
+}
+
+function renderAccuracyBadges({ yd, wk, mo }) {
+  const row = document.getElementById('picks-accuracy-row');
+  if (!row) return;
+  const badge = (lbl, { w, l }) => {
+    const tot = w + l;
+    if (!tot) return `<span class="acc-badge">${lbl}: <span class="acc-pct">—</span></span>`;
+    const pct = Math.round(w / tot * 100);
+    const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
+    return `<span class="acc-badge ${cls}">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></span>`;
+  };
+  row.innerHTML = badge('Yday', yd) + badge('Week', wk) + badge('Month', mo);
 }
 
 // ── Filter state ──────────────────────────────────────────
