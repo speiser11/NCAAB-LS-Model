@@ -309,6 +309,47 @@ input[type=date]{
 .fr-badge.no-cover,.fr-badge.under{background:var(--surface-red);color:var(--red);border:1px solid var(--border-red);}
 .fr-badge.push{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
 
+/* ── Rank badge ── */
+.rank-badge{
+  font-family:'DM Mono',monospace;font-size:.6rem;font-weight:700;
+  color:#c8920a;background:rgba(245,166,35,.13);
+  border:1px solid rgba(245,166,35,.35);
+  border-radius:5px;padding:.05rem .32rem;flex-shrink:0;letter-spacing:.2px;
+}
+[data-theme="light"] .rank-badge{color:#7a4e00;background:rgba(184,110,0,.1);border-color:rgba(184,110,0,.3);}
+
+/* ── Conference tag ── */
+.conf-tag{
+  font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:4px;padding:.04rem .3rem;
+}
+
+/* ── Ranked matchup card accent ── */
+.card.ranked-game .card-hd{
+  background:linear-gradient(135deg,rgba(245,166,35,.05) 0%,transparent 60%);
+}
+.card.ranked-game{border-color:rgba(245,166,35,.4);}
+.ranked-badge{
+  font-family:'DM Mono',monospace;font-size:.6rem;font-weight:700;
+  color:var(--yellow);background:rgba(245,166,35,.1);
+  border:1px solid rgba(245,166,35,.3);border-radius:20px;
+  padding:.15rem .5rem;white-space:nowrap;
+}
+
+/* ── Conference filter row ── */
+.conf-filter-row{
+  display:flex;align-items:center;gap:.35rem;
+  padding:.45rem 1.25rem;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+}
+.conf-filter-row::-webkit-scrollbar{display:none;}
+.conf-filter-label{
+  font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;
+  letter-spacing:.7px;color:var(--muted);flex-shrink:0;margin-right:.15rem;
+}
+
 /* ── Compact mode ── */
 .compact-list .card-ft{display:none;}
 .compact-list .factors-wrap{display:none;}
@@ -321,6 +362,7 @@ input[type=date]{
   .header{gap:.5rem;padding:.65rem 1rem;}
   .filter-sort{margin-left:0;width:100%;}
   .container{padding:1rem .85rem;}
+  .conf-filter-row{padding:.45rem .85rem;}
 }
 </style>
 </head>
@@ -347,10 +389,15 @@ input[type=date]{
   <button class="filter-chip" id="fc-odds" onclick="toggleFilter('hasOdds')">Has Odds</button>
   <button class="filter-chip" id="fc-final" onclick="toggleFilter('hideFinal')">Hide Finished</button>
   <button class="filter-chip" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 1.5</button>
+  <button class="filter-chip" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
   <select class="filter-sort" id="fc-sort" onchange="setSort(this.value)">
     <option value="edge">Sort: Best Edge</option>
+    <option value="rank">Sort: Ranked First</option>
     <option value="time">Sort: Game Time</option>
   </select>
+</div>
+<div class="conf-filter-row" id="conf-filter-row" style="display:none">
+  <span class="conf-filter-label">Conf</span>
 </div>
 
 <div class="container">
@@ -609,8 +656,10 @@ function parseTorvik(data) {
       if (Array.isArray(row)) {
         // Common Torvik array layout:
         // [rank, team, conf, record, barthag, adjOE, adjDE, efg%, to%, or%, ftr%, def_efg%, def_to%, def_or%, def_ftr%, adjT, wab]
+        let conf = '';
         if (typeof row[0] === 'number' && typeof row[1] === 'string') {
-          team = row[1]; barthag = row[4]; adjO = row[5]; adjD = row[6];
+          team = row[1]; conf = typeof row[2]==='string' ? row[2].trim() : '';
+          barthag = row[4]; adjO = row[5]; adjD = row[6];
           oEfg = row[7]; oTo = row[8]; oOr = row[9]; oFtr = row[10];
           dEfg = row[11]; dTo = row[12]; dOr = row[13]; dFtr = row[14]; adjT = row[15];
         } else if (typeof row[0] === 'string') {
@@ -627,12 +676,14 @@ function parseTorvik(data) {
         oOr  = row.orb || row.orb_pct || row.oor;  oFtr = row.ftr || row.ft_rate || row.oftr;
         dEfg = row.def_efg || row.defEfg || row.defefg; dTo = row.def_tov || row.deftov || row.dto;
         dOr  = row.def_orb || row.deforb || row.dor;    dFtr = row.def_ftr || row.defftr || row.dftr;
+        var conf = row.conf || row.Conf || row.conference || '';
       }
       adjO = parseFloat(adjO); adjD = parseFloat(adjD); adjT = parseFloat(adjT) || 68;
       if (!team || adjO < 60 || adjO > 155 || adjD < 60 || adjD > 155) return;
       const key = normTeam(team);
       out[key] = {
-        raw: team, adjO, adjD, adjT, barthag: parseFloat(barthag) || 0,
+        raw: team, conf: (typeof conf === 'string' ? conf : ''),
+        adjO, adjD, adjT, barthag: parseFloat(barthag) || 0,
         oEfg: parseFloat(oEfg) || 0, oTo: parseFloat(oTo) || 0,
         oOr:  parseFloat(oOr)  || 0, oFtr: parseFloat(oFtr) || 0,
         dEfg: parseFloat(dEfg) || 0, dTo: parseFloat(dTo) || 0,
@@ -666,6 +717,8 @@ async function loadESPN(dateStr) {
       period:      comp?.status?.period || 0,
       clock:       comp?.status?.displayClock || '',
       neutral:     comp?.neutralSite || false,
+      homeRank:    parseInt(home?.curatedRank?.current) || 99,
+      awayRank:    parseInt(away?.curatedRank?.current) || 99,
     };
   });
   _lastESPNRefresh = new Date();
@@ -803,7 +856,11 @@ function assembleGames() {
       vegasTotal  = getLine(oddsGame.bookmakers, 'totals',  hKey);
     }
 
-    return { ...g, hKey, aKey, pred, vegasSpread, vegasTotal };
+    return {
+      ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
+      hConf: (hKey && ratings[hKey]?.conf) || '',
+      aConf: (aKey && ratings[aKey]?.conf) || '',
+    };
   });
 }
 
@@ -1104,15 +1161,18 @@ function renderCard(g) {
   }
 
   // ── Footer ratings ──
+  const aConfTag = g.aConf ? `<span class="conf-tag">${g.aConf}</span>` : '';
+  const hConfTag = g.hConf ? `<span class="conf-tag">${g.hConf}</span>` : '';
+
   const footerHtml = pred
     ? `<div class="card-ft">
         <div class="ft-team">
-          <span class="ft-tname">${esc(displayName(g.aKey, g.away))}</span>
+          <span class="ft-tname">${esc(displayName(g.aKey, g.away))} ${aConfTag}</span>
           <span class="ft-stats">O ${pred.aRating.adjO.toFixed(1)} · D ${pred.aRating.adjD.toFixed(1)} · T ${pred.aRating.adjT.toFixed(1)}</span>
         </div>
         <div class="ft-div"></div>
         <div class="ft-team">
-          <span class="ft-tname">${esc(displayName(g.hKey, g.home))}</span>
+          <span class="ft-tname">${esc(displayName(g.hKey, g.home))} ${hConfTag}</span>
           <span class="ft-stats">O ${pred.hRating.adjO.toFixed(1)} · D ${pred.hRating.adjD.toFixed(1)} · T ${pred.hRating.adjT.toFixed(1)}</span>
         </div>
       </div>`
@@ -1120,17 +1180,23 @@ function renderCard(g) {
 
   const be = bestEdge(g);
   const edgeCardCls = be >= 3 ? ' edge-hot' : be >= 1.5 ? ' edge-warm' : '';
+  const bothRanked  = g.awayRank <= 25 && g.homeRank <= 25;
+  const rankedCls   = (g.awayRank <= 25 || g.homeRank <= 25) ? ' ranked-game' : '';
+
+  const awayRankBadge = g.awayRank <= 25 ? `<span class="rank-badge">#${g.awayRank}</span>` : '';
+  const homeRankBadge = g.homeRank <= 25 ? `<span class="rank-badge">#${g.homeRank}</span>` : '';
+  const rankedMatchupBadge = bothRanked ? `<span class="ranked-badge">Ranked Matchup</span>` : '';
 
   return `
-    <div class="card${edgeCardCls}">
+    <div class="card${edgeCardCls}${rankedCls}">
       <div class="card-hd">
         <div class="card-hd-teams">
-          <span class="team-away">${esc(displayName(g.aKey, g.away))}</span>
+          ${awayRankBadge}<span class="team-away">${esc(displayName(g.aKey, g.away))}</span>
           <span class="card-vs">@</span>
-          <span class="team-home">${esc(displayName(g.hKey, g.home))}</span>
+          ${homeRankBadge}<span class="team-home">${esc(displayName(g.hKey, g.home))}</span>
           ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}
         </div>
-        <div>${statusBadge}</div>
+        <div style="display:flex;align-items:center;gap:.4rem;">${rankedMatchupBadge}${statusBadge}</div>
       </div>
       ${liveScoreHtml}${finalScoreHtml}
       <div class="card-bd">
@@ -1187,12 +1253,13 @@ function renderTopPicks(games) {
 }
 
 // ── Filter state ──────────────────────────────────────────
-const filters = { compact:false, hasOdds:false, hideFinal:false, edgeOnly:false, sort:'edge' };
+const filters = { compact:false, hasOdds:false, hideFinal:false, edgeOnly:false, onlyRanked:false, sort:'edge', conference:'' };
+
+const FC_ID = { compact:'compact', hasOdds:'odds', hideFinal:'final', edgeOnly:'edge', onlyRanked:'ranked' };
 
 function toggleFilter(key) {
   filters[key] = !filters[key];
-  document.getElementById('fc-' + (key==='compact'?'compact':key==='hasOdds'?'odds':key==='hideFinal'?'final':'edge'))
-    ?.classList.toggle('on', filters[key]);
+  document.getElementById('fc-' + FC_ID[key])?.classList.toggle('on', filters[key]);
   if (key === 'compact') {
     document.getElementById('game-list').querySelector('.game-list-inner')
       ?.classList.toggle('compact-list', filters.compact);
@@ -1200,6 +1267,27 @@ function toggleFilter(key) {
   render(_lastGames);
 }
 function setSort(val) { filters.sort = val; render(_lastGames); }
+
+function setConference(c) {
+  filters.conference = filters.conference === c ? '' : c;
+  document.querySelectorAll('.conf-pill').forEach(el =>
+    el.classList.toggle('on', el.dataset.conf === filters.conference)
+  );
+  render(_lastGames);
+}
+
+function updateConferenceFilter(games) {
+  const row = document.getElementById('conf-filter-row');
+  const confs = [...new Set(
+    games.flatMap(g => [g.hConf, g.aConf]).filter(c => c && c.length > 0)
+  )].sort();
+  if (!confs.length) { row.style.display = 'none'; return; }
+  row.style.display = '';
+  row.innerHTML = `<span class="conf-filter-label">Conf</span>` +
+    confs.map(c =>
+      `<button class="filter-chip conf-pill${filters.conference === c ? ' on' : ''}" data-conf="${c}" onclick="setConference('${c}')">${c}</button>`
+    ).join('');
+}
 
 let _lastGames = [];
 
@@ -1217,15 +1305,26 @@ function render(games) {
 
   // Apply filters
   let visible = games.filter(g => {
-    if (filters.hasOdds  && !g.vegasSpread && !g.vegasTotal) return false;
-    if (filters.hideFinal && g.statusName === 'STATUS_FINAL')  return false;
-    if (filters.edgeOnly  && bestEdge(g) < 1.5)               return false;
+    if (filters.hasOdds    && !g.vegasSpread && !g.vegasTotal)           return false;
+    if (filters.hideFinal  && g.statusName === 'STATUS_FINAL')           return false;
+    if (filters.edgeOnly   && bestEdge(g) < 1.5)                         return false;
+    if (filters.onlyRanked && g.homeRank > 25 && g.awayRank > 25)        return false;
+    if (filters.conference && g.hConf !== filters.conference && g.aConf !== filters.conference) return false;
     return true;
   });
 
+  // Populate conference filter from full game list
+  updateConferenceFilter(games);
+
   // Sort
   if (filters.sort === 'time') {
-    visible.sort((a, b) => new Date(a.date) - new Date(b.date));
+    visible.sort((a, b) => new Date(a.time) - new Date(b.time));
+  } else if (filters.sort === 'rank') {
+    visible.sort((a, b) => {
+      const aMin = Math.min(a.homeRank || 99, a.awayRank || 99);
+      const bMin = Math.min(b.homeRank || 99, b.awayRank || 99);
+      return aMin !== bMin ? aMin - bMin : bestEdge(b) - bestEdge(a);
+    });
   } else {
     visible.sort((a, b) => bestEdge(b) - bestEdge(a));
   }
