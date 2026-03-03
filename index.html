@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrueLine LS</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── Tokens ── */
 :root,[data-theme="dark"]{
@@ -676,6 +676,49 @@ input[type=date]{
   .sub-nav-right{padding:.35rem .7rem;}
   .stab{padding:.55rem .65rem;font-size:.73rem;}
 }
+
+/* ── Font overrides: Syne replaces Bebas Neue; Inter replaces DM Mono on UI ── */
+
+/* Display / big numbers → Syne */
+.brand-ncaab,.brand-model,
+.mnum-val,.pick-edge,
+.modal h2,.bt-stat-val,
+.live-score-pts,
+.conf-group-name,.tm-name,.tm-edge-val {
+  font-family:'Syne',sans-serif;
+  font-weight:800;
+  letter-spacing:0;
+}
+.brand-ncaab,.brand-model{ letter-spacing:.5px; }
+.live-score-pts{ font-size:2.75rem; }
+.tm-name{ letter-spacing:.5px; }
+.conf-group-name{ font-size:1rem;font-weight:700; }
+.modal h2{ font-weight:700;letter-spacing:.5px; }
+
+/* UI labels, nav, descriptive text → Inter */
+.day-summary,.status-bar,
+.loading,.err-banner,
+.group-header,
+.mblock-label,
+.status-badge,
+.factors-title,.factor-name,
+.top-picks-title,
+.acc-badge,
+.pick-matchup,.pick-main,.pick-type-tag,.pick-why,
+.field label,.field small,
+.bt-controls label,.bt-stat-lbl,
+.bt-table th,
+.live-score-name,
+.conf-tag,
+.conf-group-count,.conf-group-edge,.conf-group-drill,
+.tm-conf-badge,.tm-kpi-lbl,.tm-ff-cell-label,.tm-ff-side,
+.conf-strip-label,
+input[type=date] {
+  font-family:'Inter',sans-serif;
+}
+.pick-main{ font-size:.8rem;letter-spacing:-.01em; }
+.group-header{ letter-spacing:.08em; }
+.mblock-label{ letter-spacing:.06em; }
 </style>
 </head>
 <body>
