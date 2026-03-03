@@ -586,9 +586,6 @@ function assembleGames() {
       const oa = matchTeam(og.away_team);
       return (oh && oh === hKey) || (oa && oa === aKey);
     });
-    if (!oddsGame && oddsList.length > 0) {
-      console.log(`NO ODDS MATCH: ESPN="${g.away} @ ${g.home}" | hKey=${hKey} aKey=${aKey}`);
-    }
 
     let vegasSpread = null, vegasTotal = null;
     if (oddsGame) {
