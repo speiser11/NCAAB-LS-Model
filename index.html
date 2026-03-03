@@ -777,6 +777,27 @@ input[type=date] {
 .pick-main{ font-size:.8rem;font-weight:700;letter-spacing:-.01em; }
 .group-header{ letter-spacing:.08em; }
 .mblock-label{ letter-spacing:.06em; }
+
+/* Mobile overrides — must come AFTER base override block to win cascade */
+@media(max-width:640px){
+  .brand-ncaab,.brand-model{ font-size:1.2rem; }
+  .mnum-val{ font-size:.88rem; }
+  .mnum-lbl{ font-size:.55rem;width:2.4rem; }
+  .mnum-row{ margin-bottom:.18rem; }
+  .pick-edge{ font-size:.95rem; }
+  .bt-stat-val{ font-size:1.05rem; }
+  .live-score-pts{ font-size:1.8rem; }
+  .tm-name{ font-size:1.3rem; }
+  .pick-main{ font-size:.72rem; }
+
+  /* Hide four factors on mobile — saves ~90px per card */
+  .factors-wrap{ display:none; }
+
+  /* Card-ft (team ratings) — collapse to one compact line */
+  .card-ft{ flex-wrap:nowrap;overflow:hidden; }
+  .ft-team{ min-width:0;flex:1; }
+  .ft-stats{ white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+}
 </style>
 </head>
 <body>
