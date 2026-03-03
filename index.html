@@ -233,6 +233,52 @@ input[type=date]{
 .bt-table tr:last-child td{border-bottom:none;}
 .bt-date{color:var(--muted);white-space:nowrap;}
 
+/* ── Live score widget ── */
+.live-score{
+  display:flex;flex-direction:column;align-items:center;gap:.55rem;
+  padding:1rem 1.15rem .85rem;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(224,82,82,.05) 0%,transparent 100%);
+}
+.live-score-row{
+  display:flex;align-items:center;justify-content:center;gap:1.5rem;width:100%;
+}
+.live-score-team{display:flex;flex-direction:column;align-items:flex-end;flex:1;gap:.15rem;}
+.live-score-team-home{align-items:flex-start;}
+.live-score-name{
+  font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--muted);
+}
+.live-score-pts{
+  font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:1px;
+  line-height:1;color:var(--muted);
+}
+.live-score-pts.winning{color:var(--text);}
+.live-score-pts.losing{color:var(--muted);opacity:.6;}
+.live-score-sep{
+  font-family:'DM Mono',monospace;font-size:1.1rem;color:var(--border);
+  flex-shrink:0;padding:0 .25rem;margin-top:.6rem;
+}
+.live-score-clock{
+  font-family:'DM Mono',monospace;font-size:.7rem;color:var(--red);
+  font-weight:500;letter-spacing:.3px;
+}
+.live-score-trend{
+  display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;justify-content:center;
+}
+.trend-chip{
+  font-family:'DM Mono',monospace;font-size:.65rem;font-weight:600;
+  padding:.2rem .55rem;border-radius:20px;white-space:nowrap;
+}
+.trend-chip.covering{background:var(--surface-green);color:var(--green);border:1px solid var(--border-green);}
+.trend-chip.trailing{background:var(--surface-red);color:var(--red);border:1px solid var(--border-red);}
+.trend-chip.push{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.trend-pace{
+  font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);
+}
+.trend-pace.over{color:var(--green);}
+.trend-pace.under{color:var(--red);}
+
 /* ── Compact mode ── */
 .compact-list .card-ft{display:none;}
 .compact-list .factors-wrap{display:none;}
@@ -587,9 +633,12 @@ async function loadESPN(dateStr) {
       time:        ev.date,
       statusName:  comp?.status?.type?.name || '',
       shortDetail: comp?.status?.type?.shortDetail || '',
+      period:      comp?.status?.period || 0,
+      clock:       comp?.status?.displayClock || '',
       neutral:     comp?.neutralSite || false,
     };
   });
+  _lastESPNRefresh = new Date();
   setSt('st-games', `Games: ${espnList.length}`, espnList.length ? 'ok' : 'warn');
 }
 
@@ -741,6 +790,42 @@ function edgeCls(e) {
   return a >= 3 ? 'strong' : a >= 1.5 ? 'mod' : 'neg';
 }
 
+// Projected final total based on current score and time elapsed
+function calcLivePace(g) {
+  if (!g.period || !g.clock) return null;
+  const parts = g.clock.split(':');
+  if (parts.length !== 2) return null;
+  const secs = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+  if (isNaN(secs)) return null;
+  const half = 20 * 60; // 1200 seconds per half
+  let elapsed;
+  if (g.period === 1)      elapsed = half - secs;
+  else if (g.period === 2) elapsed = half + (half - secs);
+  else return null; // OT: skip pace
+  if (elapsed < 90) return null; // too early — projection unreliable
+  const curr = (parseInt(g.homeScore) || 0) + (parseInt(g.awayScore) || 0);
+  return Math.round(curr / (elapsed / (40 * 60)) * 10) / 10;
+}
+
+// ── Live auto-refresh ──────────────────────────────────────
+let _liveTimer = null;
+let _lastESPNRefresh = null;
+
+function startLiveRefresh() {
+  if (_liveTimer) return;
+  _liveTimer = setInterval(async () => {
+    try {
+      await loadESPN(getDateStr());
+      _lastESPNRefresh = new Date();
+      render(assembleGames());
+    } catch(e) { /* silent — will retry next interval */ }
+  }, 45000);
+}
+
+function stopLiveRefresh() {
+  if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
+}
+
 function renderFactors(g) {
   const { pred } = g;
   if (!pred) return '';
@@ -860,6 +945,59 @@ function renderCard(g) {
     }
   }
 
+  // ── Live score widget ──
+  let liveScoreHtml = '';
+  if (live) {
+    const hs = parseInt(g.homeScore) || 0;
+    const as = parseInt(g.awayScore) || 0;
+    const homeUp = hs > as, awayUp = as > hs;
+
+    // Covering check vs pre-game spread
+    let coverHtml = '';
+    if (vegasSpread) {
+      const gap = hs - as + vegasSpread.point; // >0 = home covering
+      const hName = esc(displayName(g.hKey, g.home));
+      const aName = esc(displayName(g.aKey, g.away));
+      if (Math.abs(gap) < 0.5) {
+        coverHtml = `<span class="trend-chip push">On the line</span>`;
+      } else if (gap > 0) {
+        coverHtml = `<span class="trend-chip covering">${hName} covering</span>`;
+      } else {
+        coverHtml = `<span class="trend-chip trailing">${aName} covering</span>`;
+      }
+    }
+
+    // Pace vs O/U
+    let paceHtml = '';
+    const projected = calcLivePace(g);
+    if (projected !== null && vegasTotal) {
+      const diff = projected - vegasTotal.point;
+      const dir  = diff > 2 ? 'over' : diff < -2 ? 'under' : '';
+      const sign = diff > 0 ? '+' : '';
+      paceHtml = `<span class="trend-pace ${dir}">Pace ${projected.toFixed(0)} (${sign}${diff.toFixed(0)} vs O/U ${vegasTotal.point})</span>`;
+    } else if (vegasTotal) {
+      const curr = hs + as;
+      paceHtml = `<span class="trend-pace">Score total: ${curr} · O/U ${vegasTotal.point}</span>`;
+    }
+
+    liveScoreHtml = `
+      <div class="live-score">
+        <div class="live-score-row">
+          <div class="live-score-team">
+            <span class="live-score-name">${esc(displayName(g.aKey, g.away))}</span>
+            <span class="live-score-pts${awayUp ? ' winning' : homeUp ? ' losing' : ''}">${as}</span>
+          </div>
+          <span class="live-score-sep">—</span>
+          <div class="live-score-team live-score-team-home">
+            <span class="live-score-name">${esc(displayName(g.hKey, g.home))}</span>
+            <span class="live-score-pts${homeUp ? ' winning' : awayUp ? ' losing' : ''}">${hs}</span>
+          </div>
+        </div>
+        <div class="live-score-clock">${g.shortDetail || ''}</div>
+        ${(coverHtml || paceHtml) ? `<div class="live-score-trend">${coverHtml}${paceHtml}</div>` : ''}
+      </div>`;
+  }
+
   // ── Footer ratings ──
   const footerHtml = pred
     ? `<div class="card-ft">
@@ -889,6 +1027,7 @@ function renderCard(g) {
         </div>
         <div>${statusBadge}</div>
       </div>
+      ${liveScoreHtml}
       <div class="card-bd">
         <div class="mblock">
           <div class="mblock-label">Spread (Home)</div>
@@ -996,10 +1135,20 @@ function render(games) {
   const final    = visible.filter(g => g.statusName==='STATUS_FINAL');
   const upcoming = visible.filter(g => !live.includes(g) && !final.includes(g));
 
+  // Manage live refresh timer
+  if (live.length) startLiveRefresh(); else stopLiveRefresh();
+
   function group(label, dot, list) {
     if (!list.length) return '';
+    let extra = '';
+    if (dot === 'live' && _lastESPNRefresh) {
+      const sAgo = Math.round((Date.now() - _lastESPNRefresh) / 1000);
+      extra = `<span style="margin-left:auto;font-size:.58rem;color:var(--muted)">Updated ${sAgo}s ago · auto-refreshes 45s</span>`;
+    } else if (dot === 'live') {
+      extra = `<span style="margin-left:auto;font-size:.58rem;color:var(--muted)">Auto-refreshes every 45s</span>`;
+    }
     return `<div class="game-group">
-      <div class="group-header"><span class="group-dot ${dot}"></span>${label} · ${list.length}</div>
+      <div class="group-header"><span class="group-dot ${dot}"></span>${label} · ${list.length}${extra}</div>
       ${list.map(renderCard).join('')}
     </div>`;
   }
