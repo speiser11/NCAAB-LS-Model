@@ -279,6 +279,36 @@ input[type=date]{
 .trend-pace.over{color:var(--green);}
 .trend-pace.under{color:var(--red);}
 
+/* ── Final score widget ── */
+.final-widget{
+  display:flex;flex-direction:column;align-items:center;gap:.6rem;
+  padding:.9rem 1.15rem .8rem;
+  border-bottom:1px solid var(--border);
+  background:var(--surface2);
+}
+.final-score-row{
+  display:flex;align-items:center;justify-content:center;gap:1.5rem;width:100%;
+}
+.final-results{display:flex;flex-direction:column;gap:.3rem;width:100%;}
+.fr-row{
+  display:flex;align-items:center;gap:.45rem;
+  font-family:'DM Mono',monospace;font-size:.65rem;flex-wrap:wrap;
+}
+.fr-label{
+  font-size:.57rem;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--muted);width:3.8rem;flex-shrink:0;
+}
+.fr-val{color:var(--muted);}
+.fr-sep{color:var(--border);}
+.fr-actual{font-weight:600;color:var(--text);}
+.fr-badge{
+  font-family:'DM Mono',monospace;font-size:.63rem;font-weight:600;
+  padding:.15rem .5rem;border-radius:20px;white-space:nowrap;margin-left:auto;
+}
+.fr-badge.cover,.fr-badge.over{background:var(--surface-green);color:var(--green);border:1px solid var(--border-green);}
+.fr-badge.no-cover,.fr-badge.under{background:var(--surface-red);color:var(--red);border:1px solid var(--border-red);}
+.fr-badge.push{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+
 /* ── Compact mode ── */
 .compact-list .card-ft{display:none;}
 .compact-list .factors-wrap{display:none;}
@@ -689,6 +719,7 @@ async function loadOdds(isoDate) {
     setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
   } catch(e) {
     setSt('st-odds', 'Odds: fetch error', 'err');
+    showErr(`Odds API failed: ${e.message}. Check Settings → key may be expired, or get a new free key at the-odds-api.com`);
     oddsList = [];
   }
 }
@@ -998,6 +1029,80 @@ function renderCard(g) {
       </div>`;
   }
 
+  // ── Final score widget ──
+  let finalScoreHtml = '';
+  if (final) {
+    const hs = parseInt(g.homeScore) || 0;
+    const as = parseInt(g.awayScore) || 0;
+    const homeWon = hs > as;
+    const awayWon = as > hs;
+    const actualMargin = hs - as;
+    const actualTotal = hs + as;
+
+    // Spread result row
+    let spreadRow = '';
+    if (pred) {
+      const modelLine = fmtSpread((-pred.margin).toFixed(1));
+      const actualStr = actualMargin > 0
+        ? `${esc(displayName(g.hKey, g.home))} +${actualMargin}`
+        : actualMargin < 0
+          ? `${esc(displayName(g.aKey, g.away))} +${Math.abs(actualMargin)}`
+          : 'Tie';
+      let coverBadge = '';
+      if (vegasSpread) {
+        const gap = actualMargin + vegasSpread.point;
+        const hShort = esc(displayName(g.hKey, g.home).split(' ')[0]);
+        const aShort = esc(displayName(g.aKey, g.away).split(' ')[0]);
+        if (Math.abs(gap) <= 0.5)  coverBadge = `<span class="fr-badge push">Push</span>`;
+        else if (gap > 0)          coverBadge = `<span class="fr-badge cover">${hShort} Covered ✓</span>`;
+        else                       coverBadge = `<span class="fr-badge no-cover">${aShort} Covered ✓</span>`;
+      }
+      spreadRow = `<div class="fr-row">
+        <span class="fr-label">SPREAD</span>
+        <span class="fr-val">Mdl ${modelLine}</span>
+        ${vegasSpread ? `<span class="fr-sep">·</span><span class="fr-val">Vegas ${fmtSpread(vegasSpread.point)}</span>` : ''}
+        <span class="fr-sep">·</span>
+        <span class="fr-actual">${actualStr}</span>
+        ${coverBadge}
+      </div>`;
+    }
+
+    // Total result row
+    let totalRow = '';
+    if (pred) {
+      let ouBadge = '';
+      if (vegasTotal) {
+        if (actualTotal > vegasTotal.point)       ouBadge = `<span class="fr-badge over">OVER ✓</span>`;
+        else if (actualTotal < vegasTotal.point)  ouBadge = `<span class="fr-badge under">UNDER ✓</span>`;
+        else                                      ouBadge = `<span class="fr-badge push">Push</span>`;
+      }
+      totalRow = `<div class="fr-row">
+        <span class="fr-label">TOTAL</span>
+        <span class="fr-val">Mdl ${pred.total.toFixed(1)}</span>
+        ${vegasTotal ? `<span class="fr-sep">·</span><span class="fr-val">O/U ${vegasTotal.point}</span>` : ''}
+        <span class="fr-sep">·</span>
+        <span class="fr-actual">Actual ${actualTotal}</span>
+        ${ouBadge}
+      </div>`;
+    }
+
+    finalScoreHtml = `
+      <div class="final-widget">
+        <div class="final-score-row">
+          <div class="live-score-team">
+            <span class="live-score-name">${esc(displayName(g.aKey, g.away))}</span>
+            <span class="live-score-pts${awayWon ? ' winning' : homeWon ? ' losing' : ''}">${as}</span>
+          </div>
+          <span class="live-score-sep">—</span>
+          <div class="live-score-team live-score-team-home">
+            <span class="live-score-name">${esc(displayName(g.hKey, g.home))}</span>
+            <span class="live-score-pts${homeWon ? ' winning' : awayWon ? ' losing' : ''}">${hs}</span>
+          </div>
+        </div>
+        <div class="final-results">${spreadRow}${totalRow}</div>
+      </div>`;
+  }
+
   // ── Footer ratings ──
   const footerHtml = pred
     ? `<div class="card-ft">
@@ -1027,7 +1132,7 @@ function renderCard(g) {
         </div>
         <div>${statusBadge}</div>
       </div>
-      ${liveScoreHtml}
+      ${liveScoreHtml}${finalScoreHtml}
       <div class="card-bd">
         <div class="mblock">
           <div class="mblock-label">Spread (Home)</div>
