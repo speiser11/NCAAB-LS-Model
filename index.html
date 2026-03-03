@@ -478,92 +478,188 @@ input[type=date]{
   border-radius:10px;padding:.05rem .4rem;
 }
 .conf-group-edge{
-  font-family:'DM Mono',monospace;font-size:.6rem;
-  color:var(--green);margin-left:auto;
+  font-family:'DM Mono',monospace;font-size:.6rem;color:var(--green);
 }
+.conf-group-drill{
+  font-family:'DM Mono',monospace;font-size:.6rem;color:var(--blue);
+  margin-left:auto;opacity:0;transition:opacity .15s;
+}
+.conf-group-hd{cursor:pointer;}
+.conf-group-hd:hover .conf-group-drill{opacity:1;}
+.conf-group-hd:hover .conf-group-name{color:var(--blue);}
 
 /* ── Team stats panel ── */
 .tm-overlay{
   display:none;position:fixed;inset:0;
-  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
   z-index:300;
 }
 .tm-overlay.open{display:block;}
 .tm-panel{
   position:fixed;top:0;right:0;bottom:0;
-  width:min(420px,100vw);
-  background:var(--surface);border-left:1px solid var(--border);
+  width:min(440px,100vw);
+  background:var(--bg);
   display:flex;flex-direction:column;
-  box-shadow:-8px 0 40px rgba(0,0,0,.5);
-  transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:-12px 0 60px rgba(0,0,0,.6);
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
   overflow:hidden;
 }
 .tm-overlay.open .tm-panel{transform:translateX(0);}
-.tm-hd{
-  display:flex;align-items:flex-start;justify-content:space-between;
-  padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border);
-  background:var(--surface2);flex-shrink:0;
-}
-.tm-hd-left{display:flex;flex-direction:column;gap:.25rem;}
-.tm-name{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:1.5px;line-height:1;}
-.tm-meta{display:flex;align-items:center;gap:.5rem;font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);}
-.tm-close{
-  background:none;border:1px solid var(--border);color:var(--muted);
-  width:28px;height:28px;border-radius:6px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;font-size:.8rem;
-  transition:all .15s;flex-shrink:0;margin-top:.1rem;
-}
-.tm-close:hover{border-color:var(--text);color:var(--text);}
-.tm-body{overflow-y:auto;flex:1;padding:1rem 1.25rem;display:flex;flex-direction:column;gap:1rem;}
-.tm-section{display:flex;flex-direction:column;gap:.55rem;}
-.tm-section-title{
-  font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;
-  letter-spacing:.8px;color:var(--muted);padding-bottom:.35rem;
+
+/* Header hero */
+.tm-hero{
+  flex-shrink:0;padding:1.5rem 1.35rem 1.15rem;
+  background:linear-gradient(160deg,var(--surface2) 0%,var(--surface) 100%);
   border-bottom:1px solid var(--border);
+  position:relative;overflow:hidden;
 }
-.tm-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;}
+.tm-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 110% -20%,rgba(74,158,255,.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.tm-hero-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:.75rem;}
+.tm-hero-left{display:flex;flex-direction:column;gap:.3rem;}
+.tm-name{
+  font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:2px;line-height:1;
+  color:var(--text);
+}
+.tm-badges{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;}
+.tm-conf-badge{
+  font-family:'DM Mono',monospace;font-size:.65rem;font-weight:600;
+  background:var(--surface-blue);border:1px solid var(--border-blue);
+  color:var(--blue);border-radius:6px;padding:.15rem .5rem;
+}
+.tm-rank-badge{
+  font-family:'DM Mono',monospace;font-size:.65rem;font-weight:700;
+  background:rgba(245,166,35,.13);border:1px solid rgba(245,166,35,.35);
+  color:#c8920a;border-radius:6px;padding:.15rem .5rem;
+}
+.tm-tier-badge{
+  font-family:'DM Mono',monospace;font-size:.62rem;
+  color:var(--muted);background:var(--surface);
+  border:1px solid var(--border);border-radius:6px;padding:.12rem .45rem;
+}
+.tm-close{
+  background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);
+  width:30px;height:30px;border-radius:8px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:.85rem;
+  transition:all .15s;
+}
+.tm-close:hover{border-color:var(--text);color:var(--text);background:var(--surface2);}
+
+/* Win probability bar */
+.tm-win-prob{display:flex;flex-direction:column;gap:.35rem;}
+.tm-win-prob-label{
+  font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--muted);display:flex;justify-content:space-between;
+}
+.tm-win-prob-label strong{color:var(--text);}
+.tm-bar-track{
+  height:6px;background:var(--border);border-radius:3px;overflow:hidden;
+}
+.tm-bar-fill{
+  height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--green),rgba(46,204,113,.6));
+  transition:width .6s cubic-bezier(.4,0,.2,1);
+}
+
+/* Body */
+.tm-body{overflow-y:auto;flex:1;padding:1.1rem 1.35rem;display:flex;flex-direction:column;gap:1.1rem;}
+.tm-body::-webkit-scrollbar{width:4px;}
+.tm-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* Sections */
+.tm-section{display:flex;flex-direction:column;gap:.6rem;}
+.tm-section-title{
+  font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--muted);
+  display:flex;align-items:center;gap:.5rem;
+}
+.tm-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* KPI row — 3 tiles */
+.tm-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;}
 .tm-kpi{
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:10px;padding:.6rem .5rem;text-align:center;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:.8rem .6rem;text-align:center;
+  position:relative;overflow:hidden;
 }
+.tm-kpi::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  background:var(--border);
+}
+.tm-kpi.kpi-good::before{background:var(--green);}
+.tm-kpi.kpi-bad::before{background:var(--red);}
+.tm-kpi.kpi-warn::before{background:var(--yellow);}
 .tm-kpi-val{
-  font-family:'Bebas Neue',sans-serif;font-size:1.4rem;line-height:1;
-  margin-bottom:.2rem;
+  font-family:'Bebas Neue',sans-serif;font-size:1.65rem;line-height:1;
+  margin-bottom:.25rem;color:var(--text);
 }
-.tm-kpi-lbl{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);}
 .tm-kpi.kpi-good .tm-kpi-val{color:var(--green);}
 .tm-kpi.kpi-bad  .tm-kpi-val{color:var(--red);}
-.tm-kpi.kpi-neu  .tm-kpi-val{color:var(--text);}
-.tm-ff-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:.68rem;}
-.tm-ff-table th{
-  text-align:left;color:var(--muted);font-size:.57rem;text-transform:uppercase;
-  letter-spacing:.4px;padding:.3rem .4rem;border-bottom:1px solid var(--border);
+.tm-kpi-lbl{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:.2rem;}
+.tm-kpi-tag{
+  font-family:'DM Mono',monospace;font-size:.57rem;
+  padding:.1rem .35rem;border-radius:4px;display:inline-block;margin-top:.2rem;
 }
-.tm-ff-table td{padding:.32rem .4rem;border-bottom:1px solid var(--border);}
-.tm-ff-table tr:last-child td{border-bottom:none;}
-.tm-ff-table .ff-lbl{color:var(--muted);}
-.tm-ff-table .ff-good{color:var(--green);font-weight:600;}
-.tm-ff-table .ff-bad{color:var(--red);font-weight:600;}
-.tm-ff-table .ff-neu{color:var(--text);}
+.tm-kpi.kpi-good .tm-kpi-tag{background:var(--surface-green);color:var(--green);border:1px solid var(--border-green);}
+.tm-kpi.kpi-bad  .tm-kpi-tag{background:var(--surface-red);color:var(--red);border:1px solid var(--border-red);}
+.tm-kpi.kpi-warn .tm-kpi-tag{background:var(--surface-yellow);color:var(--yellow);border:1px solid var(--border-yellow);}
+.tm-kpi.kpi-neu  .tm-kpi-tag{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+
+/* Four factors */
+.tm-ff-grid{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;}
+.tm-ff-cell{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.6rem .75rem;}
+.tm-ff-cell-label{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.5rem;}
+.tm-ff-stat{display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;}
+.tm-ff-stat:last-child{margin-bottom:0;}
+.tm-ff-side{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);}
+.tm-ff-val{font-family:'DM Mono',monospace;font-size:.72rem;font-weight:600;}
+.tm-ff-val.ff-good{color:var(--green);}
+.tm-ff-val.ff-bad{color:var(--red);}
+.tm-ff-val.ff-neu{color:var(--text);}
+
+/* Interpretation */
 .tm-interp{
-  font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);
-  line-height:1.55;background:var(--surface2);border:1px solid var(--border);
-  border-radius:8px;padding:.65rem .75rem;
+  font-family:'Inter',sans-serif;font-size:.75rem;color:var(--muted);
+  line-height:1.6;padding:.8rem 1rem;
+  background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);
+  border-radius:0 10px 10px 0;
 }
+.tm-interp strong{color:var(--text);}
+
+/* Today's game */
 .tm-game-card{
-  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-  padding:.7rem .85rem;display:flex;flex-direction:column;gap:.35rem;
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;
 }
-.tm-game-matchup{font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;}
+.tm-game-hd{
+  padding:.65rem .9rem;background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;
+}
+.tm-game-body{padding:.6rem .9rem;display:flex;flex-direction:column;gap:.35rem;}
 .tm-game-row{
-  font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);
+  font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);
   display:flex;align-items:center;justify-content:space-between;
 }
 .tm-game-row .val{color:var(--text);}
-.tm-game-row .edge-val{font-weight:700;}
-.tm-game-row .edge-val.good{color:var(--green);}
-.tm-game-row .edge-val.warn{color:var(--yellow);}
-.tm-no-data{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted);font-style:italic;text-align:center;padding:1rem;}
+.tm-edge-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.5rem .9rem;border-top:1px solid var(--border);
+  background:var(--surface2);
+}
+.tm-edge-lbl{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);}
+.tm-edge-val{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.5px;}
+.tm-edge-val.good{color:var(--green);}
+.tm-edge-val.warn{color:var(--yellow);}
+.tm-edge-val.none{color:var(--muted);font-size:.75rem;font-family:'DM Mono',monospace;letter-spacing:0;}
+
+.tm-no-data{
+  font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);
+  text-align:center;padding:2rem 1rem;line-height:1.6;
+}
 
 /* ── Responsive ── */
 @media(max-width:640px){
@@ -649,12 +745,21 @@ input[type=date]{
 <!-- Team stats panel -->
 <div class="tm-overlay" id="tm-overlay" onclick="if(event.target===this)closeTeamModal()">
   <div class="tm-panel" id="tm-panel">
-    <div class="tm-hd">
-      <div class="tm-hd-left">
-        <span class="tm-name" id="tm-name"></span>
-        <div class="tm-meta" id="tm-meta"></div>
+    <div class="tm-hero" id="tm-hero">
+      <div class="tm-hero-top">
+        <div class="tm-hero-left">
+          <span class="tm-name" id="tm-name"></span>
+          <div class="tm-badges" id="tm-badges"></div>
+        </div>
+        <button class="tm-close" onclick="closeTeamModal()">✕</button>
       </div>
-      <button class="tm-close" onclick="closeTeamModal()">✕</button>
+      <div class="tm-win-prob" id="tm-win-prob" style="display:none">
+        <div class="tm-win-prob-label">
+          <span>Win Probability vs Avg D1</span>
+          <strong id="tm-win-pct">—</strong>
+        </div>
+        <div class="tm-bar-track"><div class="tm-bar-fill" id="tm-bar-fill" style="width:0%"></div></div>
+      </div>
     </div>
     <div class="tm-body" id="tm-body"><div class="tm-no-data">Loading…</div></div>
   </div>
@@ -719,6 +824,18 @@ function toggleTheme(){
 
 // ══════════════════════════════════════════════════════════
 const ESPN_URL  = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard';
+
+// ESPN conference ID → abbreviation (verified against ESPN's group URLs)
+const CONF_ID_MAP = {
+  '1':'ASUN','2':'ACC','3':'SWAC','4':'Big East','5':'MEAC','6':'MAC',
+  '7':'Mountain West','8':'Big Ten','9':'Summit','10':'SoCon','11':'OVC',
+  '12':'Big 12','13':'Horizon','14':'Ivy','15':'MAAC','16':'America East',
+  '17':'American','18':'NEC','19':'Patriot','20':'Big South','21':'Pac-12',
+  '23':'SEC','25':'Atlantic 10','26':'WCC','27':'C-USA','28':'Sun Belt',
+  '29':'Big West','30':'Missouri Valley','31':'WAC','32':'CAA','44':'Southland',
+  '45':'Independent','46':'ASUN','49':'MVC','56':'Big South','62':'SWAC',
+  '63':'Southland','66':'NEC','68':'Horizon','173':'Big South',
+};
 const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
 const TORVIK    = 'https://barttorvik.com/trank.php?json=1';
 
@@ -979,6 +1096,8 @@ async function loadESPN(dateStr) {
       neutral:     comp?.neutralSite || false,
       homeRank:    parseInt(home?.curatedRank?.current) || 99,
       awayRank:    parseInt(away?.curatedRank?.current) || 99,
+      homeConfId:  home?.team?.conferenceId || '',
+      awayConfId:  away?.team?.conferenceId || '',
     };
   });
   _lastESPNRefresh = new Date();
@@ -1118,8 +1237,8 @@ function assembleGames() {
 
     return {
       ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
-      hConf: (hKey && ratings[hKey]?.conf) || '',
-      aConf: (aKey && ratings[aKey]?.conf) || '',
+      hConf: CONF_ID_MAP[g.homeConfId] || (hKey && ratings[hKey]?.conf) || '',
+      aConf: CONF_ID_MAP[g.awayConfId] || (aKey && ratings[aKey]?.conf) || '',
     };
   });
 }
@@ -1688,6 +1807,17 @@ function setConference(c) {
   render(_lastGames);
 }
 
+function drillConf(conf) {
+  // Click conference header → filter to that conf, switch to edge sort
+  filters.conference = conf;
+  filters.sort = 'edge';
+  document.querySelectorAll('.sort-pill').forEach(el =>
+    el.classList.toggle('active', el.dataset.sort === 'edge')
+  );
+  _updateConfDropdownState();
+  render(_lastGames);
+}
+
 function _updateConfDropdownState() {
   const btn = document.getElementById('conf-dropdown-btn');
   if (!btn) return;
@@ -1823,12 +1953,13 @@ function render(games) {
       .sort(([a],[b]) => a.localeCompare(b))
       .map(([conf, list]) => {
         const topE = Math.max(...list.map(bestEdge).filter(e=>e>0), 0);
-        const edgePart = topE >= 1.5 ? `<span class="conf-group-edge">Best edge +${topE.toFixed(1)}</span>` : '';
+        const edgePart = topE >= 1.5 ? `<span class="conf-group-edge">Top edge +${topE.toFixed(1)}</span>` : '';
         return `<div class="conf-group-section">
-          <div class="conf-group-hd">
+          <div class="conf-group-hd" onclick="drillConf('${esc(conf)}')" title="Filter to ${esc(conf)} only">
             <span class="conf-group-name">${esc(conf)}</span>
             <span class="conf-group-count">${list.length} game${list.length>1?'s':''}</span>
             ${edgePart}
+            <span class="conf-group-drill">View only →</span>
           </div>
           ${list.map(renderCard).join('')}
         </div>`;
@@ -1872,133 +2003,168 @@ function closeTeamModal() {
 }
 
 function showTeamModal(key, rawName) {
-  const overlay = document.getElementById('tm-overlay');
-  const nameEl  = document.getElementById('tm-name');
-  const metaEl  = document.getElementById('tm-meta');
-  const bodyEl  = document.getElementById('tm-body');
+  const overlay  = document.getElementById('tm-overlay');
+  const nameEl   = document.getElementById('tm-name');
+  const badgesEl = document.getElementById('tm-badges');
+  const winProbEl= document.getElementById('tm-win-prob');
+  const winPctEl = document.getElementById('tm-win-pct');
+  const barFill  = document.getElementById('tm-bar-fill');
+  const bodyEl   = document.getElementById('tm-body');
 
-  const r = key ? ratings[key] : null;
+  const r        = key ? ratings[key] : null;
   const displayN = key ? displayName(key, rawName) : (rawName || '?');
 
+  // Find this team's game data for conference + rank
+  const todayGame = _lastGames.find(g => g.hKey === key || g.aKey === key);
+  const isHome    = todayGame?.hKey === key;
+  const espnConf  = todayGame ? (isHome ? todayGame.hConf : todayGame.aConf) : '';
+  const espnRank  = todayGame ? (isHome ? todayGame.homeRank : todayGame.awayRank) : 99;
+
   nameEl.textContent = displayN;
-  metaEl.innerHTML = r
-    ? `<span>${esc(r.conf || '—')}</span><span style="color:var(--border)">·</span><span>Barthag <strong style="color:var(--text)">${r.barthag.toFixed(3)}</strong></span>`
-    : `<span style="color:var(--red)">No ratings data</span>`;
+
+  // Badges
+  const confStr = espnConf || r?.conf || '';
+  const confBadge = confStr ? `<span class="tm-conf-badge">${esc(confStr)}</span>` : '';
+  const rankBadge = espnRank <= 25 ? `<span class="tm-rank-badge">#${espnRank} AP</span>` : '';
+  const tier = !r ? '' : r.barthag > 0.95 ? 'Title Contender' : r.barthag > 0.85 ? 'Elite' : r.barthag > 0.70 ? 'Tournament Caliber' : r.barthag > 0.50 ? 'Mid-Major Level' : 'Below Avg';
+  const tierBadge = tier ? `<span class="tm-tier-badge">${tier}</span>` : '';
+  badgesEl.innerHTML = confBadge + rankBadge + tierBadge;
+
+  // Win probability bar
+  if (r) {
+    const pct = Math.round(r.barthag * 100);
+    winProbEl.style.display = '';
+    winPctEl.textContent = `${pct}%`;
+    barFill.style.width = `${pct}%`;
+    // color bar by tier
+    barFill.style.background = r.barthag > 0.85
+      ? 'linear-gradient(90deg,var(--green),rgba(46,204,113,.7))'
+      : r.barthag > 0.5
+      ? 'linear-gradient(90deg,var(--yellow),rgba(245,166,35,.7))'
+      : 'linear-gradient(90deg,var(--red),rgba(224,82,82,.7))';
+  } else {
+    winProbEl.style.display = 'none';
+  }
 
   overlay.classList.add('open');
 
   if (!r) {
-    bodyEl.innerHTML = `<div class="tm-no-data">No Torvik ratings found for this team.<br>They may not be in the current dataset.</div>`;
+    bodyEl.innerHTML = `<div class="tm-no-data">No Torvik ratings found for <strong>${esc(displayN)}</strong>.<br><br>This team may not be in the current dataset, or ratings haven't loaded yet.</div>`;
     return;
   }
 
-  // Efficiency labels
-  const offLabel = r.adjO > 115 ? 'Elite' : r.adjO > 108 ? 'Good' : r.adjO > 100 ? 'Average' : 'Below avg';
-  const defLabel = r.adjD < 92  ? 'Elite' : r.adjD < 98  ? 'Good' : r.adjD < 105 ? 'Average' : 'Below avg';
-  const tempoLabel = r.adjT > 74 ? 'Very fast' : r.adjT > 70 ? 'Fast' : r.adjT > 67 ? 'Average' : 'Slow';
+  // KPI classification helpers
+  const offKpi  = r.adjO > 113 ? 'kpi-good' : r.adjO > 107 ? 'kpi-warn' : r.adjO < 98 ? 'kpi-bad' : 'kpi-neu';
+  const defKpi  = r.adjD < 94  ? 'kpi-good' : r.adjD < 100 ? 'kpi-warn' : r.adjD > 108 ? 'kpi-bad' : 'kpi-neu';
+  const tempoKpi= 'kpi-neu';
+  const offTag  = r.adjO > 113 ? 'Elite' : r.adjO > 107 ? 'Good' : r.adjO > 101 ? 'Average' : 'Weak';
+  const defTag  = r.adjD < 94  ? 'Elite' : r.adjD < 100 ? 'Good' : r.adjD < 106 ? 'Average' : 'Weak';
+  const tempoTag= r.adjT > 74  ? 'Very Fast' : r.adjT > 70 ? 'Fast' : r.adjT > 67 ? 'Avg' : 'Slow';
 
-  const offKpi = r.adjO > 110 ? 'kpi-good' : r.adjO < 98 ? 'kpi-bad' : 'kpi-neu';
-  const defKpi = r.adjD < 96  ? 'kpi-good' : r.adjD > 108 ? 'kpi-bad' : 'kpi-neu';
-  const barthagKpi = r.barthag > 0.85 ? 'kpi-good' : r.barthag < 0.5 ? 'kpi-bad' : 'kpi-neu';
-
-  // Win probability interpretation
-  const winPct = Math.round(r.barthag * 100);
-  const tier = r.barthag > 0.95 ? 'National title contender' : r.barthag > 0.85 ? 'Elite program' : r.barthag > 0.7 ? 'Tournament-caliber' : r.barthag > 0.5 ? 'Mid-major level' : 'Below D1 average';
-  const interp = `${offLabel} offense · ${defLabel} defense · ${tempoLabel} tempo. ${tier} (${winPct}% win prob vs avg D1).`;
+  // Interpretation
+  const interp = `<strong>${displayN}</strong> runs a <strong>${tempoTag.toLowerCase()}-paced</strong> offense with <strong>${offTag.toLowerCase()}</strong> efficiency (${r.adjO.toFixed(1)} pts/100) and a <strong>${defTag.toLowerCase()}</strong> defense (${r.adjD.toFixed(1)} pts allowed/100). ${tier} program with ${Math.round(r.barthag*100)}% win probability vs an average D1 opponent.`;
 
   // Four factors helper
-  const pct = v => v ? `${(v*100).toFixed(1)}%` : '—';
-  const ffVal = (v, goodHigh, threshold) => {
-    if (!v) return `<span class="ff-neu">—</span>`;
-    const isGood = goodHigh ? v > threshold : v < threshold;
-    return `<span class="${isGood ? 'ff-good' : 'ff-bad'}">${pct(v)}</span>`;
+  const pctFmt = v => v ? `${(v*100).toFixed(1)}%` : '—';
+  const ffCls  = (v, goodHigh, threshold) => {
+    if (!v) return 'ff-neu';
+    return (goodHigh ? v > threshold : v < threshold) ? 'ff-good' : 'ff-bad';
   };
 
-  // Today's game involving this team
-  const todayGame = _lastGames.find(g => g.hKey === key || g.aKey === key);
+  // Today's game
   let todayHtml = '';
   if (todayGame) {
-    const isHome = todayGame.hKey === key;
     const oppKey  = isHome ? todayGame.aKey : todayGame.hKey;
     const oppName = isHome ? todayGame.away : todayGame.home;
-    const opp = displayName(oppKey, oppName);
-    const site = todayGame.neutral ? 'vs (N)' : isHome ? 'vs' : '@';
-    const gameTime = todayGame.time ? new Date(todayGame.time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
+    const opp     = displayName(oppKey, oppName);
+    const site    = todayGame.neutral ? 'vs (N)' : isHome ? 'vs' : '@';
+    const gameTime= todayGame.time ? new Date(todayGame.time).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}) : '';
     const { pred, vegasSpread, vegasTotal, statusName, homeScore, awayScore } = todayGame;
 
-    let modelRow = '', vegasRow = '', edgeRow = '', scoreRow = '';
+    const isLive  = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME';
+    const isFinal = statusName === 'STATUS_FINAL';
+
+    let rows = '';
+    if (gameTime && !isFinal) rows += `<div class="tm-game-row"><span>Tip-off</span><span class="val">${gameTime}</span></div>`;
+    if ((isLive || isFinal) && homeScore !== undefined) {
+      const hs = parseInt(homeScore)||0, as = parseInt(awayScore)||0;
+      const ts = isHome ? hs : as, os = isHome ? as : hs;
+      rows += `<div class="tm-game-row"><span>${isFinal?'Final score':'Current score'}</span><span class="val">${ts} – ${os}</span></div>`;
+    }
     if (pred) {
-      const modelMargin = isHome ? -pred.margin : pred.margin; // from this team's perspective (negative = favored)
-      modelRow = `<div class="tm-game-row"><span>Model line</span><span class="val">${fmtSpread((-modelMargin).toFixed(1))}</span></div>`;
+      const modelLine = isHome ? -pred.margin : pred.margin;
+      rows += `<div class="tm-game-row"><span>Model line</span><span class="val">${fmtSpread(modelLine.toFixed(1))}</span></div>`;
+      rows += `<div class="tm-game-row"><span>Model total</span><span class="val">${pred.total.toFixed(1)}</span></div>`;
     }
     if (vegasSpread) {
       const vLine = isHome ? vegasSpread.point : -vegasSpread.point;
-      vegasRow = `<div class="tm-game-row"><span>Vegas line</span><span class="val">${fmtSpread(vLine.toFixed(1))}</span></div>`;
-      if (pred) {
-        const rawEdge = pred.margin + vegasSpread.point;
-        const teamEdge = isHome ? rawEdge : -rawEdge;
-        const cls = Math.abs(teamEdge) >= 3 ? 'good' : 'warn';
-        const dir = teamEdge > 0 ? `Back ${displayN.split(' ').slice(-1)[0]}` : `Fade ${displayN.split(' ').slice(-1)[0]}`;
-        edgeRow = `<div class="tm-game-row"><span>Edge</span><span class="edge-val ${cls}">${dir} +${Math.abs(teamEdge).toFixed(1)}</span></div>`;
-      }
+      rows += `<div class="tm-game-row"><span>Vegas spread</span><span class="val">${fmtSpread(vLine.toFixed(1))}</span></div>`;
     }
-    if (vegasTotal && pred) {
-      const dir = pred.total > vegasTotal.point ? 'OVER' : 'UNDER';
-      const diff = Math.abs(pred.total - vegasTotal.point);
-      modelRow += `<div class="tm-game-row"><span>Model total</span><span class="val">${pred.total.toFixed(1)} (${dir} ${vegasTotal.point}, +${diff.toFixed(1)})</span></div>`;
-    }
-    const isLive  = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME';
-    const isFinal = statusName === 'STATUS_FINAL';
-    if (isLive || isFinal) {
-      const hs = parseInt(homeScore)||0, as = parseInt(awayScore)||0;
-      const ts = isHome ? hs : as, os = isHome ? as : hs;
-      scoreRow = `<div class="tm-game-row"><span>${isFinal?'Final':'Score'}</span><span class="val">${displayN.split(' ').slice(-1)[0]} ${ts} – ${opp.split(' ').slice(-1)[0]} ${os}</span></div>`;
+    if (vegasTotal) rows += `<div class="tm-game-row"><span>Vegas total</span><span class="val">O/U ${vegasTotal.point}</span></div>`;
+
+    // Edge callout
+    let edgeHtml = '';
+    if (pred && vegasSpread) {
+      const raw = pred.margin + vegasSpread.point;
+      const teamEdge = isHome ? raw : -raw;
+      const absEdge  = Math.abs(teamEdge);
+      const dir      = teamEdge > 0 ? `Back ${displayN.split(' ').slice(-1)[0]}` : `Fade ${displayN.split(' ').slice(-1)[0]}`;
+      const cls      = absEdge >= 3 ? 'good' : absEdge >= 1.5 ? 'warn' : 'none';
+      const val      = absEdge >= 1.5 ? `${dir}  +${absEdge.toFixed(1)} pts` : 'No significant edge';
+      edgeHtml = `<div class="tm-edge-row"><span class="tm-edge-lbl">Model Edge</span><span class="tm-edge-val ${cls}">${val}</span></div>`;
     }
 
-    todayHtml = `<div class="tm-section">
+    todayHtml = `
+    <div class="tm-section">
       <div class="tm-section-title">Today's Game</div>
       <div class="tm-game-card">
-        <div class="tm-game-matchup">${esc(displayN)} ${site} ${esc(opp)}</div>
-        ${gameTime ? `<div class="tm-game-row"><span>Time</span><span class="val">${gameTime}</span></div>` : ''}
-        ${scoreRow}${modelRow}${vegasRow}${edgeRow}
+        <div class="tm-game-hd">${esc(displayN)} ${site} ${esc(opp)}</div>
+        <div class="tm-game-body">${rows}</div>
+        ${edgeHtml}
       </div>
     </div>`;
   }
 
   bodyEl.innerHTML = `
     <div class="tm-section">
-      <div class="tm-section-title">Efficiency Ratings</div>
+      <div class="tm-section-title">Efficiency</div>
       <div class="tm-kpi-row">
         <div class="tm-kpi ${offKpi}">
+          <div class="tm-kpi-lbl">Adj Offense</div>
           <div class="tm-kpi-val">${r.adjO.toFixed(1)}</div>
-          <div class="tm-kpi-lbl">AdjO</div>
+          <div class="tm-kpi-tag">${offTag}</div>
         </div>
         <div class="tm-kpi ${defKpi}">
+          <div class="tm-kpi-lbl">Adj Defense</div>
           <div class="tm-kpi-val">${r.adjD.toFixed(1)}</div>
-          <div class="tm-kpi-lbl">AdjD</div>
+          <div class="tm-kpi-tag">${defTag}</div>
         </div>
-        <div class="tm-kpi kpi-neu">
-          <div class="tm-kpi-val">${r.adjT.toFixed(1)}</div>
+        <div class="tm-kpi ${tempoKpi}">
           <div class="tm-kpi-lbl">Tempo</div>
-        </div>
-        <div class="tm-kpi ${barthagKpi}">
-          <div class="tm-kpi-val">${(r.barthag*100).toFixed(0)}%</div>
-          <div class="tm-kpi-lbl">Win Prob</div>
+          <div class="tm-kpi-val">${r.adjT.toFixed(1)}</div>
+          <div class="tm-kpi-tag">${tempoTag}</div>
         </div>
       </div>
       <div class="tm-interp">${interp}</div>
     </div>
     <div class="tm-section">
       <div class="tm-section-title">Four Factors</div>
-      <table class="tm-ff-table">
-        <thead><tr><th>Factor</th><th>Offense</th><th>Defense</th></tr></thead>
-        <tbody>
-          <tr><td class="ff-lbl">eFG%</td><td>${ffVal(r.oEfg, true, 0.52)}</td><td>${ffVal(r.dEfg, false, 0.50)}</td></tr>
-          <tr><td class="ff-lbl">TO%</td><td>${ffVal(r.oTo, false, 0.18)}</td><td>${ffVal(r.dTo, true, 0.20)}</td></tr>
-          <tr><td class="ff-lbl">OReb%</td><td>${ffVal(r.oOr, true, 0.30)}</td><td>${ffVal(r.dOr, false, 0.28)}</td></tr>
-          <tr><td class="ff-lbl">FT Rate</td><td>${ffVal(r.oFtr, true, 0.30)}</td><td>${ffVal(r.dFtr, false, 0.32)}</td></tr>
-        </tbody>
-      </table>
+      <div class="tm-ff-grid">
+        <div class="tm-ff-cell">
+          <div class="tm-ff-cell-label">Offense</div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">eFG%</span><span class="tm-ff-val ${ffCls(r.oEfg,true,.52)}">${pctFmt(r.oEfg)}</span></div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">TO%</span><span class="tm-ff-val ${ffCls(r.oTo,false,.18)}">${pctFmt(r.oTo)}</span></div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">OReb%</span><span class="tm-ff-val ${ffCls(r.oOr,true,.30)}">${pctFmt(r.oOr)}</span></div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">FT Rate</span><span class="tm-ff-val ${ffCls(r.oFtr,true,.30)}">${pctFmt(r.oFtr)}</span></div>
+        </div>
+        <div class="tm-ff-cell">
+          <div class="tm-ff-cell-label">Defense</div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">eFG%</span><span class="tm-ff-val ${ffCls(r.dEfg,false,.50)}">${pctFmt(r.dEfg)}</span></div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">TO%</span><span class="tm-ff-val ${ffCls(r.dTo,true,.20)}">${pctFmt(r.dTo)}</span></div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">OReb%</span><span class="tm-ff-val ${ffCls(r.dOr,false,.28)}">${pctFmt(r.dOr)}</span></div>
+          <div class="tm-ff-stat"><span class="tm-ff-side">FT Rate</span><span class="tm-ff-val ${ffCls(r.dFtr,false,.32)}">${pctFmt(r.dFtr)}</span></div>
+        </div>
+      </div>
     </div>
     ${todayHtml}`;
 }
