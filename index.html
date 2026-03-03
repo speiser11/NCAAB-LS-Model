@@ -871,11 +871,12 @@ async function fetchViaProxy(url) {
   throw new Error('All proxies failed: ' + errors.join(' | '));
 }
 
-let ratings    = {};  // normalized_key → {raw, adjO, adjD, adjT, barthag}
-let espnList   = [];  // ESPN game objects
-let oddsList   = [];  // Odds API objects
-let oddsLeft   = null;
-let confIdMap  = {};  // ESPN conferenceId → short name (built dynamically)
+let ratings      = {};  // normalized_key → {raw, adjO, adjD, adjT, barthag}
+let espnList     = [];  // ESPN game objects
+let oddsList     = [];  // Odds API objects
+let oddsLeft     = null;
+let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
+let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
 
 let cfg = {
   oddsKey:    localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
@@ -1070,29 +1071,44 @@ function parseTorvik(data) {
 }
 
 // ══════════════════════════════════════════════════════════
-// DATA: ESPN CONFERENCES  (one call per session, builds confIdMap)
+// DATA: ESPN CONFERENCES  (one call per session, builds teamIdToConf)
 // ══════════════════════════════════════════════════════════
+function _cleanConfName(n) {
+  return (n || '')
+    .replace(/ Conference$/i, '')
+    .replace(/ Athletic$/i, '')
+    .replace(/^Southeastern$/, 'SEC')
+    .replace(/^Atlantic Coast$/, 'ACC')
+    .replace(/^Big Ten$/, 'Big Ten')
+    .trim();
+}
+
 async function loadConferences() {
-  const cached = sessionStorage.getItem('espn_confs');
-  if (cached) { confIdMap = JSON.parse(cached); return; }
+  const cached = sessionStorage.getItem('espn_team_confs_v2');
+  if (cached) { teamIdToConf = JSON.parse(cached); return; }
   try {
     const r = await fetch(
       'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/groups?limit=100',
       { signal: AbortSignal.timeout(6000) }
     );
     const d = await r.json();
-    const groups = d.groups || [];
     const map = {};
-    groups.forEach(g => {
-      const id = g.groupId || g.id;
-      if (id) map[String(id)] = g.shortName || g.name || '';
+    // Response: { groups: [{ name, children: [{ name, teams: [{id,...}] }] }] }
+    (d.groups || []).forEach(conf => {
+      const confName = _cleanConfName(conf.name);
+      // Teams nested under children (divisions within conference)
+      (conf.children || []).forEach(child => {
+        (child.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
+      });
+      // Also handle teams directly on conf (some leagues have no children)
+      (conf.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
     });
-    // Merge into static fallback so any gaps in ESPN's list still resolve
-    confIdMap = { ...CONF_ID_MAP, ...map };
-    sessionStorage.setItem('espn_confs', JSON.stringify(confIdMap));
+    teamIdToConf = map;
+    sessionStorage.setItem('espn_team_confs_v2', JSON.stringify(map));
   } catch(e) {
-    confIdMap = { ...CONF_ID_MAP }; // fall back to static map silently
+    teamIdToConf = {}; // will fall back to Torvik conf or static map
   }
+  confIdMap = { ...CONF_ID_MAP }; // always keep static map as final fallback
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1120,6 +1136,8 @@ async function loadESPN(dateStr) {
       neutral:     comp?.neutralSite || false,
       homeRank:    parseInt(home?.curatedRank?.current) || 99,
       awayRank:    parseInt(away?.curatedRank?.current) || 99,
+      homeTeamId:  home?.team?.id || '',
+      awayTeamId:  away?.team?.id || '',
       homeConfId:  home?.team?.conferenceId || '',
       awayConfId:  away?.team?.conferenceId || '',
     };
@@ -1261,8 +1279,8 @@ function assembleGames() {
 
     return {
       ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
-      hConf: confIdMap[g.homeConfId] || (hKey && ratings[hKey]?.conf) || '',
-      aConf: confIdMap[g.awayConfId] || (aKey && ratings[aKey]?.conf) || '',
+      hConf: (hKey && ratings[hKey]?.conf) || teamIdToConf[g.homeTeamId] || confIdMap[g.homeConfId] || '',
+      aConf: (aKey && ratings[aKey]?.conf) || teamIdToConf[g.awayTeamId] || confIdMap[g.awayConfId] || '',
     };
   });
 }
