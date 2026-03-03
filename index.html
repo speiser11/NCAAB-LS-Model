@@ -677,23 +677,28 @@ input[type=date]{
   .stab{padding:.55rem .65rem;font-size:.73rem;}
 }
 
-/* ── Font overrides: Syne replaces Bebas Neue; Inter replaces DM Mono on UI ── */
+/* ── Font overrides: Syne for brand/headings; Inter for numbers + UI ── */
 
-/* Display / big numbers → Syne */
+/* Brand & section headings → Syne */
 .brand-ncaab,.brand-model,
-.mnum-val,.pick-edge,
-.modal h2,.bt-stat-val,
-.live-score-pts,
-.conf-group-name,.tm-name,.tm-edge-val {
+.conf-group-name,.modal h2 {
   font-family:'Syne',sans-serif;
   font-weight:800;
-  letter-spacing:0;
+  letter-spacing:.5px;
 }
-.brand-ncaab,.brand-model{ letter-spacing:.5px; }
-.live-score-pts{ font-size:2.75rem; }
-.tm-name{ letter-spacing:.5px; }
-.conf-group-name{ font-size:1rem;font-weight:700; }
-.modal h2{ font-weight:700;letter-spacing:.5px; }
+.conf-group-name{ font-size:1rem;font-weight:700;letter-spacing:.3px; }
+.modal h2{ font-weight:700;letter-spacing:.3px; }
+
+/* Numbers & scores → Inter 800 (clean, tight, purpose-built for numerics) */
+.mnum-val,.pick-edge,
+.bt-stat-val,.live-score-pts,
+.tm-name,.tm-edge-val {
+  font-family:'Inter',sans-serif;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+.live-score-pts{ font-size:2.6rem; }
+.tm-name{ font-size:1.75rem;letter-spacing:-.01em; }
 
 /* UI labels, nav, descriptive text → Inter */
 .day-summary,.status-bar,
@@ -716,7 +721,7 @@ input[type=date]{
 input[type=date] {
   font-family:'Inter',sans-serif;
 }
-.pick-main{ font-size:.8rem;letter-spacing:-.01em; }
+.pick-main{ font-size:.8rem;font-weight:700;letter-spacing:-.01em; }
 .group-header{ letter-spacing:.08em; }
 .mblock-label{ letter-spacing:.06em; }
 </style>
