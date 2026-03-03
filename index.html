@@ -663,18 +663,67 @@ input[type=date]{
 
 /* ── Responsive ── */
 @media(max-width:640px){
-  .site-header{grid-template-columns:auto 1fr;row-gap:.5rem;padding:.6rem .9rem;}
+  /* Header */
+  .site-header{grid-template-columns:auto 1fr;row-gap:.4rem;padding:.5rem .85rem;}
   .header-search{grid-column:1/-1;order:3;}
-  .header-actions{gap:.3rem;}
+  .header-actions{gap:.25rem;}
   .search-wrap{max-width:100%;}
-  .brand-ncaab,.brand-model{font-size:1.3rem;}
-  .card-bd{grid-template-columns:1fr;}
-  .mblock-div{width:100%;height:1px;margin:0;}
-  .factors-grid{grid-template-columns:repeat(2,1fr);}
-  .container{padding:1rem .85rem;}
-  .conf-strip{padding:.5rem .85rem;}
-  .sub-nav-right{padding:.35rem .7rem;}
-  .stab{padding:.55rem .65rem;font-size:.73rem;}
+  .brand-ncaab,.brand-model{font-size:1.2rem;}
+
+  /* Sub-nav */
+  .sub-nav-right{padding:.3rem .6rem;gap:.3rem;}
+  .stab{padding:.45rem .6rem;font-size:.72rem;}
+  .sort-pill{font-size:.68rem;padding:.15rem .45rem;}
+  .chip-btn{font-size:.68rem;padding:.18rem .45rem;}
+  .conf-strip{padding:.4rem .85rem;gap:.25rem;}
+  .conf-pill{font-size:.64rem;padding:.2rem .5rem;}
+
+  /* Layout & spacing */
+  .container{padding:.75rem .7rem;}
+  .game-group{gap:.45rem;margin-bottom:.85rem;}
+  .top-picks-bar{padding:.5rem .85rem .6rem;}
+  .pick-card{width:158px;padding:.5rem .7rem;}
+  .picks-row{gap:.4rem;}
+
+  /* Card */
+  .card{border-radius:11px;}
+  .card-hd{padding:.55rem .85rem .5rem;gap:.35rem;}
+  .team-away,.team-home{font-size:.82rem;}
+  .status-badge{font-size:.62rem;padding:.15rem .45rem;}
+
+  /* Card body — keep 2-col on mobile, just reduce padding */
+  .card-bd{grid-template-columns:1fr 1px 1fr;}
+  .mblock{padding:.55rem .75rem;}
+  .mblock-div{background:var(--border);margin:.4rem 0;}
+  .mnum-val{font-size:.95rem;}
+  .mnum-lbl{font-size:.56rem;width:2.5rem;}
+  .mnum-row{margin-bottom:.22rem;}
+
+  /* Card footer */
+  .card-ft{padding:.4rem .85rem;gap:.35rem;}
+  .ft-stats{font-size:.56rem;}
+
+  /* Four factors */
+  .factors-wrap{padding:.5rem .85rem;}
+  .factors-grid{grid-template-columns:repeat(4,1fr);}
+  .factor-cell{padding:.3rem .4rem;}
+  .fm-row{font-size:.6rem;}
+
+  /* Live score widget */
+  .live-score{padding:.7rem .85rem .65rem;}
+  .live-score-pts{font-size:1.85rem;}
+  .live-score-name{font-size:.58rem;}
+  .live-score-row{gap:1rem;}
+
+  /* Day summary & status bar */
+  .day-summary{padding:.3rem .85rem;font-size:.6rem;}
+  .status-bar{padding:.25rem .85rem;font-size:.57rem;}
+
+  /* Pick cards */
+  .pick-matchup{font-size:.58rem;}
+  .pick-main{font-size:.75rem;}
+  .pick-edge{font-size:1rem;}
+  .pick-why{font-size:.55rem;}
 }
 
 /* ── Font overrides: Syne for brand/headings; Inter for numbers + UI ── */
@@ -697,8 +746,12 @@ input[type=date]{
   font-weight:800;
   letter-spacing:-.02em;
 }
-.live-score-pts{ font-size:2.6rem; }
-.tm-name{ font-size:1.75rem;letter-spacing:-.01em; }
+/* Inter 800 is wider than old Bebas Neue — scale down to compensate */
+.mnum-val{ font-size:1.05rem; }
+.pick-edge{ font-size:1.15rem; }
+.bt-stat-val{ font-size:1.2rem; }
+.live-score-pts{ font-size:2.2rem; }
+.tm-name{ font-size:1.55rem;letter-spacing:-.01em; }
 
 /* UI labels, nav, descriptive text → Inter */
 .day-summary,.status-bar,
