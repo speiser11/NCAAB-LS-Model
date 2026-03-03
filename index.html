@@ -1093,15 +1093,15 @@ async function loadConferences() {
     );
     const d = await r.json();
     const map = {};
-    // Response: { groups: [{ name, children: [{ name, teams: [{id,...}] }] }] }
-    (d.groups || []).forEach(conf => {
-      const confName = _cleanConfName(conf.name);
-      // Teams nested under children (divisions within conference)
-      (conf.children || []).forEach(child => {
-        (child.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
+    // Structure: groups[0]="NCAA Division I" → children[]=conferences → teams[]
+    (d.groups || []).forEach(division => {
+      (division.children || []).forEach(conf => {
+        const confName = _cleanConfName(conf.name);
+        (conf.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
+        (conf.children || []).forEach(sub => {
+          (sub.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
+        });
       });
-      // Also handle teams directly on conf (some leagues have no children)
-      (conf.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
     });
     teamIdToConf = map;
     sessionStorage.setItem('espn_team_confs_v2', JSON.stringify(map));
