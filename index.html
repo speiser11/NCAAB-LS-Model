@@ -121,11 +121,29 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
 .bt-table tr:last-child td{border-bottom:none;}
 .bt-date{color:var(--muted);white-space:nowrap;}
 .btn.active{border-color:var(--blue);color:var(--blue);}
+/* ── Filter bar ── */
+.filter-bar{display:flex;align-items:center;gap:.4rem;padding:.5rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.filter-chip{background:transparent;border:1px solid var(--border);color:var(--muted);padding:.22rem .6rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:.72rem;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.filter-chip:hover{border-color:var(--text);color:var(--text);}
+.filter-chip.on{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
+.filter-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;margin:0 .2rem;}
+.filter-sort{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.22rem .5rem;border-radius:6px;font-family:'DM Mono',monospace;font-size:.72rem;cursor:pointer;margin-left:auto;}
+/* ── Game group headers ── */
+.game-group{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.25rem;}
+.group-header{display:flex;align-items:center;gap:.5rem;font-size:.65rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:.2rem 0;border-bottom:1px solid var(--border);margin-bottom:.25rem;}
+.group-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.group-dot.live{background:var(--red);box-shadow:0 0 6px var(--red);}
+.group-dot.upcoming{background:var(--blue);}
+.group-dot.final{background:var(--muted);}
+/* ── Compact mode ── */
+.compact-list .ratings-strip{display:none;}
+.compact-list .factors-wrap{display:none;}
 /* ── Responsive ── */
 @media(max-width:540px){
   .grid-2{grid-template-columns:1fr;}
   .factors-grid{grid-template-columns:repeat(2,1fr);}
   .header{gap:.5rem;}
+  .filter-sort{margin-left:0;width:100%;}
 }
 </style>
 </head>
@@ -145,6 +163,17 @@ input[type=date]{background:var(--surface2);border:1px solid var(--border);color
   <span class="sc" id="st-ratings">Ratings: —</span>
   <span class="sc" id="st-games">Games: —</span>
   <span class="sc" id="st-odds">Odds: —</span>
+</div>
+<div class="filter-bar" id="filter-bar">
+  <button class="filter-chip" id="fc-compact" onclick="toggleFilter('compact')" title="Hide ratings & four factors">⊟ Compact</button>
+  <div class="filter-sep"></div>
+  <button class="filter-chip" id="fc-odds" onclick="toggleFilter('hasOdds')">Has Odds</button>
+  <button class="filter-chip" id="fc-final" onclick="toggleFilter('hideFinal')">Hide Finished</button>
+  <button class="filter-chip" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 1.5</button>
+  <select class="filter-sort" id="fc-sort" onchange="setSort(this.value)">
+    <option value="edge">Sort: Best Edge</option>
+    <option value="time">Sort: Game Time</option>
+  </select>
 </div>
 
 <div class="container">
@@ -789,7 +818,25 @@ function renderTopPicks(games) {
   bar.innerHTML = `<div class="top-picks-title">Top Picks</div><div class="picks-row">${chips.join('')}</div>`;
 }
 
+// ── Filter state ──────────────────────────────────────────
+const filters = { compact:false, hasOdds:false, hideFinal:false, edgeOnly:false, sort:'edge' };
+
+function toggleFilter(key) {
+  filters[key] = !filters[key];
+  document.getElementById('fc-' + (key==='compact'?'compact':key==='hasOdds'?'odds':key==='hideFinal'?'final':'edge'))
+    ?.classList.toggle('on', filters[key]);
+  if (key === 'compact') {
+    document.getElementById('game-list').querySelector('.game-list-inner')
+      ?.classList.toggle('compact-list', filters.compact);
+  }
+  render(_lastGames);
+}
+function setSort(val) { filters.sort = val; render(_lastGames); }
+
+let _lastGames = [];
+
 function render(games) {
+  _lastGames = games || [];
   const el = document.getElementById('game-list');
   if (!games.length) {
     document.getElementById('top-picks-bar').style.display = 'none';
@@ -797,11 +844,48 @@ function render(games) {
     return;
   }
 
-  // Sort: biggest edge (spread or total) first
-  games.sort((a, b) => bestEdge(b) - bestEdge(a));
-
+  // Always render top picks from full unfiltered set
   renderTopPicks(games);
-  el.innerHTML = '<div class="game-list">' + games.map(renderCard).join('') + '</div>';
+
+  // Apply filters
+  let visible = games.filter(g => {
+    if (filters.hasOdds  && !g.vegasSpread && !g.vegasTotal) return false;
+    if (filters.hideFinal && g.statusName === 'STATUS_FINAL')  return false;
+    if (filters.edgeOnly  && bestEdge(g) < 1.5)               return false;
+    return true;
+  });
+
+  // Sort
+  if (filters.sort === 'time') {
+    visible.sort((a, b) => new Date(a.date) - new Date(b.date));
+  } else {
+    visible.sort((a, b) => bestEdge(b) - bestEdge(a));
+  }
+
+  if (!visible.length) {
+    el.innerHTML = '<div class="loading" style="padding:2rem">No games match the current filters.</div>';
+    return;
+  }
+
+  // Group by status
+  const live     = visible.filter(g => g.statusName==='STATUS_IN_PROGRESS'||g.statusName==='STATUS_HALFTIME');
+  const final    = visible.filter(g => g.statusName==='STATUS_FINAL');
+  const upcoming = visible.filter(g => !live.includes(g) && !final.includes(g));
+
+  function group(label, dot, list) {
+    if (!list.length) return '';
+    return `<div class="game-group">
+      <div class="group-header"><span class="group-dot ${dot}"></span>${label} · ${list.length}</div>
+      ${list.map(renderCard).join('')}
+    </div>`;
+  }
+
+  const compactCls = filters.compact ? 'compact-list' : '';
+  el.innerHTML = `<div class="game-list-inner ${compactCls}">
+    ${group('Live', 'live', live)}
+    ${group('Upcoming', 'upcoming', upcoming)}
+    ${group('Final', 'final', final)}
+  </div>`;
 }
 
 function bestEdge(g) {
