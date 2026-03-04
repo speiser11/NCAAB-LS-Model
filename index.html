@@ -1398,10 +1398,16 @@ async function loadOdds(isoDate) {
     oddsList = Array.isArray(data) ? data : [];
     sessionStorage.setItem('odds_cache', JSON.stringify(oddsList));
     sessionStorage.setItem('odds_ts', Date.now().toString());
-    // Snapshot opening lines (first fetch of the day — never overwritten)
-    const snapKey = `odds_opening_${isoDate}`;
-    if (!localStorage.getItem(snapKey) && oddsList.length > 0) {
-      localStorage.setItem(snapKey, JSON.stringify(oddsList));
+    // On the first successful API fetch of the day, lock the lines permanently.
+    // This prevents lines from updating mid-day regardless of when the app is opened.
+    // Also saves the opening snapshot used for line-movement comparison.
+    if (oddsList.length > 0) {
+      const snapKey = `odds_opening_${isoDate}`;
+      if (!localStorage.getItem(snapKey)) localStorage.setItem(snapKey, JSON.stringify(oddsList));
+      if (localStorage.getItem('odds_lock_date') !== isoDate) {
+        localStorage.setItem('odds_lock_date', isoDate);
+        localStorage.setItem('odds_locked', JSON.stringify(oddsList));
+      }
     }
     setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
   } catch(e) {
@@ -3083,27 +3089,6 @@ function toISODate(dateStr) {
   return `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
 }
 
-// Lock today's odds at the moment the first game tips off.
-// Once locked, every subsequent refresh uses the pre-game lines
-// so the model edge stays comparable all day.
-function applyOddsLock(isoDate) {
-  const lockDate = localStorage.getItem('odds_lock_date');
-
-  // Already locked for today — odds were already swapped in loadOdds()
-  if (lockDate === isoDate) return;
-
-  const anyStarted = espnList.some(g =>
-    g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL'
-  );
-
-  if (!anyStarted && oddsList.length > 0) {
-    // All games still pre-game — save snapshot
-    localStorage.setItem('odds_lock_date', isoDate);
-    localStorage.setItem('odds_locked', JSON.stringify(oddsList));
-  }
-  // If games have already started but we have no lock (user opened app mid-day
-  // for the first time), just use what we fetched — can't recover pre-game lines
-}
 
 async function refresh() {
   document.getElementById('err-area').innerHTML = '';
@@ -3121,7 +3106,6 @@ async function refresh() {
       loadOdds(isoDate),
     ]);
     currentIsoDate = isoDate;
-    applyOddsLock(isoDate);
     render(assembleGames());
     // Form delta + injuries load in background — re-render when done
     loadRecentTorvik().then(() => render(assembleGames())).catch(() => {});
