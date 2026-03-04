@@ -711,7 +711,7 @@ input[type=date]{
   .search-wrap{max-width:100%;}
   .brand-ncaab,.brand-model{font-size:1.1rem;}
   /* Date picker gets its own row below the icon buttons */
-  #date-pick{order:10;width:100%;font-size:.72rem;padding:.18rem .3rem;}
+  #date-pick{order:10;width:100%;font-size:.7rem;padding:.1rem .25rem;height:1.8rem;}
   .icon-btn{padding:.28rem .38rem;font-size:.85rem;}
 
   /* Sub-nav — hide desktop controls, show mobile replacements */
@@ -721,8 +721,8 @@ input[type=date]{
   .subnav-sep{display:none;}
   .chip-btn{display:none;}
   .conf-strip{display:none!important;}
-  .mobile-controls{display:flex;align-items:center;gap:.3rem;}
-  .mobile-conf-wrap{display:flex!important;padding:.3rem .85rem;border-bottom:1px solid var(--border);background:var(--surface2);}
+  .mobile-conf-wrap{display:flex!important;align-items:center;gap:.4rem;padding:.3rem .6rem;border-bottom:1px solid var(--border);background:var(--surface2);}
+  .mobile-controls{display:flex;align-items:center;gap:.3rem;margin-left:auto;}
   .sort-pill{font-size:.68rem;padding:.15rem .45rem;}
   .chip-btn{font-size:.68rem;padding:.18rem .45rem;}
   .conf-strip{padding:.4rem .85rem;gap:.25rem;}
@@ -956,34 +956,33 @@ input[type=date] {
     <button class="chip-btn" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
     <div class="subnav-sep"></div>
     <button class="chip-btn" id="fc-compact" onclick="toggleFilter('compact')" title="Compact view">⊟</button>
-    <!-- Mobile-only controls -->
-    <div class="mobile-controls">
-      <select class="mobile-select" id="mobile-sort" onchange="setSort(this.value)">
-        <option value="edge">Best Edge</option>
-        <option value="time">Time</option>
-        <option value="rank">Ranked</option>
-        <option value="conf">By Conf</option>
-      </select>
-      <div class="mobile-filter-wrap">
-        <button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleMobileFilters(event)">
-          Filters<span class="mobile-filter-count" id="mobile-filter-count" style="display:none"></span>
-        </button>
-        <div class="mobile-filter-panel" id="mobile-filter-panel">
-          <label class="mfp-item"><input type="checkbox" id="mfp-odds" onchange="toggleFilter('hasOdds')"> Odds Only</label>
-          <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 1.5</label>
-          <label class="mfp-item"><input type="checkbox" id="mfp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25</label>
-          <label class="mfp-item"><input type="checkbox" id="mfp-compact" onchange="toggleFilter('compact')"> Compact</label>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
 <div class="conf-strip" id="conf-strip" style="display:none"></div>
-<div class="mobile-conf-wrap" id="mobile-conf-wrap" style="display:none">
+<div class="mobile-conf-wrap" id="mobile-conf-wrap">
   <select class="mobile-select mobile-conf-select" id="mobile-conf" onchange="setConference(this.value)">
     <option value="">All Conferences</option>
   </select>
+  <div class="mobile-controls">
+    <select class="mobile-select" id="mobile-sort" onchange="setSort(this.value)">
+      <option value="edge">Best Edge</option>
+      <option value="time">Time</option>
+      <option value="rank">Ranked</option>
+      <option value="conf">By Conf</option>
+    </select>
+    <div class="mobile-filter-wrap">
+      <button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleMobileFilters(event)">
+        Filters<span class="mobile-filter-count" id="mobile-filter-count" style="display:none"></span>
+      </button>
+      <div class="mobile-filter-panel" id="mobile-filter-panel">
+        <label class="mfp-item"><input type="checkbox" id="mfp-odds" onchange="toggleFilter('hasOdds')"> Odds Only</label>
+        <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 1.5</label>
+        <label class="mfp-item"><input type="checkbox" id="mfp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25</label>
+        <label class="mfp-item"><input type="checkbox" id="mfp-compact" onchange="toggleFilter('compact')"> Compact</label>
+      </div>
+    </div>
+  </div>
 </div>
 <div class="day-summary" id="day-summary" style="display:none"></div>
 <div class="status-bar">
@@ -2625,7 +2624,7 @@ function updateConferenceFilter(games) {
   )].sort();
   if (!confs.length) {
     strip.style.display = 'none';
-    if (mobileWrap) mobileWrap.style.display = 'none';
+    if (mobileConf) mobileConf.innerHTML = '<option value="">All Conferences</option>';
     return;
   }
   strip.style.display = '';
