@@ -663,6 +663,47 @@ input[type=date]{
   text-align:center;padding:2rem 1rem;line-height:1.6;
 }
 
+/* ── Game detail modal ── */
+.gd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:300;overflow-y:auto;padding:1rem;align-items:flex-start;justify-content:center;}
+.gd-overlay.open{display:flex;}
+.gd-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.gd-header{padding:.7rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;}
+.gd-matchup{font-weight:700;font-size:.95rem;color:var(--text);}
+.gd-time{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.gd-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 6px;border-radius:4px;flex-shrink:0;line-height:1;}
+.gd-close:hover{background:var(--border);color:var(--text);}
+.gd-section{padding:.7rem 1rem;border-bottom:1px solid var(--border);}
+.gd-section:last-child{border-bottom:none;}
+.gd-section-title{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:.5rem;}
+.gd-scores{display:flex;align-items:center;justify-content:center;gap:1.25rem;margin-bottom:.5rem;}
+.gd-score-team{text-align:center;}
+.gd-score-name{font-size:.65rem;color:var(--muted);margin-bottom:2px;}
+.gd-score-pts{font-size:2rem;font-weight:800;color:var(--text);line-height:1;}
+.gd-score-pts.gd-winner{color:var(--green);}
+.gd-score-sep{font-size:1.2rem;color:var(--border);}
+.gd-summary-row{display:flex;justify-content:center;gap:1.5rem;font-size:.73rem;color:var(--muted);margin-bottom:.6rem;}
+.gd-summary-val{color:var(--text);font-weight:600;}
+.gd-wp-row{margin-bottom:.3rem;}
+.gd-wp-label{display:flex;justify-content:space-between;font-size:.7rem;margin-bottom:3px;}
+.gd-wp-name{color:var(--text);font-weight:600;}
+.gd-wp-pct{color:var(--muted);}
+.gd-wp-bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.gd-wp-fill{height:100%;border-radius:3px;transition:width .3s;}
+.gd-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.gd-table th{color:var(--muted);font-weight:600;font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;padding:.2rem .35rem;text-align:left;}
+.gd-table td{padding:.28rem .35rem;color:var(--text);}
+.gd-table tr:not(:last-child) td{border-bottom:1px solid var(--border);}
+.gd-edge-pos{color:var(--green);font-weight:700;}
+.gd-edge-neg{color:var(--red);font-weight:700;}
+.gd-edge-neu{color:var(--muted);}
+.gd-move{font-size:.67rem;color:var(--muted);margin-top:.35rem;}
+.gd-ctx-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.28rem;}
+.gd-ctx-item{font-size:.78rem;color:var(--text);display:flex;align-items:flex-start;gap:.4rem;line-height:1.4;}
+.gd-ctx-icon{flex-shrink:0;}
+/* Details button on cards */
+.gd-btn{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;padding:.15rem .45rem;border:1px solid var(--border);border-radius:4px;background:none;color:var(--muted);cursor:pointer;transition:all .12s;white-space:nowrap;}
+.gd-btn:hover{border-color:var(--accent);color:var(--accent);}
+
 /* ── Mobile controls (hidden on desktop) ── */
 .mobile-controls { display:none; }
 .mobile-conf-wrap { display:none; }
@@ -1016,6 +1057,14 @@ input[type=date] {
       </div>
     </div>
     <div class="tm-body" id="tm-body"><div class="tm-no-data">Loading…</div></div>
+  </div>
+</div>
+
+<!-- Game detail modal -->
+<div class="gd-overlay" id="gd-overlay" onclick="if(event.target===this)closeGameModal()">
+  <div class="gd-modal">
+    <div class="gd-header" id="gd-header"></div>
+    <div class="gd-body" id="gd-body"></div>
   </div>
 </div>
 
@@ -2000,6 +2049,7 @@ function renderMobileCard(g) {
     <div class="cm-advice ${advice.cls}">
       <span class="cm-advice-text">${advice.text}</span>
       ${wpBadge}
+      <button class="gd-btn" onclick="event.stopPropagation();showGameModal('${g.id}')">Details</button>
     </div>`;
 
   return `<div class="card-mobile${hotCls}" id="game-${g.id}">
@@ -2264,6 +2314,7 @@ function renderCard(g) {
           <span class="ft-tname">${esc(displayName(g.hKey, g.home))} ${hConfTag}</span>
           <span class="ft-stats">O ${pred.hRating.adjO.toFixed(1)} · D ${pred.hRating.adjD.toFixed(1)} · T ${pred.hRating.adjT.toFixed(1)}</span>
         </div>
+        <button class="gd-btn" style="margin-left:auto;flex-shrink:0;" onclick="showGameModal('${g.id}')">Details</button>
       </div>`
     : `<div class="card-ft card-ft-warn">⚠ No Torvik match — ${esc(g.away)} @ ${esc(g.home)}</div>`;
 
@@ -2796,6 +2847,151 @@ function render(games) {
 // ══════════════════════════════════════════════════════════
 // TEAM STATS PANEL
 // ══════════════════════════════════════════════════════════
+function closeGameModal() {
+  document.getElementById('gd-overlay').classList.remove('open');
+}
+
+function showGameModal(gameId) {
+  const g = _lastGames.find(x => x.id === gameId);
+  if (!g) return;
+  const { pred, vegasSpread, vegasTotal } = g;
+  const aName = displayName(g.aKey, g.away);
+  const hName = displayName(g.hKey, g.home);
+  const gameTime = g.time ? new Date(g.time).toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'TBD';
+
+  document.getElementById('gd-header').innerHTML = `
+    <div>
+      <div class="gd-matchup">${esc(aName)} @ ${esc(hName)}</div>
+      <div class="gd-time">${gameTime}${g.neutral ? ' · Neutral Site' : ''}${g.awayTravel ? ' · Travel' : ''}</div>
+    </div>
+    <button class="gd-close" onclick="closeGameModal()">✕</button>`;
+
+  let html = '';
+
+  // ── Prediction ──
+  if (pred) {
+    const hWins = pred.margin > 0;
+    const aWins = pred.margin < 0;
+    const favName = hWins ? hName.split(' ').pop() : aName.split(' ').pop();
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Model Prediction</div>
+      <div class="gd-scores">
+        <div class="gd-score-team">
+          <div class="gd-score-name">${esc(aName)}</div>
+          <div class="gd-score-pts${aWins ? ' gd-winner' : ''}">${pred.aScore.toFixed(0)}</div>
+        </div>
+        <div class="gd-score-sep">—</div>
+        <div class="gd-score-team">
+          <div class="gd-score-name">${esc(hName)}</div>
+          <div class="gd-score-pts${hWins ? ' gd-winner' : ''}">${pred.hScore.toFixed(0)}</div>
+        </div>
+      </div>
+      <div class="gd-summary-row">
+        <span>Margin: <span class="gd-summary-val">${favName} ${Math.abs(pred.margin).toFixed(1)}</span></span>
+        <span>Total: <span class="gd-summary-val">${pred.total.toFixed(1)}</span></span>
+      </div>
+      <div class="gd-wp-row">
+        <div class="gd-wp-label"><span class="gd-wp-name">${esc(aName)}</span><span class="gd-wp-pct">${pred.awayWinProb}%</span></div>
+        <div class="gd-wp-bar"><div class="gd-wp-fill" style="width:${pred.awayWinProb}%;background:${pred.awayWinProb>=60?'var(--green)':pred.awayWinProb>=40?'var(--yellow)':'var(--muted)'}"></div></div>
+      </div>
+      <div class="gd-wp-row">
+        <div class="gd-wp-label"><span class="gd-wp-name">${esc(hName)}</span><span class="gd-wp-pct">${pred.homeWinProb}%</span></div>
+        <div class="gd-wp-bar"><div class="gd-wp-fill" style="width:${pred.homeWinProb}%;background:${pred.homeWinProb>=60?'var(--green)':pred.homeWinProb>=40?'var(--yellow)':'var(--muted)'}"></div></div>
+      </div>
+    </div>`;
+  }
+
+  // ── vs Vegas ──
+  if (pred && (vegasSpread || vegasTotal)) {
+    const sEdge = vegasSpread ? pred.margin - (-vegasSpread.point) : null;
+    const tEdge = vegasTotal  ? pred.total  - vegasTotal.point    : null;
+    const eCls  = e => e === null ? '' : Math.abs(e) >= 1.5 ? 'gd-edge-pos' : 'gd-edge-neu';
+    let moveStr = '';
+    if (g.spreadMove != null && Math.abs(g.spreadMove) >= 0.5) moveStr += `Spread ${g.spreadMove>0?'↑':'↓'}${Math.abs(g.spreadMove).toFixed(1)} `;
+    if (g.totalMove  != null && Math.abs(g.totalMove)  >= 0.5) moveStr += `Total ${g.totalMove>0?'↑':'↓'}${Math.abs(g.totalMove).toFixed(1)}`;
+    html += `<div class="gd-section">
+      <div class="gd-section-title">vs Vegas</div>
+      <table class="gd-table">
+        <tr><th></th><th>Model</th><th>Vegas</th><th>Edge</th></tr>
+        ${vegasSpread ? `<tr>
+          <td>Spread</td>
+          <td>${fmtSpread((-pred.margin).toFixed(1))} ${esc(spreadFavName(-pred.margin,g.hKey,g.home,g.aKey,g.away))}</td>
+          <td>${fmtSpread(vegasSpread.point)} ${esc(spreadFavName(vegasSpread.point,g.hKey,g.home,g.aKey,g.away))}</td>
+          <td class="${eCls(sEdge)}">${sEdge!==null?(sEdge>0?'+':'')+sEdge.toFixed(1):'—'}</td>
+        </tr>` : ''}
+        ${vegasTotal ? `<tr>
+          <td>Total</td>
+          <td>${pred.total.toFixed(1)}</td>
+          <td>${vegasTotal.point}</td>
+          <td class="${eCls(tEdge)}">${tEdge!==null?(tEdge>0?'+':'')+tEdge.toFixed(1):'—'}</td>
+        </tr>` : ''}
+      </table>
+      ${moveStr ? `<div class="gd-move">Line movement: ${moveStr.trim()}</div>` : ''}
+    </div>`;
+  }
+
+  // ── Team Ratings ──
+  if (pred) {
+    const a = pred.aRating, h = pred.hRating;
+    const hi = (av, hv, lower=false) => lower ? (av<hv?['gd-edge-pos','']:av>hv?['','gd-edge-pos']:['','']) : (av>hv?['gd-edge-pos','']:av<hv?['','gd-edge-pos']:['','']);
+    const [aO,hO] = hi(a.adjO, h.adjO);
+    const [aD,hD] = hi(a.adjD, h.adjD, true);
+    const [aB,hB] = hi(a.barthag, h.barthag);
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Team Ratings</div>
+      <table class="gd-table">
+        <tr><th></th><th>${esc(aName)}</th><th>${esc(hName)}</th></tr>
+        <tr><td>Adj Offense</td><td class="${aO}">${a.adjO.toFixed(1)}</td><td class="${hO}">${h.adjO.toFixed(1)}</td></tr>
+        <tr><td>Adj Defense</td><td class="${aD}">${a.adjD.toFixed(1)}</td><td class="${hD}">${h.adjD.toFixed(1)}</td></tr>
+        <tr><td>Tempo</td><td>${a.adjT.toFixed(1)}</td><td>${h.adjT.toFixed(1)}</td></tr>
+        <tr><td>Barthag</td><td class="${aB}">${a.barthag.toFixed(3)}</td><td class="${hB}">${h.barthag.toFixed(3)}</td></tr>
+      </table>
+    </div>`;
+  }
+
+  // ── Four Factors ──
+  if (pred?.aRating?.oEfg && pred?.hRating?.oEfg) {
+    const a = pred.aRating, h = pred.hRating;
+    const factors = [
+      { name:'eFG%', aDelta:a.oEfg-h.dEfg, hDelta:h.oEfg-a.dEfg, invert:false },
+      { name:'TO%',  aDelta:a.oTo -h.dTo,  hDelta:h.oTo -a.dTo,  invert:true  },
+      { name:'OR%',  aDelta:a.oOr -h.dOr,  hDelta:h.oOr -a.dOr,  invert:false },
+      { name:'FTR',  aDelta:a.oFtr-h.dFtr, hDelta:h.oFtr-a.dFtr, invert:false },
+    ];
+    const ffCls = (d, inv) => { const v = inv?-d:d; return v>=1?'gd-edge-pos':v<=-1?'gd-edge-neg':'gd-edge-neu'; };
+    const fmt = v => (v>0?'+':'')+v.toFixed(1);
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Four Factors <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.58rem;color:var(--muted)">offense vs opponent defense</span></div>
+      <table class="gd-table">
+        <tr><th></th><th>${esc(aName.split(' ').pop())}</th><th>${esc(hName.split(' ').pop())}</th></tr>
+        ${factors.map(f=>`<tr><td>${f.name}</td><td class="${ffCls(f.aDelta,f.invert)}">${fmt(f.aDelta)}</td><td class="${ffCls(f.hDelta,f.invert)}">${fmt(f.hDelta)}</td></tr>`).join('')}
+      </table>
+    </div>`;
+  }
+
+  // ── Contextual Factors ──
+  const ctx = [];
+  if (g.aB2B) ctx.push(['⚠️', `${esc(aName)} on a back-to-back`]);
+  if (g.hB2B) ctx.push(['⚠️', `${esc(hName)} on a back-to-back`]);
+  if (g.awayTravel) ctx.push(['✈️', 'Away team crossing 2+ time zones']);
+  if (g.aForm?.net && Math.abs(g.aForm.net)>=1.5) ctx.push([g.aForm.net>0?'📈':'📉', `${esc(aName)} form: ${g.aForm.net>0?'+':''}${g.aForm.net.toFixed(1)} net efficiency`]);
+  if (g.hForm?.net && Math.abs(g.hForm.net)>=1.5) ctx.push([g.hForm.net>0?'📈':'📉', `${esc(hName)} form: ${g.hForm.net>0?'+':''}${g.hForm.net.toFixed(1)} net efficiency`]);
+  (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)})`]));
+  (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)})`]));
+  if (ctx.length) {
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Contextual Factors</div>
+      <ul class="gd-ctx-list">
+        ${ctx.map(([icon,text])=>`<li class="gd-ctx-item"><span class="gd-ctx-icon">${icon}</span><span>${text}</span></li>`).join('')}
+      </ul>
+    </div>`;
+  }
+
+  if (!html) html = '<div class="gd-section" style="color:var(--muted);font-size:.82rem;">No prediction data available.</div>';
+  document.getElementById('gd-body').innerHTML = html;
+  document.getElementById('gd-overlay').classList.add('open');
+}
+
 function closeTeamModal() {
   document.getElementById('tm-overlay').classList.remove('open');
 }
