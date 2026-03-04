@@ -831,6 +831,14 @@ input[type=date] {
 .cm-edge{margin-left:auto;font-size:.62rem;font-weight:700;color:var(--muted);}
 .cm-edge.cm-good{color:var(--green);}
 .cm-edge.cm-mod{color:var(--yellow);}
+.cm-col-hdrs{display:flex;align-items:center;gap:.4rem;padding:.1rem 0 .18rem;border-bottom:1px solid var(--border);margin-bottom:.02rem;}
+.cm-col-hdr{font-family:'Inter',sans-serif;font-size:.52rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:2.6rem;}
+.cm-col-hdr.ch-lbl{width:2.8rem;flex-shrink:0;}
+.cm-col-hdr.ch-edge{margin-left:auto;}
+.cm-advice{display:flex;align-items:center;gap:.35rem;padding:.28rem .7rem;border-top:1px solid var(--border);font-family:'Inter',sans-serif;font-size:.68rem;font-weight:600;}
+.cm-advice.cm-act-strong{color:var(--green);}
+.cm-advice.cm-act-lean{color:var(--yellow);}
+.cm-advice.cm-act-none{color:var(--muted);font-weight:400;}
 </style>
 </head>
 <body>
@@ -1529,6 +1537,35 @@ function renderFactors(g) {
   return `<div class="factors-wrap"><div class="factors-title">Four Factors Matchup</div><div class="factors-grid">${cells}</div></div>`;
 }
 
+function getAdvice(g) {
+  const { pred, vegasSpread, vegasTotal } = g;
+  if (!pred) return { text: 'No data', cls: 'cm-act-none' };
+
+  const hShort = displayName(g.hKey, g.home).split(' ').pop();
+  const aShort = displayName(g.aKey, g.away).split(' ').pop();
+
+  const sEdge = vegasSpread ? pred.margin - (-vegasSpread.point) : null;
+  const tEdge = vegasTotal  ? pred.total - vegasTotal.point      : null;
+
+  const sAbs = sEdge !== null ? Math.abs(sEdge) : 0;
+  const tAbs = tEdge !== null ? Math.abs(tEdge) : 0;
+
+  const spreadTeam = sEdge !== null ? (sEdge > 0 ? hShort : aShort) : null;
+  const totalDir   = tEdge !== null ? (tEdge > 0 ? 'Over'  : 'Under') : null;
+
+  const sStrong = sAbs >= 3, sLean = sAbs >= 1.5;
+  const tStrong = tAbs >= 3, tLean = tAbs >= 1.5;
+
+  if (!sLean && !tLean) return { text: 'No Action', cls: 'cm-act-none' };
+
+  const parts = [];
+  if (sLean) parts.push(`${sStrong ? 'Take' : 'Lean'} ${spreadTeam}`);
+  if (tLean) parts.push(`${tStrong ? 'Take the' : 'Lean'} ${totalDir}`);
+
+  const cls = (sStrong || tStrong) ? 'cm-act-strong' : 'cm-act-lean';
+  return { text: parts.join(' · '), cls };
+}
+
 function renderMobileCard(g) {
   const { pred, vegasSpread, vegasTotal } = g;
   const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
@@ -1628,6 +1665,8 @@ function renderMobileCard(g) {
     </div>`;
   }
 
+  const advice = getAdvice(g);
+
   return `<div class="card-mobile${hotCls}" id="game-${g.id}">
     <div class="cm-hd">
       <div class="cm-teams">
@@ -1638,7 +1677,16 @@ function renderMobileCard(g) {
       ${badge}
     </div>
     ${scoreHtml}
-    <div class="cm-lines">${spreadRow}${totalRow}</div>
+    <div class="cm-lines">
+      <div class="cm-col-hdrs">
+        <span class="cm-col-hdr ch-lbl"></span>
+        <span class="cm-col-hdr">Model</span>
+        <span class="cm-col-hdr">Vegas</span>
+        <span class="cm-col-hdr ch-edge">Edge</span>
+      </div>
+      ${spreadRow}${totalRow}
+    </div>
+    <div class="cm-advice ${advice.cls}">${advice.text}</div>
   </div>`;
 }
 
