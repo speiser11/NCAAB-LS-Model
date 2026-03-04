@@ -29,8 +29,7 @@
 }
 /* ── Reset ── */
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{overflow-x:hidden;}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
 .mobile-conf-wrap{width:100%;box-sizing:border-box;}
 
 /* ── Site Header ── */
@@ -83,6 +82,7 @@ input[type=date]{
   display:flex;align-items:stretch;
   position:sticky;top:54px;z-index:90;
   overflow-x:auto;scrollbar-width:none;
+  width:100%;min-width:0;
 }
 .sub-nav::-webkit-scrollbar{display:none;}
 .status-tabs{display:flex;flex-shrink:0;}
@@ -707,9 +707,11 @@ input[type=date]{
   /* Header */
   .site-header{grid-template-columns:auto 1fr;row-gap:.4rem;padding:.5rem .85rem;}
   .header-search{grid-column:1/-1;order:3;}
-  .header-actions{gap:.25rem;}
+  .header-actions{gap:.25rem;flex-wrap:nowrap;}
   .search-wrap{max-width:100%;}
   .brand-ncaab,.brand-model{font-size:1.2rem;}
+  #bt-toggle{display:none;}
+  #date-pick{width:7rem;font-size:.7rem;padding:.2rem .3rem;}
 
   /* Sub-nav — hide desktop controls, show mobile replacements */
   .sub-nav-right{padding:.3rem .6rem;gap:.3rem;}
