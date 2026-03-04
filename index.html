@@ -842,14 +842,6 @@ input[type=date] {
 .cm-advice-text{flex:1;}
 .cm-wp{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:700;color:var(--blue);white-space:nowrap;margin-left:auto;flex-shrink:0;}
 
-/* Win probability bar — desktop */
-.wp-strip{display:flex;align-items:center;gap:.5rem;padding:.3rem .9rem .4rem;border-top:1px solid var(--border);}
-.wp-label{font-family:'Inter',sans-serif;font-size:.6rem;color:var(--muted);white-space:nowrap;flex-shrink:0;}
-.wp-label strong{color:var(--text);}
-.wp-label.wp-home strong{color:var(--blue);}
-.wp-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
-.wp-bar-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;}
-
 /* ── Contextual badges ────────────────────────────── */
 .ctx-badge{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;font-size:.52rem;font-weight:700;border-radius:3px;padding:.06rem .28rem;margin-left:.22rem;vertical-align:middle;flex-shrink:0;white-space:nowrap;}
 .b2b-tag{color:var(--yellow);background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.28);}
@@ -2196,18 +2188,6 @@ function renderCard(g) {
   const homeRankBadge = g.homeRank <= 25 ? `<span class="rank-badge">#${g.homeRank}</span>` : '';
   const rankedMatchupBadge = bothRanked ? `<span class="ranked-badge">Ranked Matchup</span>` : '';
 
-  // Win probability bar
-  let wpHtml = '';
-  if (pred) {
-    const awShort = esc(displayName(g.aKey, g.away).split(' ').slice(-1)[0]);
-    const hwShort = esc(displayName(g.hKey, g.home).split(' ').slice(-1)[0]);
-    wpHtml = `<div class="wp-strip">
-      <span class="wp-label wp-away">${awShort} <strong>${pred.awayWinProb}%</strong></span>
-      <div class="wp-bar"><div class="wp-bar-fill" style="width:${pred.homeWinProb}%"></div></div>
-      <span class="wp-label wp-home"><strong>${pred.homeWinProb}%</strong> ${hwShort}</span>
-    </div>`;
-  }
-
   // Contextual badges
   function teamBadges(b2b, injuries, form) {
     let s = '';
@@ -2248,7 +2228,6 @@ function renderCard(g) {
           ${totalHtml}
         </div>
       </div>
-      ${wpHtml}
       ${footerHtml}
       ${renderFactors(g)}
     </div>
@@ -3122,9 +3101,10 @@ async function refresh() {
       loadOdds(isoDate),
     ]);
     currentIsoDate = isoDate;
-    await loadInjuries();  // needs espnList populated first
     applyOddsLock(isoDate);
     render(assembleGames());
+    // Injuries load in background — re-render when done (doesn't block initial paint)
+    loadInjuries().then(() => render(assembleGames())).catch(() => {});
   } catch(e) {
     document.getElementById('game-list').innerHTML = '<div class="loading">Error loading data.</div>';
     showErr(e.message || 'Unknown error');
