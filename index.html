@@ -705,13 +705,14 @@ input[type=date]{
 /* ── Responsive ── */
 @media(max-width:640px){
   /* Header */
-  .site-header{grid-template-columns:auto 1fr;row-gap:.4rem;padding:.5rem .85rem;}
-  .header-search{grid-column:1/-1;order:3;}
-  .header-actions{gap:.25rem;flex-wrap:nowrap;}
+  .site-header{grid-template-columns:auto 1fr;row-gap:.3rem;padding:.4rem .85rem;}
+  .header-search{grid-column:1/-1;order:4;}
+  .header-actions{gap:.2rem;flex-wrap:wrap;justify-content:flex-end;align-content:flex-start;}
   .search-wrap{max-width:100%;}
-  .brand-ncaab,.brand-model{font-size:1.2rem;}
-  #bt-toggle{display:none;}
-  #date-pick{width:7rem;font-size:.7rem;padding:.2rem .3rem;}
+  .brand-ncaab,.brand-model{font-size:1.1rem;}
+  /* Date picker gets its own row below the icon buttons */
+  #date-pick{order:10;width:100%;font-size:.72rem;padding:.18rem .3rem;}
+  .icon-btn{padding:.28rem .38rem;font-size:.85rem;}
 
   /* Sub-nav — hide desktop controls, show mobile replacements */
   .sub-nav-right{padding:.3rem .6rem;gap:.3rem;}
