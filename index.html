@@ -1084,7 +1084,7 @@ input[type=date] {
     </div>
     <div class="field">
       <label>Scoring Scale</label>
-      <input type="number" id="inp-score-scale" value="1.06" step="0.01" min="0.85" max="1.25">
+      <input type="number" id="inp-score-scale" value="0.96" step="0.01" min="0.85" max="1.25">
       <small>Calibrates model totals. Derived from Torvik avg adjO/adjD ≈ 100, avg tempo ≈ 68.5 poss → raw ~68.5 pts/team vs actual D1 avg ~73 pts/team, giving scale ≈ 1.06. Raise if model totals run low.</small>
     </div>
     <div class="field">
@@ -1208,7 +1208,7 @@ const CONF_TZ = {
 let cfg = {
   oddsKey:    localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
   homeCourt:  parseFloat(localStorage.getItem('ncaab_hc')    || '3.5'),
-  scoreScale: parseFloat(localStorage.getItem('ncaab_scale') || '1.06'),
+  scoreScale: parseFloat(localStorage.getItem('ncaab_scale') || '0.96'),
   lockHour:   parseInt(localStorage.getItem('ncaab_lock_hour') || '10'),
 };
 
@@ -3216,7 +3216,7 @@ function closeSettings() { document.getElementById('settings-overlay').classList
 function saveSettings() {
   cfg.oddsKey    = document.getElementById('inp-odds-key').value.trim();
   cfg.homeCourt  = parseFloat(document.getElementById('inp-home-court').value) || 3.5;
-  cfg.scoreScale = parseFloat(document.getElementById('inp-score-scale').value) || 1.06;
+  cfg.scoreScale = parseFloat(document.getElementById('inp-score-scale').value) || 0.96;
   cfg.lockHour   = parseInt(document.getElementById('inp-lock-hour').value) || 10;
   localStorage.setItem('ncaab_odds_key', cfg.oddsKey);
   localStorage.setItem('ncaab_scale', cfg.scoreScale);

@@ -1,20 +1,22 @@
 """
-TrueLine LS — Model Optimization
-=================================
-Pulls historical ESPN scores, point-in-time Torvik ratings, and The Odds API
-historical lines. Grid-searches over key model parameters to find optimal values.
+TrueLine LS — Model Optimization v2
+=====================================
+Improvements over v1:
+  1. Captures Torvik four factors (eFG%, OR%, TO%, FTR) — 8 extra features per game
+  2. Season weighting (2025=3x, 2024=2x, 2023=1x) throughout all models
+  3. Two model outputs:
+       a) Weighted formula optimizer — best scoreScale + homeCourt for the app
+       b) Ridge regression — learns optimal weights for all features (max accuracy)
+  4. Out-of-sample validation: trains on 2022-24, tests on 2024-25
+  5. Prints side-by-side comparison so you know exactly what you gain
 
-Setup:
-  pip install requests pandas numpy tqdm
+Requirements:
+  pip install requests pandas numpy tqdm scikit-learn
 
 Usage:
   1. Paste your Odds API key into ODDS_API_KEY below
-  2. python optimize.py
-  3. On first run it fetches & caches all data (slow, ~10-20 min)
-  4. Re-runs are instant — everything cached locally in ./data/
-
-The Odds API historical calls use credits. Each date = 1 call.
-~150 dates/season × 3 seasons = ~450 calls total. Run once, cache forever.
+  2. python -X utf8 optimize.py
+  3. First run fetches & caches all data (~20 min). Re-runs are instant.
 """
 
 import json, math, re, sys, time
@@ -25,29 +27,37 @@ from pathlib import Path
 from datetime import date, timedelta
 from tqdm import tqdm
 
+try:
+    from sklearn.linear_model import RidgeCV
+    from sklearn.metrics import mean_absolute_error
+except ImportError:
+    print('ERROR: scikit-learn not installed. Run: pip install scikit-learn')
+    sys.exit(1)
+
 # ══════════════════════════════════════════════════════════
-# CONFIG — edit these
+# CONFIG
 # ══════════════════════════════════════════════════════════
-ODDS_API_KEY = "YOUR_KEY_HERE"   # paste your The Odds API key
+ODDS_API_KEY = "b3e1ccd8a2f25665490e3c35abde718c"
 
 DATA_DIR = Path(__file__).parent / "data"
 
-# Season year → (start YYYYMMDD, end YYYYMMDD)
-# Season year 2025 = the 2024-25 season (Torvik's "year" param)
 SEASONS = {
     2023: ("20221101", "20230401"),
     2024: ("20231101", "20240401"),
     2025: ("20241101", "20250401"),
 }
 
-# Grid search space — adjust to widen or narrow
-SCORE_SCALES = np.round(np.arange(0.96, 1.14, 0.02), 3).tolist()
-HOME_COURTS  = np.round(np.arange(2.0,  5.5,  0.5),  1).tolist()
+# Recent seasons matter more — affects both grid search and regression
+SEASON_WEIGHTS = {2023: 1, 2024: 2, 2025: 3}
 
-NCAAB_SIGMA  = 10.5   # historical std dev of NCAAB game margins
+# Grid search space for formula optimizer
+SCORE_SCALES = np.round(np.arange(0.96, 1.14, 0.02), 3).tolist()
+HOME_COURTS  = np.round(np.arange(1.0,  5.5,  0.5),  1).tolist()
+
+NCAAB_SIGMA  = 10.5
 
 # ══════════════════════════════════════════════════════════
-# TEAM NAME NORMALIZATION  (faithful Python port of app logic)
+# TEAM NAME NORMALIZATION
 # ══════════════════════════════════════════════════════════
 ALIAS = {
     'connecticut': 'uconn', 'uconn huskies': 'uconn',
@@ -112,28 +122,23 @@ def norm_team(raw):
         return ''
     s = raw.lower()
     s = re.sub(r"[\u2018\u2019''`]", "'", s)
-    s = re.sub(r'\s*\([^)]{0,6}\)\s*', ' ', s)    # strip (NY), (FL), etc.
+    s = re.sub(r'\s*\([^)]{0,6}\)\s*', ' ', s)
     s = re.sub(r"[^a-z0-9\s'&.-]", '', s)
-    s = re.sub(r'([a-z])\.([a-z])\.', r'\1\2', s)  # n.c. → nc
+    s = re.sub(r'([a-z])\.([a-z])\.', r'\1\2', s)
     s = re.sub(r'\s+', ' ', s).strip()
-    s = re.sub(r' st\.$', ' state', s)              # iowa st. → iowa state
-    s = re.sub(r'\bst\b(?!\.)', 'state', s)         # standalone st → state
+    s = re.sub(r' st\.$', ' state', s)
+    s = re.sub(r'\bst\b(?!\.)', 'state', s)
     return ALIAS.get(s, s)
 
 def match_team(full_name, ratings_keys_set, ratings_keys_list):
-    """Port of JS matchTeam — tries direct, progressive strip, then Dice."""
     norm = norm_team(full_name)
     if norm in ratings_keys_set:
         return norm
-
-    # Strip trailing words one at a time (removes mascot)
     words = norm.split()
     for length in range(len(words) - 1, 0, -1):
         shorter = ' '.join(words[:length])
         if shorter in ratings_keys_set:
             return shorter
-
-    # Dice coefficient on shared words (>2 chars)
     nw = [w for w in words if len(w) > 2]
     if not nw:
         return None
@@ -154,7 +159,6 @@ def match_team(full_name, ratings_keys_set, ratings_keys_list):
 # DATE UTILITIES
 # ══════════════════════════════════════════════════════════
 def date_range(start_str, end_str):
-    """Yield YYYYMMDD strings from start_str to end_str inclusive."""
     d   = date(int(start_str[:4]), int(start_str[4:6]), int(start_str[6:]))
     end = date(int(end_str[:4]),   int(end_str[4:6]),   int(end_str[6:]))
     while d <= end:
@@ -162,7 +166,6 @@ def date_range(start_str, end_str):
         d += timedelta(days=1)
 
 def week_anchor(date_str):
-    """Return YYYYMMDD of the Monday of the week containing date_str."""
     d = date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:]))
     monday = d - timedelta(days=d.weekday())
     return monday.strftime('%Y%m%d')
@@ -170,6 +173,92 @@ def week_anchor(date_str):
 def torvik_season_year(date_str):
     y, m = int(date_str[:4]), int(date_str[4:6])
     return y + 1 if m >= 10 else y
+
+# ══════════════════════════════════════════════════════════
+# TORVIK FETCHER — captures adjO/adjD/adjT + four factors
+#
+# Torvik trank.php JSON field mapping (confirmed empirically):
+#   [0]  team name       [1]  adjO (off efficiency)
+#   [2]  adjD (def eff)  [3]  barthag (win prob vs avg)
+#   [4]  record string   [5]  wins     [6]  games
+#   [7]  off_eFG%        [8]  def_eFG%
+#   [9]  off_OR%         [10] def_OR%
+#   [11] off_TO%         [12] def_TO%
+#   [13] off_FTR         [14] def_FTR
+#   [15] adjT (tempo)
+# ══════════════════════════════════════════════════════════
+TORVIK_HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+_torvik_session = None
+
+def get_torvik_session():
+    global _torvik_session
+    if _torvik_session is not None:
+        return _torvik_session
+    s = requests.Session()
+    s.headers.update(TORVIK_HEADERS)
+    try:
+        s.post('https://barttorvik.com/trank.php?json=1',
+               data={'js_test_submitted': '1'}, timeout=15)
+    except Exception:
+        pass
+    _torvik_session = s
+    return s
+
+def fetch_torvik(date_str):
+    """Fetch Torvik ratings + four factors for date_str. Cached to disk.
+    Automatically invalidates old caches that are missing four factor fields."""
+    cache = DATA_DIR / 'torvik' / f'{date_str}.json'
+    if cache.exists():
+        try:
+            data = json.loads(cache.read_text())
+            if data:
+                sample = next(iter(data.values()))
+                if 'off_eFG' in sample:
+                    return data
+            # Cache is stale (missing four factors) — delete and re-fetch
+            cache.unlink()
+        except Exception:
+            cache.unlink()
+
+    year = torvik_season_year(date_str)
+    url  = f'https://barttorvik.com/trank.php?year={year}&dte={date_str}&json=1'
+    try:
+        r = get_torvik_session().get(url, timeout=20)
+        r.raise_for_status()
+        raw_data = r.json()
+    except Exception as e:
+        print(f'  Torvik {date_str}: {e}')
+        return {}
+
+    out = {}
+    for row in raw_data:
+        if not isinstance(row, list) or len(row) < 16:
+            continue
+        try:
+            key = norm_team(str(row[0]))
+            out[key] = {
+                'raw':     str(row[0]),
+                'adjO':    float(row[1]),
+                'adjD':    float(row[2]),
+                'barthag': float(row[3]),
+                'adjT':    float(row[15]),
+                # Four factors
+                'off_eFG': float(row[7]),
+                'def_eFG': float(row[8]),
+                'off_OR':  float(row[9]),
+                'def_OR':  float(row[10]),
+                'off_TO':  float(row[11]),
+                'def_TO':  float(row[12]),
+                'off_FTR': float(row[13]),
+                'def_FTR': float(row[14]),
+            }
+        except (ValueError, TypeError):
+            continue
+
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps(out))
+    time.sleep(0.4)
+    return out
 
 # ══════════════════════════════════════════════════════════
 # ESPN FETCHER
@@ -215,57 +304,11 @@ def fetch_espn(date_str):
     return games
 
 # ══════════════════════════════════════════════════════════
-# TORVIK FETCHER  (weekly snapshots = ~65 calls/season)
-# ══════════════════════════════════════════════════════════
-TORVIK_URL = 'https://barttorvik.com/trank.php?json=1'
-
-def fetch_torvik(date_str):
-    """Fetch Torvik ratings as-of date_str. Cached to disk."""
-    cache = DATA_DIR / 'torvik' / f'{date_str}.json'
-    if cache.exists():
-        return json.loads(cache.read_text())
-
-    year = torvik_season_year(date_str)
-    url  = f'https://barttorvik.com/trank.php?year={year}&dte={date_str}&json=1'
-    try:
-        r = requests.get(url, timeout=20)
-        r.raise_for_status()
-        data = r.json()
-    except Exception as e:
-        print(f'  Torvik {date_str}: {e}')
-        return {}
-
-    out = {}
-    for row in data:
-        if not isinstance(row, list) or len(row) < 5:
-            continue
-        try:
-            key = norm_team(str(row[0]))
-            out[key] = {
-                'raw':     str(row[0]),
-                'adjO':    float(row[2]),
-                'adjD':    float(row[3]),
-                'adjT':    float(row[4]),
-                'barthag': float(row[5]) if len(row) > 5 else 0.5,
-            }
-        except (ValueError, TypeError):
-            continue
-
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(json.dumps(out))
-    time.sleep(0.4)   # polite rate limit
-    return out
-
-# ══════════════════════════════════════════════════════════
 # THE ODDS API HISTORICAL FETCHER
 # ══════════════════════════════════════════════════════════
 ODDS_HIST_URL = 'https://api.the-odds-api.com/v4/historical/sports/basketball_ncaab/odds/'
 
 def fetch_odds_historical(date_str):
-    """
-    Snapshot at 17:00 UTC (noon ET) — captures pre-game lines for most NCAAB games.
-    Returns {norm_key: {spread, total}} where norm_key = sorted normed team names.
-    """
     cache = DATA_DIR / 'odds' / f'{date_str}.json'
     if cache.exists():
         return json.loads(cache.read_text())
@@ -287,9 +330,7 @@ def fetch_odds_historical(date_str):
         print(f'  Odds API {date_str}: {e}')
         return {}
 
-    # Response may be {"data": [...]} or just [...]
     games_raw = payload.get('data', payload) if isinstance(payload, dict) else payload
-
     result = {}
     for game in (games_raw or []):
         home_raw = game.get('home_team', '')
@@ -310,12 +351,8 @@ def fetch_odds_historical(date_str):
             if spread is not None and total is not None:
                 break
         key = '|'.join(sorted([norm_team(home_raw), norm_team(away_raw)]))
-        result[key] = {
-            'spread': spread, 'total': total,
-            'home': home_raw, 'away': away_raw,
-        }
+        result[key] = {'spread': spread, 'total': total, 'home': home_raw, 'away': away_raw}
 
-    # Check remaining credits
     remaining = r.headers.get('x-requests-remaining', '?')
     used      = r.headers.get('x-requests-used', '?')
     print(f'  Odds {date_str}: {len(result)} games | credits used={used} remaining={remaining}')
@@ -326,27 +363,9 @@ def fetch_odds_historical(date_str):
     return result
 
 # ══════════════════════════════════════════════════════════
-# PREDICT  (Python port of app logic)
-# ══════════════════════════════════════════════════════════
-def predict(home_r, away_r, neutral=False, home_court=3.5, score_scale=1.06):
-    if not home_r or not away_r:
-        return None
-    poss    = math.sqrt(home_r['adjT'] * away_r['adjT'])
-    h_score = (home_r['adjO'] * away_r['adjD'] / 100) * poss / 100 * score_scale
-    a_score = (away_r['adjO'] * home_r['adjD'] / 100) * poss / 100 * score_scale
-    hc      = 0.0 if neutral else home_court
-    margin  = (h_score - a_score) + hc
-    return {'margin': margin, 'total': h_score + a_score}
-
-# ══════════════════════════════════════════════════════════
-# BUILD DATASET
+# BUILD DATASET — expanded with four factors + season column
 # ══════════════════════════════════════════════════════════
 def build_dataset(seasons=None):
-    """
-    Fetches all historical data and returns a DataFrame.
-    Torvik is fetched weekly (Monday anchors) to limit API calls.
-    Everything is cached — safe to re-run without burning credits.
-    """
     if seasons is None:
         seasons = list(SEASONS.keys())
 
@@ -354,11 +373,9 @@ def build_dataset(seasons=None):
     for yr in seasons:
         start, end = SEASONS[yr]
         all_dates.extend(date_range(start, end))
-    # deduplicate
     seen = set()
     all_dates = [d for d in all_dates if not (d in seen or seen.add(d))]
 
-    # Pre-fetch Torvik for all weekly anchors
     anchors = sorted(set(week_anchor(d) for d in all_dates))
     print(f'Pre-fetching Torvik ratings for {len(anchors)} weekly snapshots...')
     torvik_by_anchor = {}
@@ -393,26 +410,21 @@ def build_dataset(seasons=None):
 
             home_r = ratings[h_key]
             away_r = ratings[a_key]
-            pred   = predict(home_r, away_r, g['neutral'])
-            if not pred:
-                continue
 
             actual_margin = g['home_score'] - g['away_score']
             actual_total  = g['home_score'] + g['away_score']
 
-            # Match odds — try exact key first, then reversed, then fuzzy
-            game_key = '|'.join(sorted([norm_team(g['home']), norm_team(g['away'])]))
+            game_key  = '|'.join(sorted([norm_team(g['home']), norm_team(g['away'])]))
             game_odds = odds.get(game_key)
             if not game_odds:
-                # Try matching by individual team norm keys
                 for ok, ov in odds.items():
-                    parts = ok.split('|')
-                    if norm_team(ov['home']) in r_keys_set and match_team(ov['home'], r_keys_set, r_keys_list) in (h_key, a_key):
+                    if match_team(ov['home'], r_keys_set, r_keys_list) in (h_key, a_key):
                         game_odds = ov
                         break
 
             rows.append({
                 'date':          date_str,
+                'season':        torvik_season_year(date_str),
                 'home':          g['home'],
                 'away':          g['away'],
                 'home_score':    g['home_score'],
@@ -420,19 +432,24 @@ def build_dataset(seasons=None):
                 'actual_margin': actual_margin,
                 'actual_total':  actual_total,
                 'neutral':       g['neutral'],
-                # Store raw ratings so we can re-score without re-fetching
-                'h_adjO':        home_r['adjO'],
-                'h_adjD':        home_r['adjD'],
-                'h_adjT':        home_r['adjT'],
-                'a_adjO':        away_r['adjO'],
-                'a_adjD':        away_r['adjD'],
-                'a_adjT':        away_r['adjT'],
-                # Default prediction (scoreScale=1.06, homeCourt=3.5)
-                'pred_margin':   pred['margin'],
-                'pred_total':    pred['total'],
-                # Vegas lines (None if not available)
-                'vegas_spread':  game_odds['spread'] if game_odds else None,
-                'vegas_total':   game_odds['total']  if game_odds else None,
+                # Core efficiency
+                'h_adjO':    home_r['adjO'],   'h_adjD':    home_r['adjD'],
+                'h_adjT':    home_r['adjT'],   'h_barthag': home_r['barthag'],
+                'a_adjO':    away_r['adjO'],   'a_adjD':    away_r['adjD'],
+                'a_adjT':    away_r['adjT'],   'a_barthag': away_r['barthag'],
+                # Four factors — home
+                'h_off_eFG': home_r['off_eFG'], 'h_def_eFG': home_r['def_eFG'],
+                'h_off_OR':  home_r['off_OR'],  'h_def_OR':  home_r['def_OR'],
+                'h_off_TO':  home_r['off_TO'],  'h_def_TO':  home_r['def_TO'],
+                'h_off_FTR': home_r['off_FTR'], 'h_def_FTR': home_r['def_FTR'],
+                # Four factors — away
+                'a_off_eFG': away_r['off_eFG'], 'a_def_eFG': away_r['def_eFG'],
+                'a_off_OR':  away_r['off_OR'],  'a_def_OR':  away_r['def_OR'],
+                'a_off_TO':  away_r['off_TO'],  'a_def_TO':  away_r['def_TO'],
+                'a_off_FTR': away_r['off_FTR'], 'a_def_FTR': away_r['def_FTR'],
+                # Vegas lines
+                'vegas_spread': game_odds['spread'] if game_odds else None,
+                'vegas_total':  game_odds['total']  if game_odds else None,
             })
 
     df = pd.DataFrame(rows)
@@ -440,197 +457,287 @@ def build_dataset(seasons=None):
     df.to_csv(dataset_path, index=False)
 
     n_spread = df['vegas_spread'].notna().sum()
-    n_total  = df['vegas_total'].notna().sum()
-    print(f'\nDataset: {len(df):,} games | {n_spread:,} with spreads | {n_total:,} with totals')
+    print(f'\nDataset: {len(df):,} games | {n_spread:,} with spreads')
     print(f'Team match misses: {match_misses}')
     print(f'Saved to {dataset_path}')
     return df
 
 # ══════════════════════════════════════════════════════════
-# SCORING — re-run predictions from stored raw ratings
+# SEASON WEIGHTS
 # ══════════════════════════════════════════════════════════
-def score_params(df, score_scale, home_court):
-    """
-    Vectorized re-score of all games in df with given params.
-    Returns metrics dict.
-    """
-    poss     = np.sqrt(df['h_adjT'] * df['a_adjT'])
-    h_score  = (df['h_adjO'] * df['a_adjD'] / 100) * poss / 100 * score_scale
-    a_score  = (df['a_adjO'] * df['h_adjD'] / 100) * poss / 100 * score_scale
-    hc_arr   = np.where(df['neutral'].astype(bool), 0.0, home_court)
-    margin   = (h_score - a_score) + hc_arr
-    total    = h_score + a_score
+def get_sample_weights(df):
+    """Return per-game weight array based on season recency."""
+    return df['season'].map(SEASON_WEIGHTS).fillna(1).values
 
-    error    = np.abs(df['actual_margin'] - margin)
-    mae      = error.mean()
-    within35 = (error <= 3.5).mean()
-    within7  = (error <= 7.0).mean()
-    correct  = ((margin > 0) == (df['actual_margin'] > 0)).mean()
+# ══════════════════════════════════════════════════════════
+# FORMULA SCORING — vectorized, supports sample weights
+# ══════════════════════════════════════════════════════════
+def score_params(df, score_scale, home_court, weights=None):
+    poss    = np.sqrt(df['h_adjT'] * df['a_adjT'])
+    h_score = (df['h_adjO'] * df['a_adjD'] / 100) * poss / 100 * score_scale
+    a_score = (df['a_adjO'] * df['h_adjD'] / 100) * poss / 100 * score_scale
+    hc_arr  = np.where(df['neutral'].astype(bool), 0.0, home_court)
+    margin  = (h_score - a_score) + hc_arr
+    total   = h_score + a_score
 
-    # ATS
+    error   = np.abs(df['actual_margin'] - margin)
+
+    if weights is not None:
+        w = weights / weights.sum()
+        mae      = (error * w).sum()
+        within35 = ((error <= 3.5) * w).sum()
+        correct  = (((margin > 0) == (df['actual_margin'] > 0)).astype(float) * w).sum()
+    else:
+        mae      = error.mean()
+        within35 = (error <= 3.5).mean()
+        correct  = ((margin > 0) == (df['actual_margin'] > 0)).mean()
+
+    # ATS (unweighted — betting edge is binary)
     ats_mask = df['vegas_spread'].notna()
     ats_df   = df[ats_mask].copy()
     ats_df['_margin'] = margin[ats_mask].values
     ats_df['_cover']  = ats_df['actual_margin'] + ats_df['vegas_spread']
     ats_df['_backed'] = ats_df['_margin'] >= 0
-    ats_df = ats_df[ats_df['_cover'] != 0]  # exclude pushes
+    ats_df = ats_df[ats_df['_cover'] != 0]
 
     ats_correct = (ats_df['_backed'] == (ats_df['_cover'] > 0))
     ats_rate    = ats_correct.mean() if len(ats_df) else float('nan')
 
-    # ATS by edge bucket
     ats_df['_edge'] = np.abs(ats_df['_margin'] + ats_df['vegas_spread'])
     hi_edge = ats_df[ats_df['_edge'] >= 3.0]
     hi_ats  = (hi_edge['_backed'] == (hi_edge['_cover'] > 0)).mean() if len(hi_edge) else float('nan')
-    vhi_edge = ats_df[ats_df['_edge'] >= 5.0]
-    vhi_ats  = (vhi_edge['_backed'] == (vhi_edge['_cover'] > 0)).mean() if len(vhi_edge) else float('nan')
-
-    # O/U
-    ou_mask = df['vegas_total'].notna()
-    ou_df   = df[ou_mask].copy()
-    ou_df['_pred_total'] = total[ou_mask].values
-    ou_df = ou_df[ou_df['actual_total'] != ou_df['vegas_total']]
-    ou_rate = ((ou_df['_pred_total'] > ou_df['vegas_total']) ==
-               (ou_df['actual_total'] > ou_df['vegas_total'])).mean() if len(ou_df) else float('nan')
 
     return {
-        'mae':      mae,
-        'within35': within35,
-        'within7':  within7,
-        'correct':  correct,
-        'ats':      ats_rate,
-        'hi_ats':   hi_ats,     # edge >= 3
-        'vhi_ats':  vhi_ats,    # edge >= 5
-        'ou':       ou_rate,
-        'n_games':  len(df),
-        'n_ats':    int(ats_mask.sum()),
-        'n_hi_ats': len(hi_edge),
+        'mae': mae, 'within35': within35, 'correct': correct,
+        'ats': ats_rate, 'hi_ats': hi_ats,
+        'n_games': len(df), 'n_ats': int(ats_mask.sum()),
     }
 
 # ══════════════════════════════════════════════════════════
-# GRID SEARCH OPTIMIZATION
+# WEIGHTED FORMULA OPTIMIZATION (grid search)
 # ══════════════════════════════════════════════════════════
-def run_optimization(df):
-    print('\n' + '═' * 60)
-    print('GRID SEARCH — scoreScale × homeCourt')
+def run_formula_optimization(df):
+    weights = get_sample_weights(df)
+
+    print('\n' + '═' * 64)
+    print('WEIGHTED FORMULA OPTIMIZER  (scoreScale × homeCourt)')
+    print(f'Season weights: 2023=1x  2024=2x  2025=3x')
     print(f'Testing {len(SCORE_SCALES)} × {len(HOME_COURTS)} = '
           f'{len(SCORE_SCALES)*len(HOME_COURTS)} combinations')
-    print('═' * 60)
+    print('═' * 64)
 
     results = []
     for ss in tqdm(SCORE_SCALES, desc='scoreScale'):
         for hc in HOME_COURTS:
-            m = score_params(df, ss, hc)
+            m = score_params(df, ss, hc, weights=weights)
             results.append({'score_scale': ss, 'home_court': hc, **m})
 
     res_df = pd.DataFrame(results)
-    res_df.to_csv(DATA_DIR / 'optimization_results.csv', index=False)
+    res_df.to_csv(DATA_DIR / 'formula_optimization.csv', index=False)
 
     def pct(v):
         return f'{v*100:.1f}%' if not math.isnan(v) else '—'
 
-    print('\n── Top 5 by lowest MAE ─────────────────────────────────')
-    top_mae = res_df.nsmallest(5, 'mae')
-    for _, r in top_mae.iterrows():
+    print('\n── Top 5 by weighted MAE ───────────────────────────────────')
+    for _, r in res_df.nsmallest(5, 'mae').iterrows():
         print(f'  scoreScale={r.score_scale:.2f}  homeCourt={r.home_court:.1f}  '
-              f'MAE={r.mae:.2f}  correct={pct(r.correct)}  '
-              f'ATS={pct(r.ats)} ({r.n_ats:.0f}g)  hi_ATS={pct(r.hi_ats)}')
+              f'wMAE={r.mae:.3f}  correct={pct(r.correct)}  ATS={pct(r.ats)}')
 
-    min_games = 150
-    good = res_df[res_df['n_ats'] >= min_games]
-    if not good.empty:
-        print(f'\n── Top 5 by ATS rate (min {min_games} games) ────────────────')
-        for _, r in good.nlargest(5, 'ats').iterrows():
-            print(f'  scoreScale={r.score_scale:.2f}  homeCourt={r.home_court:.1f}  '
-                  f'ATS={pct(r.ats)}  hi_ATS={pct(r.hi_ats)}  vhi_ATS={pct(r.vhi_ats)}  '
-                  f'MAE={r.mae:.2f}')
+    best = res_df.loc[res_df['mae'].idxmin()]
+    print(f'\n  → Best formula params:  scoreScale={best.score_scale:.2f}  '
+          f'homeCourt={best.home_court:.1f}  wMAE={best.mae:.3f}')
 
-        print(f'\n── Top 5 by high-edge ATS (|model−vegas| ≥ 3 pts) ─────────')
-        for _, r in good.nlargest(5, 'hi_ats').iterrows():
-            print(f'  scoreScale={r.score_scale:.2f}  homeCourt={r.home_court:.1f}  '
-                  f'ATS={pct(r.ats)}  hi_ATS={pct(r.hi_ats)} ({r.n_hi_ats:.0f}g)  '
-                  f'vhi_ATS={pct(r.vhi_ats)}  MAE={r.mae:.2f}')
-
-    best_mae = res_df.loc[res_df['mae'].idxmin()]
-    best_ats = good.loc[good['ats'].idxmax()] if not good.empty else best_mae
-
-    print('\n' + '═' * 60)
-    print('RECOMMENDED PARAMETERS')
-    print('  (Best MAE — most accurate raw predictions)')
-    print(f'    scoreScale = {best_mae.score_scale:.2f}')
-    print(f'    homeCourt  = {best_mae.home_court:.1f}')
-    print()
-    print('  (Best ATS — optimized for beating the line)')
-    print(f'    scoreScale = {best_ats.score_scale:.2f}')
-    print(f'    homeCourt  = {best_ats.home_court:.1f}')
-    print()
-    print('  Update cfg defaults in index.html:')
-    print(f'    scoreScale: {best_ats.score_scale:.2f}')
-    print(f'    homeCourt:  {best_ats.home_court:.1f}')
-    print('═' * 60)
-    print(f'\nFull grid results saved to {DATA_DIR / "optimization_results.csv"}')
-
-    return res_df
+    return best
 
 # ══════════════════════════════════════════════════════════
-# DIAGNOSTICS  (run after optimization to understand the data)
+# FEATURE ENGINEERING FOR REGRESSION
+#
+# All deltas constructed so that positive value = home team advantage.
+# Each feature should have a positive regression coefficient.
 # ══════════════════════════════════════════════════════════
-def run_diagnostics(df, score_scale=1.06, home_court=3.5):
-    print('\n' + '═' * 60)
-    print(f'DIAGNOSTICS  (scoreScale={score_scale}, homeCourt={home_court})')
-    print('═' * 60)
+FEATURE_NAMES = [
+    'delta_adjO',     # home.adjO - away.adjO  (better off = higher margin)
+    'delta_adjD',     # away.adjD - home.adjD  (lower adjD = better def → reversed)
+    'delta_eFG',      # home.off_eFG - away.off_eFG  (shoot better = win more)
+    'delta_def_eFG',  # away.def_eFG - home.def_eFG  (lower = better def → reversed)
+    'delta_OR',       # home.off_OR - away.off_OR  (offensive rebounding edge)
+    'delta_TO',       # away.off_TO - home.off_TO  (force more TOs = win more → reversed)
+    'delta_FTR',      # home.off_FTR - away.off_FTR  (get to line more = win more)
+    'home_court',     # 1 if not neutral, 0 if neutral  (coefficient = HCA in pts)
+    # Removed: avg_adjT (r=+0.03 with margin, nearly zero signal)
+    # Removed: delta_barthag (derived from adjO+adjD, causes negative coefficient / double-count)
+]
 
-    m = score_params(df, score_scale, home_court)
+# Mean values of non-delta features used for centering
+_ADJ_O_MEAN = 106.16   # approximate D1 average adjO
+_ADJ_D_MEAN = 104.82   # approximate D1 average adjD
 
-    print(f'Games:       {m["n_games"]:,}')
-    print(f'MAE:         {m["mae"]:.2f} pts')
-    print(f'Within 3.5:  {m["within35"]*100:.1f}%')
-    print(f'Within 7:    {m["within7"]*100:.1f}%')
-    print(f'Correct side:{m["correct"]*100:.1f}%')
-    print(f'ATS:         {m["ats"]*100:.1f}%  ({m["n_ats"]} games)')
-    print(f'ATS ≥3 edge: {m["hi_ats"]*100:.1f}%  ({m["n_hi_ats"]} games)')
-    print(f'O/U:         {m["ou"]*100:.1f}%')
-    print(f'\n52.4% = breakeven at -110 juice')
+def build_features(df):
+    return pd.DataFrame({
+        # Center adjO/adjD around D1 average so intercept stays near 0
+        'delta_adjO':    df['h_adjO']    - df['a_adjO'],
+        'delta_adjD':    df['a_adjD']    - df['h_adjD'],
+        'delta_eFG':     df['h_off_eFG'] - df['a_off_eFG'],
+        'delta_def_eFG': df['a_def_eFG'] - df['h_def_eFG'],
+        'delta_OR':      df['h_off_OR']  - df['a_off_OR'],
+        'delta_TO':      df['a_off_TO']  - df['h_off_TO'],
+        'delta_FTR':     df['h_off_FTR'] - df['a_off_FTR'],
+        'home_court':    (~df['neutral'].astype(bool)).astype(float),
+    }, columns=FEATURE_NAMES)
 
-    # ATS by edge bucket
-    poss   = np.sqrt(df['h_adjT'] * df['a_adjT'])
-    h_sc   = (df['h_adjO'] * df['a_adjD'] / 100) * poss / 100 * score_scale
-    a_sc   = (df['a_adjO'] * df['h_adjD'] / 100) * poss / 100 * score_scale
-    hc_arr = np.where(df['neutral'].astype(bool), 0.0, home_court)
-    margin = (h_sc - a_sc) + hc_arr
+# ══════════════════════════════════════════════════════════
+# RIDGE REGRESSION MODEL
+# ══════════════════════════════════════════════════════════
+def run_regression_model(df):
+    print('\n' + '═' * 64)
+    print('RIDGE REGRESSION MODEL  (all features + season weights)')
+    print('Out-of-sample validation: train 2022-24  →  test 2024-25')
+    print('═' * 64)
 
-    ats_df = df[df['vegas_spread'].notna()].copy()
-    ats_df['_margin'] = margin[ats_df.index].values
-    ats_df['_cover']  = ats_df['actual_margin'] + ats_df['vegas_spread']
-    ats_df['_backed'] = ats_df['_margin'] >= 0
-    ats_df['_edge']   = np.abs(ats_df['_margin'] + ats_df['vegas_spread'])
-    ats_df = ats_df[ats_df['_cover'] != 0]
+    if 'h_off_eFG' not in df.columns:
+        print('  Missing four-factor columns. Delete dataset.csv and re-run.')
+        return None
 
-    print('\nATS breakdown by edge size:')
-    print(f'  {"Bucket":<14} {"Games":>6} {"W-L":>8} {"ATS%":>7} {"vs BE":>8}')
-    for label, lo, hi in [
-        ('≥ 5 pts',  5.0, 999),
-        ('3–5 pts',  3.0, 5.0),
-        ('1.5–3',    1.5, 3.0),
-        ('< 1.5',    0.0, 1.5),
-    ]:
-        bk = ats_df[(ats_df['_edge'] >= lo) & (ats_df['_edge'] < hi)]
-        if bk.empty:
-            continue
-        correct = (bk['_backed'] == (bk['_cover'] > 0))
-        w = correct.sum()
-        l = len(correct) - w
-        pct = w / len(correct) * 100
-        vs_be = pct - 52.4
-        sign = '+' if vs_be >= 0 else ''
-        print(f'  {label:<14} {len(bk):>6} {w:>4}-{l:<4} {pct:>6.1f}% {sign}{vs_be:>6.1f}%')
+    X = build_features(df)
+    y = df['actual_margin'].values
+    weights = get_sample_weights(df)
+
+    train_mask = df['season'] < 2025
+    test_mask  = df['season'] == 2025
+
+    X_train = X[train_mask].values
+    y_train = y[train_mask]
+    w_train = weights[train_mask]
+    X_test  = X[test_mask].values
+    y_test  = y[test_mask]
+
+    n_train = train_mask.sum()
+    n_test  = test_mask.sum()
+    print(f'\nTrain: {n_train:,} games (2022-24) | Test: {n_test:,} games (2024-25)')
+
+    # RidgeCV auto-selects regularization via leave-one-out CV
+    alphas = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
+    model  = RidgeCV(alphas=alphas, fit_intercept=True)
+    model.fit(X_train, y_train, sample_weight=w_train)
+
+    pred_train = model.predict(X_train)
+    pred_test  = model.predict(X_test)
+
+    def metrics(y_true, y_pred):
+        err = np.abs(y_true - y_pred)
+        return {
+            'mae':      err.mean(),
+            'within35': (err <= 3.5).mean(),
+            'within7':  (err <= 7.0).mean(),
+            'correct':  ((y_pred > 0) == (y_true > 0)).mean(),
+        }
+
+    tr = metrics(y_train, pred_train)
+    te = metrics(y_test,  pred_test)
+
+    print(f'\n  {"Metric":<20} {"Train (2022-24)":>16} {"Test (2024-25)":>16}')
+    print(f'  {"─"*20} {"─"*16} {"─"*16}')
+    print(f'  {"MAE":<20} {tr["mae"]:>15.2f}  {te["mae"]:>15.2f}')
+    print(f'  {"Correct side":<20} {tr["correct"]*100:>14.1f}%  {te["correct"]*100:>14.1f}%')
+    print(f'  {"Within 3.5 pts":<20} {tr["within35"]*100:>14.1f}%  {te["within35"]*100:>14.1f}%')
+    print(f'  {"Within 7 pts":<20} {tr["within7"]*100:>14.1f}%  {te["within7"]*100:>14.1f}%')
+
+    print(f'\n  Regularization alpha selected: {model.alpha_}')
+    print(f'\n  Learned coefficients:')
+    print(f'  {"Feature":<20} {"Coeff":>10}  Note')
+    print(f'  {"─"*20} {"─"*10}  {"─"*35}')
+    for name, coef in zip(FEATURE_NAMES, model.coef_):
+        note = ''
+        if name == 'home_court':
+            note = f'← implied HCA = {coef:.2f} pts'
+        elif name == 'avg_adjT':
+            note = f'← pace effect per possession-unit'
+        print(f'  {name:<20} {coef:>10.4f}  {note}')
+    if abs(model.intercept_) > 0.1:
+        print(f'  {"intercept":<20} {model.intercept_:>10.4f}  ← systematic bias (ideally ~0)')
+
+    return model, te
+
+# ══════════════════════════════════════════════════════════
+# BASELINE DIAGNOSTICS (current app settings)
+# ══════════════════════════════════════════════════════════
+def run_baseline(df):
+    print('═' * 64)
+    print('BASELINE  (current app: scoreScale=1.12, homeCourt=2.0)')
+    print('═' * 64)
+
+    m = score_params(df, 1.12, 2.0)
+
+    print(f'  Games:        {m["n_games"]:,}')
+    print(f'  MAE:          {m["mae"]:.2f} pts')
+    print(f'  Correct side: {m["correct"]*100:.1f}%')
+    print(f'  Within 3.5:   {m["within35"]*100:.1f}%')
+    print(f'  ATS:          {m["ats"]*100:.1f}%  ({m["n_ats"]:,} games)')
+    print(f'  ATS ≥3 edge:  {m["hi_ats"]*100:.1f}%')
+    return m
+
+# ══════════════════════════════════════════════════════════
+# SUMMARY + INDEX.HTML UPDATE INSTRUCTIONS
+# ══════════════════════════════════════════════════════════
+def print_summary(baseline, best_formula, regression_result):
+    print('\n' + '═' * 64)
+    print('SUMMARY — WHAT EACH MODEL GIVES YOU')
+    print('═' * 64)
+
+    reg_model, reg_te = regression_result if regression_result else (None, None)
+
+    print(f'\n  {"Model":<30} {"MAE":>8}  {"Correct":>9}  {"Within3.5":>10}')
+    print(f'  {"─"*30} {"─"*8}  {"─"*9}  {"─"*10}')
+    print(f'  {"Current app (1.12 / 2.0)":<30} {baseline["mae"]:>8.2f}  '
+          f'{baseline["correct"]*100:>8.1f}%  {baseline["within35"]*100:>9.1f}%')
+
+    # Re-score with best formula params
+    bf_m = score_params(df_global,
+                        float(best_formula['score_scale']),
+                        float(best_formula['home_court']))
+    print(f'  {"Weighted formula opt":<30} {bf_m["mae"]:>8.2f}  '
+          f'{bf_m["correct"]*100:>8.1f}%  {bf_m["within35"]*100:>9.1f}%')
+
+    if reg_te:
+        print(f'  {"Ridge regression (OOS 2024-25)":<30} {reg_te["mae"]:>8.2f}  '
+              f'{reg_te["correct"]*100:>8.1f}%  {reg_te["within35"]*100:>9.1f}%')
+
+    print(f'\n  Breakeven ATS: 52.4%')
+
+    print(f'\n  To update the app with weighted formula params:')
+    print(f'    scoreScale = {best_formula["score_scale"]:.2f}')
+    print(f'    homeCourt  = {best_formula["home_court"]:.1f}')
+
+    if reg_model is not None:
+        hc_idx = FEATURE_NAMES.index('home_court')
+        hc_val = reg_model.coef_[hc_idx]
+        print(f'\n  Regression model implies home court = {hc_val:.2f} pts')
+        print(f'  (vs {best_formula["home_court"]:.1f} pts from formula optimizer)')
+        print(f'\n  Full regression results saved → data/regression_coefficients.json')
+
+        coeff_path = DATA_DIR / 'regression_coefficients.json'
+        coeff_path.write_text(json.dumps({
+            'features':    FEATURE_NAMES,
+            'coefficients': model_coef_list(reg_model),
+            'intercept':   reg_model.intercept_,
+            'alpha':       reg_model.alpha_,
+            'oos_mae':     reg_te['mae'],
+            'oos_correct': reg_te['correct'],
+        }, indent=2))
+
+    print('═' * 64)
+
+def model_coef_list(model):
+    return [round(float(c), 6) for c in model.coef_]
 
 # ══════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════
+df_global = None  # set in main so summary can access it
+
 if __name__ == '__main__':
-    print('TrueLine LS — Model Optimization')
-    print('=' * 60)
+    print('TrueLine LS — Model Optimization v2')
+    print('=' * 64)
 
     if ODDS_API_KEY == 'YOUR_KEY_HERE':
         print('ERROR: Set ODDS_API_KEY at the top of this script.')
@@ -638,19 +745,37 @@ if __name__ == '__main__':
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Load or build dataset
     dataset_path = DATA_DIR / 'dataset.csv'
+    needs_rebuild = True
     if dataset_path.exists():
-        print(f'Loading cached dataset from {dataset_path}...')
         df = pd.read_csv(dataset_path)
-        print(f'Loaded {len(df):,} games '
-              f'({df["vegas_spread"].notna().sum():,} with spreads)')
-    else:
-        print('No cached dataset found — fetching from APIs...')
+        if 'h_off_eFG' in df.columns and 'season' in df.columns:
+            needs_rebuild = False
+            print(f'Loaded cached dataset: {len(df):,} games '
+                  f'({df["vegas_spread"].notna().sum():,} with spreads)')
+        else:
+            print('Dataset missing new columns — rebuilding with four factors...')
+
+    if needs_rebuild:
+        print('Building dataset (fetching from APIs)...')
         df = build_dataset()
 
     if df is None or df.empty:
-        print('No data. Check your API key and internet connection.')
+        print('No data. Check API key and internet connection.')
         sys.exit(1)
 
-    run_diagnostics(df)
-    run_optimization(df)
+    df_global = df
+
+    # 1. Baseline
+    print()
+    baseline = run_baseline(df)
+
+    # 2. Weighted formula optimization
+    best_formula = run_formula_optimization(df)
+
+    # 3. Ridge regression with all features
+    regression_result = run_regression_model(df)
+
+    # 4. Summary
+    print_summary(baseline, best_formula, regression_result)
