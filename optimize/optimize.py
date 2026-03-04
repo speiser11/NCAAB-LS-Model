@@ -51,7 +51,7 @@ SEASONS = {
 SEASON_WEIGHTS = {2023: 1, 2024: 2, 2025: 3}
 
 # Grid search space for formula optimizer
-SCORE_SCALES = np.round(np.arange(0.96, 1.14, 0.02), 3).tolist()
+SCORE_SCALES = np.round(np.arange(0.90, 1.16, 0.02), 3).tolist()
 HOME_COURTS  = np.round(np.arange(1.0,  5.5,  0.5),  1).tolist()
 
 NCAAB_SIGMA  = 10.5
@@ -506,8 +506,10 @@ def get_sample_weights(df):
 # ══════════════════════════════════════════════════════════
 def score_params(df, score_scale, home_court, weights=None):
     poss    = np.sqrt(df['h_adjT'] * df['a_adjT'])
-    h_score = (df['h_adjO'] * df['a_adjD'] / 100) * poss / 100 * score_scale
-    a_score = (df['a_adjO'] * df['h_adjD'] / 100) * poss / 100 * score_scale
+    # Normalize adjD against D1 average so scoreScale ≈ 1.0 rather than compensating
+    # for Torvik adjO/adjD averaging ~106/105 instead of 100/100
+    h_score = df['h_adjO'] * (df['a_adjD'] / _ADJ_D_MEAN) * poss / 100 * score_scale
+    a_score = df['a_adjO'] * (df['h_adjD'] / _ADJ_D_MEAN) * poss / 100 * score_scale
     hc_arr  = np.where(df['neutral'].astype(bool), 0.0, home_court)
     margin  = (h_score - a_score) + hc_arr
     total   = h_score + a_score
@@ -702,10 +704,10 @@ def run_regression_model(df):
 # ══════════════════════════════════════════════════════════
 def run_baseline(df):
     print('═' * 64)
-    print('BASELINE  (current app: scoreScale=1.12, homeCourt=2.0)')
+    print('BASELINE  (current app: scoreScale=0.96, homeCourt=3.5)')
     print('═' * 64)
 
-    m = score_params(df, 1.12, 2.0)
+    m = score_params(df, 0.96, 3.5)
 
     print(f'  Games:        {m["n_games"]:,}')
     print(f'  MAE:          {m["mae"]:.2f} pts')
