@@ -205,17 +205,17 @@ def get_torvik_session():
     return s
 
 def fetch_torvik(date_str):
-    """Fetch Torvik ratings + four factors for date_str. Cached to disk.
-    Automatically invalidates old caches that are missing four factor fields."""
+    """Fetch Torvik ratings + four factors + games played for date_str. Cached to disk.
+    Automatically invalidates old caches missing four factor or games fields."""
     cache = DATA_DIR / 'torvik' / f'{date_str}.json'
     if cache.exists():
         try:
             data = json.loads(cache.read_text())
             if data:
                 sample = next(iter(data.values()))
-                if 'off_eFG' in sample:
+                if 'off_eFG' in sample and 'games' in sample:
                     return data
-            # Cache is stale (missing four factors) — delete and re-fetch
+            # Cache is stale — delete and re-fetch
             cache.unlink()
         except Exception:
             cache.unlink()
@@ -241,6 +241,7 @@ def fetch_torvik(date_str):
                 'adjO':    float(row[1]),
                 'adjD':    float(row[2]),
                 'barthag': float(row[3]),
+                'games':   int(row[6]),    # games played at this weekly snapshot
                 'adjT':    float(row[15]),
                 # Four factors
                 'off_eFG': float(row[7]),
@@ -435,8 +436,10 @@ def build_dataset(seasons=None):
                 # Core efficiency
                 'h_adjO':    home_r['adjO'],   'h_adjD':    home_r['adjD'],
                 'h_adjT':    home_r['adjT'],   'h_barthag': home_r['barthag'],
+                'h_games':   home_r.get('games', 20),
                 'a_adjO':    away_r['adjO'],   'a_adjD':    away_r['adjD'],
                 'a_adjT':    away_r['adjT'],   'a_barthag': away_r['barthag'],
+                'a_games':   away_r.get('games', 20),
                 # Four factors — home
                 'h_off_eFG': home_r['off_eFG'], 'h_def_eFG': home_r['def_eFG'],
                 'h_off_OR':  home_r['off_OR'],  'h_def_OR':  home_r['def_OR'],
@@ -463,11 +466,40 @@ def build_dataset(seasons=None):
     return df
 
 # ══════════════════════════════════════════════════════════
-# SEASON WEIGHTS
+# GAME WEIGHTS  (season recency × games-played reliability)
 # ══════════════════════════════════════════════════════════
 def get_sample_weights(df):
-    """Return per-game weight array based on season recency."""
-    return df['season'].map(SEASON_WEIGHTS).fillna(1).values
+    """
+    Combined weight = season_weight × early_season_weight.
+
+    Season weight:       2025=3x  2024=2x  2023=1x  (recent seasons matter more)
+    Early-season weight: scales by weeks into the season. Torvik ratings are noisy
+                         for the first 6 weeks (Nov 1 → ~Dec 10) because teams have
+                         played only a handful of games. After ~8 weeks ratings
+                         stabilize. This directly targets the Nov/Dec MAE=11.0 vs
+                         Jan+ MAE=8.5 gap we measured in the data.
+
+    Note: Torvik's 'games' field carries over from the prior season so we can't
+    use it directly. We compute season progress from the game date instead.
+    """
+    season_w = df['season'].map(SEASON_WEIGHTS).fillna(1).values
+
+    # Compute weeks into the current season (season starts ~Nov 1)
+    dates = pd.to_datetime(df['date'].astype(str), format='%Y%m%d')
+    # Season year: year the season ends (e.g. 2025 = 2024-25 season)
+    season_yr = df['season'].values
+    # Nov 1 of the start year (e.g. 2024-11-01 for the 2024-25 season)
+    season_start = pd.to_datetime(
+        pd.Series(season_yr - 1).astype(str) + '-11-01'
+    ).values
+    days_in  = (dates.values - season_start).astype('timedelta64[D]').astype(float)
+    weeks_in = days_in / 7.0
+
+    # Full weight at 8 weeks (≈ end of December); floor at 0.15 so Nov games
+    # are down-weighted but not completely ignored
+    early_w = np.clip(weeks_in / 8.0, 0.15, 1.0)
+
+    return season_w * early_w
 
 # ══════════════════════════════════════════════════════════
 # FORMULA SCORING — vectorized, supports sample weights
@@ -613,7 +645,14 @@ def run_regression_model(df):
 
     n_train = train_mask.sum()
     n_test  = test_mask.sum()
+    # Show effective weight breakdown so user can see games-weighting in action
+    w_all   = get_sample_weights(df)
+    early   = df['season'].eq(2025) & df['date'].astype(str).str[4:6].isin(['11','12'])
+    late    = df['season'].eq(2025) & ~df['date'].astype(str).str[4:6].isin(['11','12'])
     print(f'\nTrain: {n_train:,} games (2022-24) | Test: {n_test:,} games (2024-25)')
+    avg_early = w_all[early.values].mean() if early.any() else 0
+    avg_late  = w_all[late.values].mean()  if late.any()  else 0
+    print(f'Avg weight — early season (Nov/Dec): {avg_early:.2f} | late season (Jan+): {avg_late:.2f}')
 
     # RidgeCV auto-selects regularization via leave-one-out CV
     alphas = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]

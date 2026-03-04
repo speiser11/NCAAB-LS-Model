@@ -941,6 +941,7 @@ input[type=date] {
 .ctx-badge{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;font-size:.52rem;font-weight:700;border-radius:3px;padding:.06rem .28rem;margin-left:.22rem;vertical-align:middle;flex-shrink:0;white-space:nowrap;}
 .b2b-tag{color:var(--yellow);background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.28);}
 .inj-flag{color:var(--red);background:rgba(224,82,82,.1);border:1px solid rgba(224,82,82,.25);}
+.early-tag{color:#a78bfa;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.28);}
 .form-tag{border:1px solid currentColor;background:rgba(0,0,0,.04);}
 .form-up{color:var(--green);}
 .form-dn{color:var(--red);}
@@ -1356,7 +1357,7 @@ function parseTorvik(data) {
              : [];
   rows.forEach(row => {
     try {
-      let team, adjO, adjD, adjT, barthag, conf = '';
+      let team, adjO, adjD, adjT, barthag, conf = '', games = null;
       let oEfg, oTo, oOr, oFtr, dEfg, dTo, dOr, dFtr;
       if (Array.isArray(row)) {
         // Common Torvik array layout:
@@ -1369,6 +1370,7 @@ function parseTorvik(data) {
         } else if (typeof row[0] === 'string') {
           // [team, adjOE, adjDE, barthag, record, wins, games, ...]
           team = row[0]; adjO = row[1]; adjD = row[2]; barthag = row[3]; adjT = row[15];
+          games = typeof row[6] === 'number' ? row[6] : null;
         }
       } else if (row && typeof row === 'object') {
         team    = row.team || row.Team;
@@ -1388,6 +1390,7 @@ function parseTorvik(data) {
       out[key] = {
         raw: team, conf: (typeof conf === 'string' ? conf : ''),
         adjO, adjD, adjT, barthag: parseFloat(barthag) || 0,
+        games: games != null ? parseInt(games) : null,
         oEfg: parseFloat(oEfg) || 0, oTo: parseFloat(oTo) || 0,
         oOr:  parseFloat(oOr)  || 0, oFtr: parseFloat(oFtr) || 0,
         dEfg: parseFloat(dEfg) || 0, dTo: parseFloat(dTo) || 0,
@@ -2335,6 +2338,18 @@ function renderCard(g) {
     if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}" title="Last-14-day trend: adjO ${form.dO > 0?'+':''}${form.dO} / adjD ${form.dD > 0?'+':''}${form.dD}">${form.net > 0 ? '↑' : '↓'} ${Math.abs(form.net).toFixed(1)}</span>`;
     return s;
   }
+  // Confidence badge based on weeks into the season.
+  // Torvik ratings are noisy early in the season — Nov/Dec MAE ~11 pts vs Jan+ ~8.5 pts.
+  // Torvik's 'games' field carries over from the prior season so we use the calendar date.
+  function confidenceBadge() {
+    const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+    const day   = now.getDate();
+    // Season starts Nov 1; full weight ~Dec 10 (week 6)
+    if (month === 11 && day <= 14) return `<span class="ctx-badge early-tag" title="Season week 1-2 — Torvik ratings have very few games, predictions are less reliable">⚠ Early Season</span>`;
+    if (month === 11 || (month === 12 && day <= 10)) return `<span class="ctx-badge early-tag" title="Early season — ratings still stabilizing, treat predictions with caution">Early</span>`;
+    return '';
+  }
   function moveBadge(move) {
     if (move == null || Math.abs(move) < 0.5) return '';
     return `<span class="line-move ${move > 0 ? 'lm-up' : 'lm-dn'}" title="Line moved ${move > 0 ? 'toward home' : 'toward away'} since open">${move > 0 ? '↑' : '↓'}${Math.abs(move).toFixed(1)}</span>`;
@@ -2343,6 +2358,7 @@ function renderCard(g) {
   const aCtx = teamBadges(g.aB2B, g.aInjuries||[], g.aForm);
   const hCtx = teamBadges(g.hB2B, g.hInjuries||[], g.hForm);
   const travelBadge = g.awayTravel ? `<span class="ctx-badge travel-tag" title="Away team traveling 2+ time zones">✈ travel</span>` : '';
+  const earlyBadge  = confidenceBadge();
 
   return `
     <div class="card${edgeCardCls}${rankedCls}" id="game-${g.id}">
@@ -2351,7 +2367,7 @@ function renderCard(g) {
           ${awayRankBadge}<span class="team-away team-link" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${esc(displayName(g.aKey, g.away))}</span>${aCtx}
           <span class="card-vs">@</span>
           ${homeRankBadge}<span class="team-home team-link" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${esc(displayName(g.hKey, g.home))}</span>${hCtx}
-          ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}${travelBadge}
+          ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}${travelBadge}${earlyBadge}
         </div>
         <div style="display:flex;align-items:center;gap:.4rem;">${rankedMatchupBadge}${statusBadge}</div>
       </div>
