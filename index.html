@@ -798,6 +798,39 @@ input[type=date] {
   .ft-team{ min-width:0;flex:1; }
   .ft-stats{ white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 }
+
+/* ── Compact mobile card ── */
+.card-mobile{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.card-mobile.cm-hot{border-color:var(--green);}
+.card-mobile.cm-warm{border-color:var(--yellow);}
+.cm-hd{display:flex;align-items:center;justify-content:space-between;padding:.38rem .7rem;gap:.4rem;}
+.cm-teams{display:flex;align-items:center;gap:.22rem;flex:1;min-width:0;font-size:.76rem;font-weight:600;overflow:hidden;}
+.cm-tname{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38%;}
+.cm-tname:hover{color:var(--blue);}
+.cm-at{color:var(--muted);font-size:.68rem;flex-shrink:0;}
+.cm-rank{font-size:.58rem;color:#c8920a;font-weight:700;flex-shrink:0;}
+.cm-score{display:flex;align-items:center;gap:.5rem;padding:.28rem .7rem;background:rgba(224,82,82,.06);border-top:1px solid var(--border);}
+.cm-pts{font-family:'Inter',sans-serif;font-weight:800;font-size:1.05rem;color:var(--muted);letter-spacing:-.02em;min-width:1.6rem;text-align:center;}
+.cm-pts.cm-lead{color:var(--text);}
+.cm-score-sep{color:var(--border);}
+.cm-clock{font-size:.6rem;color:var(--red);font-weight:600;margin-left:auto;}
+.cm-cover{font-size:.58rem;font-weight:600;padding:.1rem .32rem;border-radius:10px;flex-shrink:0;}
+.cm-cover.cm-covering{background:var(--surface-green);color:var(--green);border:1px solid var(--border-green);}
+.cm-cover.cm-trailing{background:var(--surface-red);color:var(--red);border:1px solid var(--border-red);}
+.cm-cover.cm-push{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.cm-pace{font-size:.58rem;font-weight:600;flex-shrink:0;}
+.cm-pace.cm-over{color:var(--green);}
+.cm-pace.cm-under{color:var(--red);}
+.cm-lines{border-top:1px solid var(--border);padding:.28rem .7rem;display:flex;flex-direction:column;}
+.cm-row{display:flex;align-items:center;gap:.4rem;padding:.18rem 0;}
+.cm-row+.cm-row{border-top:1px solid var(--border);}
+.cm-lbl{font-family:'Inter',sans-serif;font-size:.56rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);width:2.8rem;flex-shrink:0;}
+.cm-val{font-family:'Inter',sans-serif;font-weight:700;font-size:.72rem;color:var(--text);min-width:2.6rem;}
+.cm-vs{font-size:.58rem;color:var(--border);flex-shrink:0;}
+.cm-vval{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);min-width:2.6rem;}
+.cm-edge{margin-left:auto;font-size:.62rem;font-weight:700;color:var(--muted);}
+.cm-edge.cm-good{color:var(--green);}
+.cm-edge.cm-mod{color:var(--yellow);}
 </style>
 </head>
 <body>
@@ -1496,7 +1529,121 @@ function renderFactors(g) {
   return `<div class="factors-wrap"><div class="factors-title">Four Factors Matchup</div><div class="factors-grid">${cells}</div></div>`;
 }
 
+function renderMobileCard(g) {
+  const { pred, vegasSpread, vegasTotal } = g;
+  const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
+  const final = g.statusName === 'STATUS_FINAL';
+
+  // Status badge
+  const gameTime = g.time ? new Date(g.time).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : '';
+  const badge = live  ? `<span class="status-badge badge-live">● ${esc(g.shortDetail)}</span>`
+              : final ? `<span class="status-badge badge-final">Final</span>`
+              :         `<span class="status-badge badge-upcoming">${gameTime}</span>`;
+
+  // Teams
+  const aRank = g.awayRank <= 25 ? `<span class="cm-rank">#${g.awayRank}</span>` : '';
+  const hRank = g.homeRank <= 25 ? `<span class="cm-rank">#${g.homeRank}</span>` : '';
+  const aName = esc(displayName(g.aKey, g.away));
+  const hName = esc(displayName(g.hKey, g.home));
+  const be = bestEdge(g);
+  const hotCls = be >= 3 ? ' cm-hot' : be >= 1.5 ? ' cm-warm' : '';
+
+  // Spread row
+  let spreadRow;
+  if (!pred) {
+    spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val cm-muted">No data</span></div>`;
+  } else {
+    const modelStr = fmtSpread((-pred.margin).toFixed(1));
+    if (vegasSpread) {
+      const edge = pred.margin - (-vegasSpread.point);
+      const eCls = Math.abs(edge) >= 3 ? ' cm-good' : Math.abs(edge) >= 1.5 ? ' cm-mod' : '';
+      spreadRow = `<div class="cm-row">
+        <span class="cm-lbl">Spread</span>
+        <span class="cm-val">${modelStr}</span>
+        <span class="cm-vs">vs</span>
+        <span class="cm-vval">${fmtSpread(vegasSpread.point)}</span>
+        <span class="cm-edge${eCls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
+      </div>`;
+    } else {
+      spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val">${modelStr}</span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
+    }
+  }
+
+  // O/U row
+  let totalRow;
+  if (!pred) {
+    totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val cm-muted">No data</span></div>`;
+  } else {
+    const modelTot = pred.total.toFixed(1);
+    if (vegasTotal) {
+      const edge = pred.total - vegasTotal.point;
+      const eCls = Math.abs(edge) >= 3 ? ' cm-good' : Math.abs(edge) >= 1.5 ? ' cm-mod' : '';
+      totalRow = `<div class="cm-row">
+        <span class="cm-lbl">O/U</span>
+        <span class="cm-val">${modelTot}</span>
+        <span class="cm-vs">vs</span>
+        <span class="cm-vval">${vegasTotal.point}</span>
+        <span class="cm-edge${eCls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
+      </div>`;
+    } else {
+      totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val">${modelTot}</span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
+    }
+  }
+
+  // Score row (live + final)
+  let scoreHtml = '';
+  if (live || final) {
+    const hs = parseInt(g.homeScore) || 0;
+    const as = parseInt(g.awayScore) || 0;
+    const aLead = as > hs, hLead = hs > as;
+    const clockStr = final ? 'Final' : (g.shortDetail || '');
+
+    let coverHtml = '';
+    if (vegasSpread && live) {
+      const gap = hs - as + vegasSpread.point;
+      const hShort = esc(displayName(g.hKey, g.home).split(' ').pop());
+      const aShort = esc(displayName(g.aKey, g.away).split(' ').pop());
+      if (Math.abs(gap) < 0.5) coverHtml = `<span class="cm-cover cm-push">Push</span>`;
+      else if (gap > 0) coverHtml = `<span class="cm-cover cm-covering">${hShort} cvr</span>`;
+      else              coverHtml = `<span class="cm-cover cm-trailing">${aShort} cvr</span>`;
+    }
+
+    let paceHtml = '';
+    if (live && vegasTotal) {
+      const projected = calcLivePace(g);
+      if (projected !== null) {
+        const diff = projected - vegasTotal.point;
+        const dir = diff > 2 ? 'cm-over' : diff < -2 ? 'cm-under' : '';
+        const label = diff > 2 ? `OVER` : diff < -2 ? `UNDER` : `Push`;
+        paceHtml = `<span class="cm-pace ${dir}">${label}</span>`;
+      }
+    }
+
+    scoreHtml = `<div class="cm-score">
+      <span class="cm-pts${aLead ? ' cm-lead' : ''}">${as}</span>
+      <span class="cm-score-sep">—</span>
+      <span class="cm-pts${hLead ? ' cm-lead' : ''}">${hs}</span>
+      <span class="cm-clock">${esc(clockStr)}</span>
+      ${coverHtml}${paceHtml}
+    </div>`;
+  }
+
+  return `<div class="card-mobile${hotCls}" id="game-${g.id}">
+    <div class="cm-hd">
+      <div class="cm-teams">
+        ${aRank}<span class="cm-tname" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${aName}</span>
+        <span class="cm-at">@</span>
+        ${hRank}<span class="cm-tname" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${hName}</span>
+      </div>
+      ${badge}
+    </div>
+    ${scoreHtml}
+    <div class="cm-lines">${spreadRow}${totalRow}</div>
+  </div>`;
+}
+
 function renderCard(g) {
+  if (window.innerWidth <= 640) return renderMobileCard(g);
   const { pred, vegasSpread, vegasTotal } = g;
   const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
   const final = g.statusName === 'STATUS_FINAL';
