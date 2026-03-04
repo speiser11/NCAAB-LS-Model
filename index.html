@@ -661,6 +661,45 @@ input[type=date]{
   text-align:center;padding:2rem 1rem;line-height:1.6;
 }
 
+/* ── Mobile controls (hidden on desktop) ── */
+.mobile-controls { display:none; }
+.mobile-conf-wrap { display:none; }
+
+.mobile-select {
+  font-size:.72rem; padding:.22rem .5rem;
+  border:1px solid var(--border); border-radius:6px;
+  background:var(--surface); color:var(--text);
+  cursor:pointer; appearance:auto;
+}
+.mobile-filter-wrap { position:relative; }
+.mobile-filter-btn {
+  font-size:.72rem; padding:.22rem .55rem;
+  border:1px solid var(--border); border-radius:6px;
+  background:var(--surface); color:var(--text);
+  cursor:pointer; display:flex; align-items:center; gap:.25rem;
+}
+.mobile-filter-btn.mfb-active { border-color:var(--accent); color:var(--accent); }
+.mobile-filter-count {
+  background:var(--accent); color:#fff;
+  border-radius:50%; width:14px; height:14px;
+  font-size:.58rem; font-weight:700;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.mobile-filter-panel {
+  display:none; position:absolute; top:calc(100% + 4px); right:0;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:.5rem .6rem; z-index:200;
+  min-width:140px; box-shadow:0 4px 16px rgba(0,0,0,.15);
+}
+.mobile-filter-panel.mfp-open { display:block; }
+.mfp-item {
+  display:flex; align-items:center; gap:.4rem;
+  font-size:.75rem; color:var(--text);
+  padding:.28rem 0; cursor:pointer; white-space:nowrap;
+}
+.mfp-item input { cursor:pointer; accent-color:var(--accent); }
+.mobile-conf-select { width:auto; }
+
 /* ── Responsive ── */
 @media(max-width:640px){
   /* Header */
@@ -670,9 +709,15 @@ input[type=date]{
   .search-wrap{max-width:100%;}
   .brand-ncaab,.brand-model{font-size:1.2rem;}
 
-  /* Sub-nav */
+  /* Sub-nav — hide desktop controls, show mobile replacements */
   .sub-nav-right{padding:.3rem .6rem;gap:.3rem;}
   .stab{padding:.45rem .6rem;font-size:.72rem;}
+  .sort-pills{display:none;}
+  .subnav-sep{display:none;}
+  .chip-btn{display:none;}
+  .conf-strip{display:none!important;}
+  .mobile-controls{display:flex;align-items:center;gap:.3rem;}
+  .mobile-conf-wrap{display:flex!important;padding:.3rem .85rem;border-bottom:1px solid var(--border);background:var(--surface2);}
   .sort-pill{font-size:.68rem;padding:.15rem .45rem;}
   .chip-btn{font-size:.68rem;padding:.18rem .45rem;}
   .conf-strip{padding:.4rem .85rem;gap:.25rem;}
@@ -906,10 +951,35 @@ input[type=date] {
     <button class="chip-btn" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
     <div class="subnav-sep"></div>
     <button class="chip-btn" id="fc-compact" onclick="toggleFilter('compact')" title="Compact view">⊟</button>
+    <!-- Mobile-only controls -->
+    <div class="mobile-controls">
+      <select class="mobile-select" id="mobile-sort" onchange="setSort(this.value)">
+        <option value="edge">Best Edge</option>
+        <option value="time">Time</option>
+        <option value="rank">Ranked</option>
+        <option value="conf">By Conf</option>
+      </select>
+      <div class="mobile-filter-wrap">
+        <button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleMobileFilters(event)">
+          Filters<span class="mobile-filter-count" id="mobile-filter-count" style="display:none"></span>
+        </button>
+        <div class="mobile-filter-panel" id="mobile-filter-panel">
+          <label class="mfp-item"><input type="checkbox" id="mfp-odds" onchange="toggleFilter('hasOdds')"> Odds Only</label>
+          <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 1.5</label>
+          <label class="mfp-item"><input type="checkbox" id="mfp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25</label>
+          <label class="mfp-item"><input type="checkbox" id="mfp-compact" onchange="toggleFilter('compact')"> Compact</label>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <div class="conf-strip" id="conf-strip" style="display:none"></div>
+<div class="mobile-conf-wrap" id="mobile-conf-wrap" style="display:none">
+  <select class="mobile-select mobile-conf-select" id="mobile-conf" onchange="setConference(this.value)">
+    <option value="">All Conferences</option>
+  </select>
+</div>
 <div class="day-summary" id="day-summary" style="display:none"></div>
 <div class="status-bar">
   <span class="sc" id="st-ratings">Ratings: —</span>
@@ -2466,14 +2536,38 @@ function toggleFilter(key) {
     document.getElementById('game-list').querySelector('.game-list-inner')
       ?.classList.toggle('compact-list', filters.compact);
   }
+  // Sync mobile checkboxes
+  const cbMap = { hasOdds:'mfp-odds', edgeOnly:'mfp-edge', onlyRanked:'mfp-ranked', compact:'mfp-compact' };
+  if (cbMap[key]) { const cb = document.getElementById(cbMap[key]); if (cb) cb.checked = filters[key]; }
+  updateMobileFilterCount();
   render(_lastGames);
 }
+
+function updateMobileFilterCount() {
+  const count = ['hasOdds','edgeOnly','onlyRanked','compact'].filter(k => filters[k]).length;
+  const el = document.getElementById('mobile-filter-count');
+  const btn = document.getElementById('mobile-filter-btn');
+  if (el) { el.textContent = count || ''; el.style.display = count ? 'inline-flex' : 'none'; }
+  if (btn) btn.classList.toggle('mfb-active', count > 0);
+}
+
+function toggleMobileFilters(e) {
+  e.stopPropagation();
+  document.getElementById('mobile-filter-panel')?.classList.toggle('mfp-open');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.mobile-filter-wrap')) {
+    document.getElementById('mobile-filter-panel')?.classList.remove('mfp-open');
+  }
+});
 
 function setSort(val) {
   filters.sort = val;
   document.querySelectorAll('.sort-pill').forEach(el =>
     el.classList.toggle('active', el.dataset.sort === val)
   );
+  const ms = document.getElementById('mobile-sort'); if (ms) ms.value = val;
   render(_lastGames);
 }
 
@@ -2518,11 +2612,17 @@ function drillConf(conf) {
 
 function updateConferenceFilter(games) {
   const strip = document.getElementById('conf-strip');
+  const mobileWrap = document.getElementById('mobile-conf-wrap');
+  const mobileConf = document.getElementById('mobile-conf');
   if (!strip) return;
   const confs = [...new Set(
     games.flatMap(g => [g.hConf, g.aConf]).filter(c => c && c.length > 0)
   )].sort();
-  if (!confs.length) { strip.style.display = 'none'; return; }
+  if (!confs.length) {
+    strip.style.display = 'none';
+    if (mobileWrap) mobileWrap.style.display = 'none';
+    return;
+  }
   strip.style.display = '';
   strip.innerHTML =
     `<span class="conf-strip-label">Conf</span>` +
@@ -2530,6 +2630,12 @@ function updateConferenceFilter(games) {
     confs.map(c =>
       `<button class="conf-pill${filters.conference === c ? ' active' : ''}" onclick="setConference('${esc(c)}')">${esc(c)}</button>`
     ).join('');
+  // Mobile conf select
+  if (mobileWrap && mobileConf) {
+    mobileWrap.style.display = '';
+    mobileConf.innerHTML = `<option value="">All Conferences</option>` +
+      confs.map(c => `<option value="${esc(c)}"${filters.conference === c ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  }
 }
 
 let _lastGames = [];
