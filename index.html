@@ -994,7 +994,7 @@ input[type=date] {
     </div>
     <div class="subnav-sep"></div>
     <button class="chip-btn" id="fc-odds" onclick="toggleFilter('hasOdds')">Odds Only</button>
-    <button class="chip-btn" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 1.5</button>
+    <button class="chip-btn" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 4</button>
     <button class="chip-btn" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
     <div class="subnav-sep"></div>
     <button class="chip-btn" id="fc-compact" onclick="toggleFilter('compact')" title="Compact view">⊟</button>
@@ -1019,7 +1019,7 @@ input[type=date] {
       </button>
       <div class="mobile-filter-panel" id="mobile-filter-panel">
         <label class="mfp-item"><input type="checkbox" id="mfp-odds" onchange="toggleFilter('hasOdds')"> Odds Only</label>
-        <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 1.5</label>
+        <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 4</label>
         <label class="mfp-item"><input type="checkbox" id="mfp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25</label>
         <label class="mfp-item"><input type="checkbox" id="mfp-compact" onchange="toggleFilter('compact')"> Compact</label>
       </div>
@@ -1867,7 +1867,7 @@ function fmtSpread(n) {
 
 function edgeCls(e) {
   const a = Math.abs(e);
-  return a >= 3 ? 'strong' : a >= 1.5 ? 'mod' : 'neg';
+  return a >= 7 ? 'strong' : a >= 4 ? 'mod' : 'neg';
 }
 
 // Projected final total based on current score and time elapsed
@@ -1952,8 +1952,8 @@ function getAdvice(g) {
   const spreadTeam = sEdge !== null ? (sEdge > 0 ? hShort : aShort) : null;
   const totalDir   = tEdge !== null ? (tEdge > 0 ? 'Over'  : 'Under') : null;
 
-  const sStrong = sAbs >= 3, sLean = sAbs >= 1.5;
-  const tStrong = tAbs >= 3, tLean = tAbs >= 1.5;
+  const sStrong = sAbs >= 7, sLean = sAbs >= 4;
+  const tStrong = tAbs >= 7, tLean = tAbs >= 4;
 
   if (!sLean && !tLean) return { text: 'No Action', cls: 'cm-act-none' };
 
@@ -1982,7 +1982,7 @@ function renderMobileCard(g) {
   const aName = esc(displayName(g.aKey, g.away));
   const hName = esc(displayName(g.hKey, g.home));
   const be = bestEdge(g);
-  const hotCls = be >= 3 ? ' cm-hot' : be >= 1.5 ? ' cm-warm' : '';
+  const hotCls = be >= 7 ? ' cm-hot' : be >= 4 ? ' cm-warm' : '';
 
   // Spread row
   let spreadRow;
@@ -1995,7 +1995,7 @@ function renderMobileCard(g) {
     if (vegasSpread) {
       const vFav = esc(spreadFavName(vegasSpread.point, g.hKey, g.home, g.aKey, g.away));
       const edge = pred.margin - (-vegasSpread.point);
-      const eCls = Math.abs(edge) >= 3 ? ' cm-good' : Math.abs(edge) >= 1.5 ? ' cm-mod' : '';
+      const eCls = Math.abs(edge) >= 7 ? ' cm-good' : Math.abs(edge) >= 4 ? ' cm-mod' : '';
       const smv = g.spreadMove != null && Math.abs(g.spreadMove) >= 0.5 ? `<span class="line-move ${g.spreadMove > 0 ? 'lm-up' : 'lm-dn'}">${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove).toFixed(1)}</span>` : '';
       spreadRow = `<div class="cm-row">
         <span class="cm-lbl">Spread</span>
@@ -2018,7 +2018,7 @@ function renderMobileCard(g) {
     const modelTot = pred.total.toFixed(1);
     if (vegasTotal) {
       const edge = pred.total - vegasTotal.point;
-      const eCls = Math.abs(edge) >= 3 ? ' cm-good' : Math.abs(edge) >= 1.5 ? ' cm-mod' : '';
+      const eCls = Math.abs(edge) >= 7 ? ' cm-good' : Math.abs(edge) >= 4 ? ' cm-mod' : '';
       const tmv = g.totalMove != null && Math.abs(g.totalMove) >= 0.5 ? `<span class="line-move ${g.totalMove > 0 ? 'lm-up' : 'lm-dn'}">${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove).toFixed(1)}</span>` : '';
       totalRow = `<div class="cm-row">
         <span class="cm-lbl">O/U</span>
@@ -2149,7 +2149,7 @@ function renderCard(g) {
           <span class="mnum-val">${fmtSpread(vegasPoint)}</span>
           <span class="mnum-team">${vegasFav}</span>
           ${moveBadge(g.spreadMove)}
-          ${Math.abs(edge) >= 1.5
+          ${Math.abs(edge) >= 4
             ? `<span class="edge-pill ${cls}">${edgeLabel}</span>`
             : `<span class="mnum-edge-sm ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>`}
         </div>
@@ -2185,7 +2185,7 @@ function renderCard(g) {
           <span class="mnum-lbl">Vegas</span>
           <span class="mnum-val">${vegasTotal.point}</span>
           ${moveBadge(g.totalMove)}
-          ${Math.abs(edge) >= 1.5
+          ${Math.abs(edge) >= 4
             ? `<span class="edge-pill ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${dir}</span>`
             : `<span class="mnum-edge-sm ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>`}
         </div>
@@ -2348,7 +2348,7 @@ function renderCard(g) {
     : `<div class="card-ft card-ft-warn">⚠ No Torvik match — ${esc(g.away)} @ ${esc(g.home)}</div>`;
 
   const be = bestEdge(g);
-  const edgeCardCls = be >= 3 ? ' edge-hot' : be >= 1.5 ? ' edge-warm' : '';
+  const edgeCardCls = be >= 7 ? ' edge-hot' : be >= 4 ? ' edge-warm' : '';
   const bothRanked  = g.awayRank <= 25 && g.homeRank <= 25;
   const rankedCls   = (g.awayRank <= 25 || g.homeRank <= 25) ? ' ranked-game' : '';
 
@@ -2427,7 +2427,7 @@ function renderTopPicks(games) {
   // Helper to build bar HTML from a snapshot array
   function buildPicksBar(snapshot, locked) {
     const cards = snapshot.map(p => {
-      const cls = p.edge >= 3 ? 'hot' : 'warm';
+      const cls = p.edge >= 7 ? 'hot' : 'warm';
       const typeLabel = p.type === 'spread' ? 'ATS' : 'O/U';
       return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.gameId}')">
         <div class="pick-matchup">${esc(p.aShort)} @ ${esc(p.hShort)}</div>
@@ -2460,14 +2460,14 @@ function renderTopPicks(games) {
     return;
   }
 
-  // Collect all spread + total picks with edge >= 1.5
+  // Collect all spread + total picks with edge >= 4
   const picks = [];
   for (const g of games) {
     if (!g.pred) continue;
     if (g.vegasSpread) {
       const se = g.pred.margin + g.vegasSpread.point;
       const absE = Math.abs(se);
-      if (absE >= 1.5) {
+      if (absE >= 4) {
         const backHome = se > 0;
         const favKey   = backHome ? g.hKey : g.aKey;
         const favFull  = backHome ? g.home : g.away;
@@ -2484,7 +2484,7 @@ function renderTopPicks(games) {
     if (g.vegasTotal) {
       const te = g.pred.total - g.vegasTotal.point;
       const absE = Math.abs(te);
-      if (absE >= 1.5) {
+      if (absE >= 4) {
         picks.push({
           g, edge: absE, type: 'total',
           main: `${te > 0 ? 'OVER' : 'UNDER'} ${g.vegasTotal.point}`,
@@ -2765,7 +2765,7 @@ function render(games) {
   if (sumEl) {
     const livePart = allLive.length
       ? `<span class="ds-live"><span class="ds-live-dot"></span>${allLive.length} Live</span><span class="ds-sep">·</span>` : '';
-    const edgePart = topEdge >= 1.5
+    const edgePart = topEdge >= 4
       ? `<span class="ds-sep">·</span><span class="ds-edge">Best edge +${topEdge.toFixed(1)}</span>` : '';
     sumEl.innerHTML = `${livePart}<span>${games.length} games</span><span class="ds-sep">·</span><span>${allUpcoming.length} upcoming</span><span class="ds-sep">·</span><span>${allFinal.length} final</span>${edgePart}`;
     sumEl.style.display = '';
@@ -2774,7 +2774,7 @@ function render(games) {
   // Apply filters
   let visible = games.filter(g => {
     if (filters.hasOdds    && !g.vegasSpread && !g.vegasTotal)           return false;
-    if (filters.edgeOnly   && bestEdge(g) < 1.5)                         return false;
+    if (filters.edgeOnly   && bestEdge(g) < 4)                            return false;
     if (filters.onlyRanked && g.homeRank > 25 && g.awayRank > 25)        return false;
     if (filters.conference && g.hConf !== filters.conference && g.aConf !== filters.conference) return false;
     return true;
@@ -2844,7 +2844,7 @@ function render(games) {
       .sort(([a],[b]) => a.localeCompare(b))
       .map(([conf, list]) => {
         const topE = Math.max(...list.map(bestEdge).filter(e=>e>0), 0);
-        const edgePart = topE >= 1.5 ? `<span class="conf-group-edge">Top edge +${topE.toFixed(1)}</span>` : '';
+        const edgePart = topE >= 4 ? `<span class="conf-group-edge">Top edge +${topE.toFixed(1)}</span>` : '';
         return `<div class="conf-group-section">
           <div class="conf-group-hd" onclick="drillConf('${esc(conf)}')" title="Filter to ${esc(conf)} only">
             <span class="conf-group-name">${esc(conf)}</span>
@@ -3145,8 +3145,8 @@ function showTeamModal(key, rawName) {
       const teamEdge = isHome ? raw : -raw;
       const absEdge  = Math.abs(teamEdge);
       const dir      = teamEdge > 0 ? `Back ${displayN.split(' ').slice(-1)[0]}` : `Fade ${displayN.split(' ').slice(-1)[0]}`;
-      const cls      = absEdge >= 3 ? 'good' : absEdge >= 1.5 ? 'warn' : 'none';
-      const val      = absEdge >= 1.5 ? `${dir}  +${absEdge.toFixed(1)} pts` : 'No significant edge';
+      const cls      = absEdge >= 7 ? 'good' : absEdge >= 4 ? 'warn' : 'none';
+      const val      = absEdge >= 4 ? `${dir}  +${absEdge.toFixed(1)} pts` : 'No significant edge';
       edgeHtml = `<div class="tm-edge-row"><span class="tm-edge-lbl">Model Edge</span><span class="tm-edge-val ${cls}">${val}</span></div>`;
     }
 
@@ -3428,10 +3428,9 @@ async function runBacktest() {
     return Math.max(sE, tE);
   }
   const buckets = [
-    { label: '≥ 5 pt edge', min: 5   },
-    { label: '3–5 pt edge', min: 3, max: 5   },
-    { label: '1.5–3 pt',    min: 1.5, max: 3 },
-    { label: '< 1.5 pt',    min: 0,   max: 1.5 },
+    { label: '≥ 7 pt (Bet)',    min: 7        },
+    { label: '4–7 pt (Lean)',   min: 4, max: 7 },
+    { label: '< 4 pt',          min: 0, max: 4 },
   ];
   const edgeRows = buckets.map(b => {
     const bGames = all.filter(g => { const e = gameEdge(g); return e >= b.min && (b.max == null || e < b.max); });
