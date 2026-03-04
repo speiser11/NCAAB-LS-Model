@@ -842,6 +842,10 @@ input[type=date] {
 .cm-advice-text{flex:1;}
 .cm-wp{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:700;color:var(--blue);white-space:nowrap;margin-left:auto;flex-shrink:0;}
 
+/* Favored team name label next to spread number */
+.mnum-team{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;color:var(--muted);margin-left:.3rem;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cm-fav{font-size:.6rem;font-weight:500;color:var(--muted);margin-left:.15rem;}
+
 /* ── Contextual badges ────────────────────────────── */
 .ctx-badge{display:inline-flex;align-items:center;font-family:'Inter',sans-serif;font-size:.52rem;font-weight:700;border-radius:3px;padding:.06rem .28rem;margin-left:.22rem;vertical-align:middle;flex-shrink:0;white-space:nowrap;}
 .b2b-tag{color:var(--yellow);background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.28);}
@@ -1771,8 +1775,8 @@ function getAdvice(g) {
   const { pred, vegasSpread, vegasTotal } = g;
   if (!pred) return { text: 'No data', cls: 'cm-act-none' };
 
-  const hShort = displayName(g.hKey, g.home).split(' ').pop();
-  const aShort = displayName(g.aKey, g.away).split(' ').pop();
+  const hShort = displayName(g.hKey, g.home);
+  const aShort = displayName(g.aKey, g.away);
 
   const sEdge = vegasSpread ? pred.margin - (-vegasSpread.point) : null;
   const tEdge = vegasTotal  ? pred.total - vegasTotal.point      : null;
@@ -1820,21 +1824,24 @@ function renderMobileCard(g) {
   if (!pred) {
     spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val cm-muted">No data</span></div>`;
   } else {
-    const modelStr = fmtSpread((-pred.margin).toFixed(1));
+    const modelSpreadPt = -pred.margin;
+    const modelStr = fmtSpread(modelSpreadPt.toFixed(1));
+    const mFav = esc(spreadFavName(modelSpreadPt, g.hKey, g.home, g.aKey, g.away));
     if (vegasSpread) {
+      const vFav = esc(spreadFavName(vegasSpread.point, g.hKey, g.home, g.aKey, g.away));
       const edge = pred.margin - (-vegasSpread.point);
       const eCls = Math.abs(edge) >= 3 ? ' cm-good' : Math.abs(edge) >= 1.5 ? ' cm-mod' : '';
       const smv = g.spreadMove != null && Math.abs(g.spreadMove) >= 0.5 ? `<span class="line-move ${g.spreadMove > 0 ? 'lm-up' : 'lm-dn'}">${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove).toFixed(1)}</span>` : '';
       spreadRow = `<div class="cm-row">
         <span class="cm-lbl">Spread</span>
-        <span class="cm-val">${modelStr}</span>
+        <span class="cm-val">${modelStr} <span class="cm-fav">${mFav}</span></span>
         <span class="cm-vs">vs</span>
-        <span class="cm-vval">${fmtSpread(vegasSpread.point)}</span>
+        <span class="cm-vval">${fmtSpread(vegasSpread.point)} <span class="cm-fav">${vFav}</span></span>
         ${smv}
         <span class="cm-edge${eCls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
       </div>`;
     } else {
-      spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val">${modelStr}</span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
+      spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val">${modelStr} <span class="cm-fav">${mFav}</span></span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
     }
   }
 
@@ -1872,8 +1879,8 @@ function renderMobileCard(g) {
     let coverHtml = '';
     if (vegasSpread && live) {
       const gap = hs - as + vegasSpread.point;
-      const hShort = esc(displayName(g.hKey, g.home).split(' ').pop());
-      const aShort = esc(displayName(g.aKey, g.away).split(' ').pop());
+      const hShort = esc(displayName(g.hKey, g.home));
+      const aShort = esc(displayName(g.aKey, g.away));
       if (Math.abs(gap) < 0.5) coverHtml = `<span class="cm-cover cm-push">Push</span>`;
       else if (gap > 0) coverHtml = `<span class="cm-cover cm-covering">${hShort} cvr</span>`;
       else              coverHtml = `<span class="cm-cover cm-trailing">${aShort} cvr</span>`;
@@ -1942,6 +1949,15 @@ function renderMobileCard(g) {
   </div>`;
 }
 
+// Returns the favored team's display name given a home-team spread point
+// spreadPt < 0 → home favored; spreadPt > 0 → away favored
+function spreadFavName(spreadPt, hKey, home, aKey, away) {
+  if (spreadPt == null) return '';
+  return spreadPt <= 0
+    ? displayName(hKey, home)
+    : displayName(aKey, away);
+}
+
 function renderCard(g) {
   if (window.innerWidth <= 640) return renderMobileCard(g);
   const { pred, vegasSpread, vegasTotal } = g;
@@ -1966,22 +1982,26 @@ function renderCard(g) {
   } else {
     const modelHomeSpread = -pred.margin;
     const modelStr = fmtSpread(modelHomeSpread.toFixed(1));
+    const modelFav = esc(spreadFavName(modelHomeSpread, g.hKey, g.home, g.aKey, g.away));
     if (vegasSpread) {
       const vegasPoint = vegasSpread.point;
+      const vegasFav = esc(spreadFavName(vegasPoint, g.hKey, g.home, g.aKey, g.away));
       const edge = (-modelHomeSpread) - (-vegasPoint);
       const cls  = edgeCls(edge);
       const edgeDir = edge > 0
-        ? displayName(g.hKey, g.home).split(' ')[0]
-        : displayName(g.aKey, g.away).split(' ')[0];
-      const edgeLabel = `${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${edgeDir.toUpperCase()}`;
+        ? displayName(g.hKey, g.home)
+        : displayName(g.aKey, g.away);
+      const edgeLabel = `${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${esc(edgeDir)}`;
       spreadHtml = `
         <div class="mnum-row">
           <span class="mnum-lbl">Model</span>
           <span class="mnum-val">${modelStr}</span>
+          <span class="mnum-team">${modelFav}</span>
         </div>
         <div class="mnum-row">
           <span class="mnum-lbl">Vegas</span>
           <span class="mnum-val">${fmtSpread(vegasPoint)}</span>
+          <span class="mnum-team">${vegasFav}</span>
           ${moveBadge(g.spreadMove)}
           ${Math.abs(edge) >= 1.5
             ? `<span class="edge-pill ${cls}">${edgeLabel}</span>`
@@ -1993,6 +2013,7 @@ function renderCard(g) {
         <div class="mnum-row">
           <span class="mnum-lbl">Model</span>
           <span class="mnum-val">${modelStr}</span>
+          <span class="mnum-team">${modelFav}</span>
         </div>
         <div class="mnum-no-data">No Vegas line</div>
       `;
@@ -3095,7 +3116,6 @@ async function refresh() {
     await Promise.all([
       loadConferences(),
       loadTorvik(),
-      loadRecentTorvik(),
       loadESPN(dateStr),
       loadYesterdayGames(dateStr),
       loadOdds(isoDate),
@@ -3103,7 +3123,8 @@ async function refresh() {
     currentIsoDate = isoDate;
     applyOddsLock(isoDate);
     render(assembleGames());
-    // Injuries load in background — re-render when done (doesn't block initial paint)
+    // Form delta + injuries load in background — re-render when done
+    loadRecentTorvik().then(() => render(assembleGames())).catch(() => {});
     loadInjuries().then(() => render(assembleGames())).catch(() => {});
   } catch(e) {
     document.getElementById('game-list').innerHTML = '<div class="loading">Error loading data.</div>';
@@ -3126,7 +3147,11 @@ function onDateChange() {
 // Init
 (function init() {
   initTheme();
-  document.getElementById('date-pick').value = new Date().toISOString().slice(0, 10);
+  // Use local date (not UTC) — toISOString() flips to next day at midnight UTC,
+  // which is ~7–8pm ET and breaks the default while games are still in progress
+  const _now = new Date();
+  document.getElementById('date-pick').value =
+    `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeTeamModal(); }
   });
