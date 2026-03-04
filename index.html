@@ -964,6 +964,11 @@ input[type=date] {
       <input type="number" id="inp-score-scale" value="1.06" step="0.01" min="0.85" max="1.25">
       <small>Calibrates model totals. Derived from Torvik avg adjO/adjD ≈ 100, avg tempo ≈ 68.5 poss → raw ~68.5 pts/team vs actual D1 avg ~73 pts/team, giving scale ≈ 1.06. Raise if model totals run low.</small>
     </div>
+    <div class="field">
+      <label>Daily Odds Lock Time (local hour, 0–23)</label>
+      <input type="number" id="inp-lock-hour" value="10" step="1" min="0" max="23">
+      <small>Odds are locked at this hour each day and never update after that, regardless of when the page is opened. Default 10 = 10 AM local time.</small>
+    </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeSettings()">Cancel</button>
       <button class="btn primary" onclick="saveSettings()">Save & Refresh</button>
@@ -1081,6 +1086,7 @@ let cfg = {
   oddsKey:    localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
   homeCourt:  parseFloat(localStorage.getItem('ncaab_hc')    || '3.5'),
   scoreScale: parseFloat(localStorage.getItem('ncaab_scale') || '1.06'),
+  lockHour:   parseInt(localStorage.getItem('ncaab_lock_hour') || '10'),
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1404,7 +1410,8 @@ async function loadOdds(isoDate) {
     if (oddsList.length > 0) {
       const snapKey = `odds_opening_${isoDate}`;
       if (!localStorage.getItem(snapKey)) localStorage.setItem(snapKey, JSON.stringify(oddsList));
-      if (localStorage.getItem('odds_lock_date') !== isoDate) {
+      const isPastLockHour = new Date().getHours() >= cfg.lockHour;
+      if (isPastLockHour && localStorage.getItem('odds_lock_date') !== isoDate) {
         localStorage.setItem('odds_lock_date', isoDate);
         localStorage.setItem('odds_locked', JSON.stringify(oddsList));
       }
@@ -1874,41 +1881,18 @@ function renderMobileCard(g) {
     }
   }
 
-  // Score row (live + final)
+  // Score row (live + final) — score and clock only
   let scoreHtml = '';
   if (live || final) {
     const hs = parseInt(g.homeScore) || 0;
     const as = parseInt(g.awayScore) || 0;
     const aLead = as > hs, hLead = hs > as;
     const clockStr = final ? 'Final' : (g.shortDetail || '');
-
-    let coverHtml = '';
-    if (vegasSpread && live) {
-      const gap = hs - as + vegasSpread.point;
-      const hShort = esc(displayName(g.hKey, g.home));
-      const aShort = esc(displayName(g.aKey, g.away));
-      if (Math.abs(gap) < 0.5) coverHtml = `<span class="cm-cover cm-push">Push</span>`;
-      else if (gap > 0) coverHtml = `<span class="cm-cover cm-covering">${hShort} cvr</span>`;
-      else              coverHtml = `<span class="cm-cover cm-trailing">${aShort} cvr</span>`;
-    }
-
-    let paceHtml = '';
-    if (live && vegasTotal) {
-      const projected = calcLivePace(g);
-      if (projected !== null) {
-        const diff = projected - vegasTotal.point;
-        const dir = diff > 2 ? 'cm-over' : diff < -2 ? 'cm-under' : '';
-        const label = diff > 2 ? `OVER` : diff < -2 ? `UNDER` : `Push`;
-        paceHtml = `<span class="cm-pace ${dir}">${label}</span>`;
-      }
-    }
-
     scoreHtml = `<div class="cm-score">
       <span class="cm-pts${aLead ? ' cm-lead' : ''}">${as}</span>
       <span class="cm-score-sep">—</span>
       <span class="cm-pts${hLead ? ' cm-lead' : ''}">${hs}</span>
       <span class="cm-clock">${esc(clockStr)}</span>
-      ${coverHtml}${paceHtml}
     </div>`;
   }
 
@@ -1929,16 +1913,7 @@ function renderMobileCard(g) {
   const aBadges = cmCtx(g.aB2B, g.aInjuries||[], g.aForm);
   const hBadges = cmCtx(g.hB2B, g.hInjuries||[], g.hForm);
 
-  return `<div class="card-mobile${hotCls}" id="game-${g.id}">
-    <div class="cm-hd">
-      <div class="cm-teams">
-        ${aRank}<span class="cm-tname" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${aName}</span>${aBadges}
-        <span class="cm-at">@</span>
-        ${hRank}<span class="cm-tname" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${hName}</span>${hBadges}
-      </div>
-      ${badge}
-    </div>
-    ${scoreHtml}
+  const linesAndAdvice = live ? '' : `
     <div class="cm-lines">
       <div class="cm-col-hdrs">
         <span class="cm-col-hdr ch-lbl"></span>
@@ -1951,7 +1926,19 @@ function renderMobileCard(g) {
     <div class="cm-advice ${advice.cls}">
       <span class="cm-advice-text">${advice.text}</span>
       ${wpBadge}
+    </div>`;
+
+  return `<div class="card-mobile${hotCls}" id="game-${g.id}">
+    <div class="cm-hd">
+      <div class="cm-teams">
+        ${aRank}<span class="cm-tname" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${aName}</span>${aBadges}
+        <span class="cm-at">@</span>
+        ${hRank}<span class="cm-tname" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${hName}</span>${hBadges}
+      </div>
+      ${badge}
     </div>
+    ${scoreHtml}
+    ${linesAndAdvice}
   </div>`;
 }
 
@@ -2270,13 +2257,40 @@ function renderTopPicks(games) {
   const bar = document.getElementById('top-picks-bar');
   if (!games.length) { bar.style.display = 'none'; return; }
 
-  // Update title to reflect lock state
-  const anyStarted = games.some(g =>
-    g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL'
-  );
-  const titleEl = document.getElementById('picks-title');
-  if (titleEl) {
-    titleEl.textContent = anyStarted ? '🔒 Pre-Game Picks (Locked)' : "Today's Top Picks";
+  // Helper to build bar HTML from a snapshot array
+  function buildPicksBar(snapshot, locked) {
+    const cards = snapshot.map(p => {
+      const cls = p.edge >= 3 ? 'hot' : 'warm';
+      const typeLabel = p.type === 'spread' ? 'ATS' : 'O/U';
+      return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.gameId}')">
+        <div class="pick-matchup">${esc(p.aShort)} @ ${esc(p.hShort)}</div>
+        <div class="pick-main">${esc(p.main)}</div>
+        <div class="pick-meta">
+          <span class="pick-edge">+${p.edge.toFixed(1)}</span>
+          <span class="pick-type-tag">${typeLabel}</span>
+        </div>
+        <div class="pick-why">${esc(p.why)}</div>
+      </div>`;
+    }).join('');
+    const title = locked ? '🔒 Top Picks (Locked)' : "Today's Top Picks";
+    bar.style.display = '';
+    bar.innerHTML = `
+      <div class="picks-header">
+        <span class="top-picks-title" id="picks-title">${title}</span>
+        <div class="picks-accuracy" id="picks-accuracy-row">
+          <span class="acc-badge" style="opacity:.5">Loading accuracy…</span>
+        </div>
+      </div>
+      <div class="picks-row">${cards}</div>`;
+    loadAccuracyStats();
+  }
+
+  // If we have a time-based lock for today, always render from it
+  const lockedDate = localStorage.getItem('picks_lock_date');
+  const lockedData = localStorage.getItem('picks_locked');
+  if (lockedDate === currentIsoDate && lockedData) {
+    buildPicksBar(JSON.parse(lockedData), true);
+    return;
   }
 
   // Collect all spread + total picks with edge >= 1.5
@@ -2284,7 +2298,7 @@ function renderTopPicks(games) {
   for (const g of games) {
     if (!g.pred) continue;
     if (g.vegasSpread) {
-      const se = g.pred.margin + g.vegasSpread.point; // >0 = model prefers home
+      const se = g.pred.margin + g.vegasSpread.point;
       const absE = Math.abs(se);
       if (absE >= 1.5) {
         const backHome = se > 0;
@@ -2316,40 +2330,56 @@ function renderTopPicks(games) {
   const top5 = picks.slice(0, 5);
   if (!top5.length) { bar.style.display = 'none'; return; }
 
-  const cards = top5.map(p => {
-    const cls = p.edge >= 3 ? 'hot' : 'warm';
-    const aShort = displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0];
-    const hShort = displayName(p.g.hKey, p.g.home).split(' ').slice(-1)[0];
-    const typeLabel = p.type === 'spread' ? 'ATS' : 'O/U';
-    return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.g.id}')">
-      <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
-      <div class="pick-main">${esc(p.main)}</div>
-      <div class="pick-meta">
-        <span class="pick-edge">+${p.edge.toFixed(1)}</span>
-        <span class="pick-type-tag">${typeLabel}</span>
-      </div>
-      <div class="pick-why">${esc(p.why)}</div>
-    </div>`;
-  }).join('');
+  // Save snapshot once the daily lock hour has passed
+  const isPastLockHour = new Date().getHours() >= cfg.lockHour;
+  if (isPastLockHour && top5.length) {
+    const snapshot = top5.map(p => ({
+      gameId: p.g.id,
+      aShort: displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0],
+      hShort: displayName(p.g.hKey, p.g.home).split(' ').slice(-1)[0],
+      main: p.main,
+      edge: p.edge,
+      type: p.type,
+      why: p.why,
+    }));
+    localStorage.setItem('picks_lock_date', currentIsoDate);
+    localStorage.setItem('picks_locked', JSON.stringify(snapshot));
+    buildPicksBar(snapshot, true);
+    return;
+  }
 
-  bar.style.display = '';
-  bar.innerHTML = `
-    <div class="picks-header">
-      <span class="top-picks-title" id="picks-title">Today's Top Picks</span>
-      <div class="picks-accuracy" id="picks-accuracy-row">
-        <span class="acc-badge" style="opacity:.5">Loading accuracy…</span>
-      </div>
-    </div>
-    <div class="picks-row">${cards}</div>`;
-
-  loadAccuracyStats();
+  // Pre-lock: render live (unlocked)
+  const snapshot = top5.map(p => ({
+    gameId: p.g.id,
+    aShort: displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0],
+    hShort: displayName(p.g.hKey, p.g.home).split(' ').slice(-1)[0],
+    main: p.main,
+    edge: p.edge,
+    type: p.type,
+    why: p.why,
+  }));
+  buildPicksBar(snapshot, false);
 }
 
 // ── Historical accuracy scorecard ─────────────────────────
+// Only count games on/after this date — day 1 of fresh tracking
+const ACC_START_DATE = '20260303';
+
 let _accCache = null, _accCacheTs = 0;
 
 async function loadAccuracyStats() {
   const now = Date.now();
+
+  // If locked for today, serve from localStorage immediately
+  const accLockDate = localStorage.getItem('acc_lock_date');
+  const accLockData = localStorage.getItem('acc_locked');
+  if (accLockDate === currentIsoDate && accLockData) {
+    _accCache = JSON.parse(accLockData);
+    _accCacheTs = now;
+    renderAccuracyBadges(_accCache);
+    return;
+  }
+
   if (_accCache && (now - _accCacheTs) < 30 * 60 * 1000) {
     renderAccuracyBadges(_accCache);
     return;
@@ -2373,7 +2403,8 @@ async function loadAccuracyStats() {
 
   async function scoreRange(dates) {
     let w = 0, l = 0;
-    for (const dateStr of dates) {
+    // Only score dates on/after ACC_START_DATE
+    for (const dateStr of dates.filter(d => d >= ACC_START_DATE)) {
       try {
         const games = await fetchESPNFinal(dateStr);
         for (const g of games) {
@@ -2397,6 +2428,12 @@ async function loadAccuracyStats() {
     ]);
     _accCache = { yd, wk, mo };
     _accCacheTs = now;
+    // Lock accuracy once the daily cutoff has passed
+    const isPastLockHour = new Date().getHours() >= cfg.lockHour;
+    if (isPastLockHour) {
+      localStorage.setItem('acc_lock_date', currentIsoDate);
+      localStorage.setItem('acc_locked', JSON.stringify(_accCache));
+    }
     renderAccuracyBadges(_accCache);
   } catch(e) {
     const row = document.getElementById('picks-accuracy-row');
@@ -2866,6 +2903,7 @@ function openSettings() {
   document.getElementById('inp-odds-key').value    = cfg.oddsKey;
   document.getElementById('inp-home-court').value  = cfg.homeCourt;
   document.getElementById('inp-score-scale').value = cfg.scoreScale;
+  document.getElementById('inp-lock-hour').value   = cfg.lockHour;
   document.getElementById('settings-overlay').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
@@ -2873,9 +2911,11 @@ function saveSettings() {
   cfg.oddsKey    = document.getElementById('inp-odds-key').value.trim();
   cfg.homeCourt  = parseFloat(document.getElementById('inp-home-court').value) || 3.5;
   cfg.scoreScale = parseFloat(document.getElementById('inp-score-scale').value) || 1.06;
+  cfg.lockHour   = parseInt(document.getElementById('inp-lock-hour').value) || 10;
   localStorage.setItem('ncaab_odds_key', cfg.oddsKey);
   localStorage.setItem('ncaab_scale', cfg.scoreScale);
   localStorage.setItem('ncaab_hc', cfg.homeCourt);
+  localStorage.setItem('ncaab_lock_hour', cfg.lockHour);
   closeSettings();
   refresh();
 }
@@ -3122,6 +3162,10 @@ function onDateChange() {
   sessionStorage.removeItem('odds_ts');
   localStorage.removeItem('odds_locked');
   localStorage.removeItem('odds_lock_date');
+  localStorage.removeItem('picks_locked');
+  localStorage.removeItem('picks_lock_date');
+  localStorage.removeItem('acc_locked');
+  localStorage.removeItem('acc_lock_date');
   // Clear per-date contextual caches
   teamsPlayedYesterday = new Set();
   injuryMap = {};
