@@ -1483,6 +1483,32 @@ async function loadESPN(dateStr) {
 async function loadOdds(isoDate) {
   if (!cfg.oddsKey) { setSt('st-odds', 'Odds: no API key', 'warn'); oddsList = []; return; }
 
+  // Determine today's local date for historical comparison
+  const _n = new Date();
+  const todayIso = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
+
+  // ── Historical date: use stored data, never call the live API ──
+  if (isoDate < todayIso) {
+    // 1) Opening snapshot saved when user had the app open that day (full Odds API format)
+    const snap = localStorage.getItem(`odds_opening_${isoDate}`);
+    if (snap) {
+      oddsList = JSON.parse(snap);
+      setSt('st-odds', `Odds: ${oddsList.length} games (historical)`, 'ok');
+      return;
+    }
+    // 2) Fall back to Gist compact historical data
+    setSt('st-odds', 'Odds: loading historical lines…', 'ok');
+    const gistData = await fetchStoredOdds(isoDate);
+    if (gistData.length > 0) {
+      oddsList = gistToOddsFormat(gistData);
+      setSt('st-odds', `Odds: ${oddsList.length} games (historical)`, 'ok');
+    } else {
+      setSt('st-odds', 'Odds: no lines saved for this date', 'warn');
+      oddsList = [];
+    }
+    return;
+  }
+
   // Pre-game lock: if today's odds are locked, always use them — skip API entirely
   const lockDate = localStorage.getItem('odds_lock_date');
   const lockData = localStorage.getItem('odds_locked');
@@ -3295,6 +3321,28 @@ async function fetchStoredOdds(isoDate) {
     if (!r.ok) return [];
     return await r.json();
   } catch(e) { return []; }
+}
+
+// Convert compact Gist format {home,away,spread,total} → minimal Odds API format
+// so it works with getLine() and the rest of assembleGames()
+function gistToOddsFormat(gistArr) {
+  return gistArr.map(g => ({
+    home_team: g.home,
+    away_team: g.away,
+    bookmakers: [{
+      key: 'historical',
+      markets: [
+        ...(g.spread != null ? [{ key: 'spreads', outcomes: [
+          { name: g.home, point: g.spread },
+          { name: g.away, point: -g.spread },
+        ]}] : []),
+        ...(g.total != null ? [{ key: 'totals', outcomes: [
+          { name: 'over',  point: g.total },
+          { name: 'under', point: g.total },
+        ]}] : []),
+      ],
+    }],
+  }));
 }
 
 function matchStoredOdds(oddsArr, hKey, aKey) {
