@@ -1274,6 +1274,15 @@ async function loadESPN(dateStr) {
 async function loadOdds(isoDate) {
   if (!cfg.oddsKey) { setSt('st-odds', 'Odds: no API key', 'warn'); oddsList = []; return; }
 
+  // Pre-game lock: if today's odds are locked, always use them — skip API entirely
+  const lockDate = localStorage.getItem('odds_lock_date');
+  const lockData = localStorage.getItem('odds_locked');
+  if (lockDate === isoDate && lockData) {
+    oddsList = JSON.parse(lockData);
+    setSt('st-odds', `Odds: ${oddsList.length} games (locked pre-game)`, 'ok');
+    return;
+  }
+
   // 30-min session cache
   const cc = sessionStorage.getItem('odds_cache');
   const ct = parseInt(sessionStorage.getItem('odds_ts') || '0');
@@ -1768,6 +1777,15 @@ function renderTopPicks(games) {
   const bar = document.getElementById('top-picks-bar');
   if (!games.length) { bar.style.display = 'none'; return; }
 
+  // Update title to reflect lock state
+  const anyStarted = games.some(g =>
+    g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL'
+  );
+  const titleEl = document.getElementById('picks-title');
+  if (titleEl) {
+    titleEl.textContent = anyStarted ? '🔒 Pre-Game Picks (Locked)' : "Today's Top Picks";
+  }
+
   // Collect all spread + total picks with edge >= 1.5
   const picks = [];
   for (const g of games) {
@@ -1824,7 +1842,7 @@ function renderTopPicks(games) {
   bar.style.display = '';
   bar.innerHTML = `
     <div class="picks-header">
-      <span class="top-picks-title">Today's Top Picks</span>
+      <span class="top-picks-title" id="picks-title">Today's Top Picks</span>
       <div class="picks-accuracy" id="picks-accuracy-row">
         <span class="acc-badge" style="opacity:.5">Loading accuracy…</span>
       </div>
@@ -2545,6 +2563,28 @@ function toISODate(dateStr) {
   return `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
 }
 
+// Lock today's odds at the moment the first game tips off.
+// Once locked, every subsequent refresh uses the pre-game lines
+// so the model edge stays comparable all day.
+function applyOddsLock(isoDate) {
+  const lockDate = localStorage.getItem('odds_lock_date');
+
+  // Already locked for today — odds were already swapped in loadOdds()
+  if (lockDate === isoDate) return;
+
+  const anyStarted = espnList.some(g =>
+    g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL'
+  );
+
+  if (!anyStarted && oddsList.length > 0) {
+    // All games still pre-game — save snapshot
+    localStorage.setItem('odds_lock_date', isoDate);
+    localStorage.setItem('odds_locked', JSON.stringify(oddsList));
+  }
+  // If games have already started but we have no lock (user opened app mid-day
+  // for the first time), just use what we fetched — can't recover pre-game lines
+}
+
 async function refresh() {
   document.getElementById('err-area').innerHTML = '';
   document.getElementById('game-list').innerHTML = '<div class="loading">Loading…</div>';
@@ -2559,6 +2599,7 @@ async function refresh() {
       loadESPN(dateStr),
       loadOdds(isoDate),
     ]);
+    applyOddsLock(isoDate);
     render(assembleGames());
   } catch(e) {
     document.getElementById('game-list').innerHTML = '<div class="loading">Error loading data.</div>';
@@ -2570,6 +2611,8 @@ async function refresh() {
 function onDateChange() {
   sessionStorage.removeItem('odds_cache');
   sessionStorage.removeItem('odds_ts');
+  localStorage.removeItem('odds_locked');
+  localStorage.removeItem('odds_lock_date');
   refresh();
 }
 
