@@ -604,7 +604,7 @@ FEATURE_NAMES = [
 
 # Mean values of non-delta features used for centering
 _ADJ_O_MEAN = 106.16   # approximate D1 average adjO
-_ADJ_D_MEAN = 104.82   # approximate D1 average adjD
+_ADJ_D_MEAN = 106.09   # D1 average adjD — update annually (was 103.48 in 2023, 104.87 in 2024, 106.09 in 2025)
 
 def build_features(df):
     return pd.DataFrame({

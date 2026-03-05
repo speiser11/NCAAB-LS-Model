@@ -1694,7 +1694,7 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
   const poss   = Math.sqrt(h.adjT * a.adjT);
   // Normalize adjD against D1 average (~104.82) so adjO is used as absolute pts/100poss
   // and adjD scales relative to average defense. scoreScale ≈ 1.0 with this formulation.
-  const AVG_ADJ_D = 104.82;
+  const AVG_ADJ_D = 106.09;  // updated to 2024-25 D1 average (was 104.82 = 2022-23 era)
   const hScore = h.adjO * (a.adjD / AVG_ADJ_D) * poss / 100 * cfg.scoreScale;
   const aScore = a.adjO * (h.adjD / AVG_ADJ_D) * poss / 100 * cfg.scoreScale;
 
