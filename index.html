@@ -238,7 +238,7 @@ input[type=date]{
 
 /* Edge tooltip */
 .edge-tip{display:inline-flex;align-items:center;justify-content:center;width:.9rem;height:.9rem;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:.5rem;color:var(--muted);cursor:default;position:relative;margin-left:.25rem;vertical-align:middle;flex-shrink:0;}
-.edge-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:#1e1e2e;color:var(--text);font-family:'Inter',sans-serif;font-size:.6rem;font-weight:400;white-space:nowrap;padding:.3rem .55rem;border-radius:6px;border:1px solid var(--border);pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;letter-spacing:0;}
+.edge-tip::after{content:attr(data-tip);position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);background:#1e1e2e;color:var(--text);font-family:'Inter',sans-serif;font-size:.6rem;font-weight:400;white-space:nowrap;padding:.3rem .55rem;border-radius:6px;border:1px solid var(--border);pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;letter-spacing:0;}
 .edge-tip:hover::after,.edge-tip:focus::after{opacity:1;}
 
 /* Edge pills */
