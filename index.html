@@ -1154,26 +1154,21 @@ const CONF_ID_MAP = {
 const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
 const TORVIK    = 'https://barttorvik.com/trank.php?json=1';
 
-// Try multiple CORS proxies in sequence — returns parsed JSON or throws
+// Try CORS proxies in sequence — returns parsed JSON or throws
 async function fetchViaProxy(url) {
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   const attempts = [
-    // 1. Direct (works if Torvik ever adds CORS headers, or from localhost)
-    async () => {
+    // 1. Direct — only on localhost (avoids CORS console error on GitHub Pages)
+    ...(isLocal ? [async () => {
       const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
-    },
-    // 2. corsproxy.io — returns raw response
+    }] : []),
+    // 2. corsproxy.io
     async () => {
       const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
-    },
-    // 3. allorigins — wraps in {contents:"..."}
-    async () => {
-      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
-      const w = await r.json();
-      return typeof w.contents === 'string' ? JSON.parse(w.contents) : (() => { throw new Error('empty'); })();
     },
   ];
   const errors = [];
