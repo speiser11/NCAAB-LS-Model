@@ -1786,12 +1786,6 @@ async function loadBettingData(isoDate) {
   try {
     const data = await fetchAN();
     // Log structure to confirm field names
-    const scheduledGame = data.games?.find(g => g.status === 'scheduled' || g.status === 'in-progress');
-    if (scheduledGame) {
-      const bk = Object.keys(scheduledGame.markets || {})[0];
-      const sp = scheduledGame.markets?.[bk]?.event?.spread;
-      console.log('[ActionNetwork] scheduled game spread:', JSON.stringify(sp));
-    }
     for (const game of (data.games || [])) {
       // Team identity: match by home_team_id / away_team_id
       const teams = game.teams || [];
@@ -1809,11 +1803,11 @@ async function loadBettingData(isoDate) {
       const hSpread = spreadOutcomes.find(o => o.side === 'home');
       const aSpread = spreadOutcomes.find(o => o.side === 'away');
 
-      // percent is 0–1 float from API
-      const hSprBets = Math.round((hSpread?.bet_info?.tickets?.percent ?? 0) * 100);
-      const aSprBets = Math.round((aSpread?.bet_info?.tickets?.percent ?? 0) * 100);
-      const hSprMny  = Math.round((hSpread?.bet_info?.money?.percent   ?? 0) * 100);
-      const aSprMny  = Math.round((aSpread?.bet_info?.money?.percent   ?? 0) * 100);
+      // percent is already 0–100 integer from API
+      const hSprBets = hSpread?.bet_info?.tickets?.percent ?? 0;
+      const aSprBets = aSpread?.bet_info?.tickets?.percent ?? 0;
+      const hSprMny  = hSpread?.bet_info?.money?.percent   ?? 0;
+      const aSprMny  = aSpread?.bet_info?.money?.percent   ?? 0;
       if (!hSprBets && !aSprBets) continue;
       bettingMap[`${hKey}|${aKey}`] = {
         homeSpreadBetPct: hSprBets, awaySpreadBetPct: aSprBets,
