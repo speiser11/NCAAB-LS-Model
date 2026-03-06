@@ -1764,9 +1764,27 @@ async function loadBettingData(isoDate) {
     return;
   }
   const anDate = isoDate.replace(/-/g, '');
-  const url = `https://api.actionnetwork.com/web/v2/scoreboard/publicbetting/ncaab?date=${anDate}&division=D1&periods=event&tournament=0`;
+  const anUrl  = `https://api.actionnetwork.com/web/v2/scoreboard/publicbetting/ncaab?date=${anDate}&division=D1&periods=event&tournament=0`;
+
+  async function fetchAN() {
+    // 1. Direct fetch (ActionNetwork sometimes allows cross-origin)
+    try {
+      const r = await fetch(anUrl, { signal: AbortSignal.timeout(8000) });
+      if (r.ok) return r.json();
+    } catch(e) { /* blocked — try proxies */ }
+    // 2. codetabs proxy (higher size limit than corsproxy.io)
+    try {
+      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(anUrl)}`, { signal: AbortSignal.timeout(12000) });
+      if (r.ok) return r.json();
+    } catch(e) { /* try next */ }
+    // 3. corsproxy.io as last resort
+    const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(anUrl)}`, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
+
   try {
-    const data = await fetchViaProxy(url);
+    const data = await fetchAN();
     // Log raw structure once so we can confirm field names
     console.log('[ActionNetwork] raw response:', JSON.stringify(data).slice(0, 600));
     for (const game of (data.games || data.scoreboard || [])) {
