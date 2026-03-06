@@ -720,7 +720,7 @@ def run_baseline(df):
 # ══════════════════════════════════════════════════════════
 # SUMMARY + INDEX.HTML UPDATE INSTRUCTIONS
 # ══════════════════════════════════════════════════════════
-def print_summary(baseline, best_formula, regression_result):
+def print_summary(df, baseline, best_formula, regression_result):
     print('\n' + '═' * 64)
     print('SUMMARY — WHAT EACH MODEL GIVES YOU')
     print('═' * 64)
@@ -733,7 +733,7 @@ def print_summary(baseline, best_formula, regression_result):
           f'{baseline["correct"]*100:>8.1f}%  {baseline["within35"]*100:>9.1f}%')
 
     # Re-score with best formula params
-    bf_m = score_params(df_global,
+    bf_m = score_params(df,
                         float(best_formula['score_scale']),
                         float(best_formula['home_court']))
     print(f'  {"Weighted formula opt":<30} {bf_m["mae"]:>8.2f}  '
@@ -774,8 +774,6 @@ def model_coef_list(model):
 # ══════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════
-df_global = None  # set in main so summary can access it
-
 if __name__ == '__main__':
     print('TrueLine LS — Model Optimization v2')
     print('=' * 64)
@@ -806,8 +804,6 @@ if __name__ == '__main__':
         print('No data. Check API key and internet connection.')
         sys.exit(1)
 
-    df_global = df
-
     # 1. Baseline
     print()
     baseline = run_baseline(df)
@@ -819,4 +815,4 @@ if __name__ == '__main__':
     regression_result = run_regression_model(df)
 
     # 4. Summary
-    print_summary(baseline, best_formula, regression_result)
+    print_summary(df, baseline, best_formula, regression_result)

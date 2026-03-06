@@ -1316,7 +1316,8 @@ function getSeasonYear() {
   return m >= 7 ? new Date().getFullYear() + 1 : new Date().getFullYear();
 }
 
-const GIST_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
+const GIST_URL      = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
+const GIST_META_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-meta.json';
 
 async function loadTorvik() {
   // 6-hour localStorage cache (v2 = conf bug fixed)
@@ -1330,7 +1331,15 @@ async function loadTorvik() {
   const ts     = parseInt(localStorage.getItem('torvik_ts') || '0');
   if (cached && Date.now() - ts < 6 * 3600 * 1000) {
     ratings = JSON.parse(cached);
-    setSt('st-ratings', `Ratings: ${Object.keys(ratings).length} teams · cached ${cacheAge(ts)}`, 'ok');
+    const n = Object.keys(ratings).length;
+    // Try to show Gist freshness even when serving from local cache
+    fetch(GIST_META_URL, { signal: AbortSignal.timeout(5000) })
+      .then(r => r.ok ? r.json() : null)
+      .then(meta => {
+        const gistAge = meta?.updated_at ? ` · updated ${cacheAge(new Date(meta.updated_at).getTime())}` : '';
+        setSt('st-ratings', `Ratings: ${n} teams · cached ${cacheAge(ts)}${gistAge}`, 'ok');
+      })
+      .catch(() => setSt('st-ratings', `Ratings: ${n} teams · cached ${cacheAge(ts)}`, 'ok'));
     return;
   }
   setSt('st-ratings', 'Ratings: loading…', '');
@@ -1355,7 +1364,15 @@ async function loadTorvik() {
   }
   localStorage.setItem('torvik_ratings', JSON.stringify(ratings));
   localStorage.setItem('torvik_ts', Date.now().toString());
-  setSt('st-ratings', `Ratings: ${n} teams`, 'ok');
+  // Fetch meta for Gist update timestamp (non-blocking — failure is silent)
+  fetch(GIST_META_URL, { signal: AbortSignal.timeout(5000) })
+    .then(r => r.ok ? r.json() : null)
+    .then(meta => {
+      if (!meta?.updated_at) { setSt('st-ratings', `Ratings: ${n} teams`, 'ok'); return; }
+      const gistAge = cacheAge(new Date(meta.updated_at).getTime());
+      setSt('st-ratings', `Ratings: ${n} teams · updated ${gistAge}`, 'ok');
+    })
+    .catch(() => setSt('st-ratings', `Ratings: ${n} teams`, 'ok'));
 }
 
 function parseTorvik(data) {

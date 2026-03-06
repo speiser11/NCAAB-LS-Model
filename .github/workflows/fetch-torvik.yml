@@ -9,18 +9,26 @@ jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
+      - name: Install dependencies
+        run: pip install requests
+
       - name: Fetch Torvik and push to Gist
         run: |
           python3 - <<'EOF'
           import requests
           import json
           import urllib.request
-          from datetime import date
+          from datetime import date, datetime
 
-          YEAR = 2026
+          # Dynamic season year: Nov 1 starts a new season
+          today = date.today()
+          YEAR = today.year + 1 if today.month >= 10 else today.year
+
           GIST_ID = "44dd1f1464e3d7e2689b25ba758d4ea9"
           TOKEN = "${{ secrets.GIST_TOKEN }}"
+          today_iso = today.isoformat()  # e.g. 2026-03-06
 
+          # ── Fetch Torvik ──────────────────────────────────────────
           url = f"https://barttorvik.com/trank.php?json=1&year={YEAR}"
           headers = {
               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -36,15 +44,15 @@ jobs:
 
           # Step 2: POST simulating the JS form auto-submit
           r2 = session.post(url, data={"js_test_submitted": "1"}, timeout=30)
-          data = r2.text
+          r2.raise_for_status()
 
-          # Verify it's valid JSON
-          parsed = json.loads(data)
-          print(f"Fetched {len(parsed)} teams from Torvik")
+          # Verify it's valid JSON before proceeding
+          parsed = json.loads(r2.text)
+          if not isinstance(parsed, list) or len(parsed) < 100:
+              raise ValueError(f"Unexpected Torvik response: {r2.text[:200]}")
+          print(f"Fetched {len(parsed)} teams from Torvik (season {YEAR})")
 
-          today = date.today().isoformat()  # e.g. 2026-03-02
-
-          # Fetch NCAAB odds
+          # ── Fetch NCAAB odds ──────────────────────────────────────
           odds_key = "${{ secrets.ODDS_API_KEY }}"
           odds_data = []
           if odds_key:
@@ -75,14 +83,23 @@ jobs:
                           })
                       print(f"Fetched odds for {len(odds_data)} games")
               except Exception as e:
-                  print(f"Odds fetch failed: {e}")
+                  print(f"Odds fetch failed (non-fatal): {e}")
 
-          # Push to Gist: overwrite current + store dated snapshots
-          gist_files = {
-              "torvik-ratings.json":          {"content": data},
-              f"torvik-{today}.json":         {"content": data},
-              f"ncaab-odds-{today}.json":     {"content": json.dumps(odds_data)},
+          # ── Build Gist files ──────────────────────────────────────
+          meta = {
+              "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "season": YEAR,
+              "team_count": len(parsed),
           }
+
+          gist_files = {
+              "torvik-ratings.json":      {"content": r2.text},
+              f"torvik-{today_iso}.json": {"content": r2.text},
+              f"ncaab-odds-{today_iso}.json": {"content": json.dumps(odds_data)},
+              "torvik-meta.json":         {"content": json.dumps(meta)},
+          }
+
+          # ── Push to Gist ──────────────────────────────────────────
           payload = json.dumps({"files": gist_files}).encode("utf-8")
           gist_req = urllib.request.Request(
               f"https://api.github.com/gists/{GIST_ID}",
@@ -95,5 +112,5 @@ jobs:
               }
           )
           with urllib.request.urlopen(gist_req) as resp:
-              print(f"Gist updated: {resp.status}")
+              print(f"Gist updated: HTTP {resp.status} — {today_iso} season={YEAR}")
           EOF
