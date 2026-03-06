@@ -1091,7 +1091,7 @@ input[type=date] {
     </div>
     <div class="field">
       <label>Total Fine-Tune (pts)</label>
-      <input type="number" id="inp-total-offset" value="0" step="0.5" min="-10" max="10">
+      <input type="number" id="inp-total-offset" value="-5" step="0.5" min="-10" max="10">
       <small>Additional total adjustment on top of built-in calibration (0 = fully calibrated). Use if model totals feel consistently high or low.</small>
     </div>
     <div class="field">
@@ -1202,15 +1202,15 @@ const CONF_TZ = {
 };
 
 // v3: reset totalOffset to 0 (regression calibration now built into formula)
-if (localStorage.getItem('ncaab_cfg_ver') !== '3') {
+if (localStorage.getItem('ncaab_cfg_ver') !== '4') {
   localStorage.removeItem('ncaab_tot_off');
-  localStorage.setItem('ncaab_cfg_ver', '3');
+  localStorage.setItem('ncaab_cfg_ver', '4');
 }
 let cfg = {
   oddsKey:     localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
   homeCourt:   parseFloat(localStorage.getItem('ncaab_hc')     || '3.5'),
   scoreScale:  parseFloat(localStorage.getItem('ncaab_scale')  || '1.04'),
-  totalOffset: parseFloat(localStorage.getItem('ncaab_tot_off')|| '0'),
+  totalOffset: parseFloat(localStorage.getItem('ncaab_tot_off')|| '-5'),
   lockHour:    parseInt(localStorage.getItem('ncaab_lock_hour') || '10'),
 };
 
