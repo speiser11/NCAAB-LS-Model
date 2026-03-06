@@ -1982,8 +1982,8 @@ function getAdvice(g) {
   const spreadTeam = sEdge !== null ? (sEdge > 0 ? hShort : aShort) : null;
   const totalDir   = tEdge !== null ? (tEdge > 0 ? 'Over'  : 'Under') : null;
 
-  const sStrong = sAbs >= 7, sLean = sAbs >= 4;
-  const tStrong = tAbs >= 7, tLean = tAbs >= 4;
+  const sStrong = sAbs >= 6, sLean = sAbs >= 3;
+  const tStrong = tAbs >= 8,  tLean = tAbs >= 5;
 
   if (!sLean && !tLean) return { text: 'No Action', cls: 'cm-act-none' };
 
