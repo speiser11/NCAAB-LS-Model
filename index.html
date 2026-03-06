@@ -1089,9 +1089,9 @@ input[type=date] {
       <small>Fine-tunes predicted scores (affects both spread and total). Calibrated to 1.04 via optimizer.</small>
     </div>
     <div class="field">
-      <label>Total Offset (pts)</label>
-      <input type="number" id="inp-total-offset" value="-3.5" step="0.5" min="-15" max="5">
-      <small>Shifts all predicted totals up or down. Model runs ~+3.7 over Vegas lines at default scale, so -3.5 corrects the bias.</small>
+      <label>Total Fine-Tune (pts)</label>
+      <input type="number" id="inp-total-offset" value="0" step="0.5" min="-10" max="10">
+      <small>Additional total adjustment on top of built-in calibration (0 = fully calibrated). Use if model totals feel consistently high or low.</small>
     </div>
     <div class="field">
       <label>Daily Odds Lock Time (local hour, 0–23)</label>
@@ -1211,11 +1211,16 @@ const CONF_TZ = {
   'WCC':3,'Big West':3,'Pac-12':3,'PAC-12':3,
 };
 
+// v3: reset totalOffset to 0 (regression calibration now built into formula)
+if (localStorage.getItem('ncaab_cfg_ver') !== '3') {
+  localStorage.removeItem('ncaab_tot_off');
+  localStorage.setItem('ncaab_cfg_ver', '3');
+}
 let cfg = {
-  oddsKey:    localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
+  oddsKey:     localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
   homeCourt:   parseFloat(localStorage.getItem('ncaab_hc')     || '3.5'),
   scoreScale:  parseFloat(localStorage.getItem('ncaab_scale')  || '1.04'),
-  totalOffset: parseFloat(localStorage.getItem('ncaab_tot_off')|| '-3.5'),
+  totalOffset: parseFloat(localStorage.getItem('ncaab_tot_off')|| '0'),
   lockHour:    parseInt(localStorage.getItem('ncaab_lock_hour') || '10'),
 };
 
@@ -1737,7 +1742,7 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
 
   return {
     margin:  Math.round(margin  * 10) / 10,
-    total:   Math.round((hScore + aScore + cfg.totalOffset) * 10) / 10,
+    total:   Math.round(((hScore + aScore) * 0.847 + 18.7 + cfg.totalOffset) * 10) / 10,
     hScore:  Math.round((hScore + hc / 2) * 10) / 10,
     aScore:  Math.round((aScore - hc / 2) * 10) / 10,
     hRating: h,
