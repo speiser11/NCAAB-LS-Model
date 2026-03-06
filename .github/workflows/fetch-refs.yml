@@ -1,0 +1,24 @@
+name: Fetch KenPom Referee Stats
+
+on:
+  schedule:
+    - cron: '30 14 * * *'   # 10:30am ET daily (30 min after Torvik run)
+  workflow_dispatch:          # allows manual trigger from GitHub UI
+
+jobs:
+  fetch-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Scrape KenPom refs and push to Gist
+        env:
+          KENPOM_USER: ${{ secrets.KENPOM_USER }}
+          KENPOM_PASS: ${{ secrets.KENPOM_PASS }}
+          GITHUB_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: "44dd1f1464e3d7e2689b25ba758d4ea9"
+        run: python3 optimize/scrape_refs.py
