@@ -1075,8 +1075,8 @@ input[type=date] {
     <h2>Settings</h2>
     <div class="field">
       <label>The Odds API Key</label>
-      <input type="text" id="inp-odds-key" placeholder="Get a free key at the-odds-api.com">
-      <small>Free tier: 500 requests/month. Odds are cached 30 min to save requests.</small>
+      <input type="text" id="inp-odds-key" placeholder="Paste your API key here">
+      <small>Free tier: 500 requests/month. Odds are cached 30 min to save requests. <a href="https://the-odds-api.com" target="_blank" rel="noopener" style="color:var(--blue)">Get a free key →</a></small>
     </div>
     <div class="field">
       <label>Home Court Advantage (pts)</label>
@@ -1260,6 +1260,14 @@ const ALIAS = {
   "saint peter's":"saint peter's","saint peter's peacocks":"saint peter's",
 };
 
+function cacheAge(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m > 0 ? `${h}h ${m}m ago` : `${h}h ago`;
+}
+
 function normTeam(raw) {
   if (!raw) return '';
   let s = raw.toLowerCase()
@@ -1296,6 +1304,7 @@ function matchTeam(fullName) {
     const score = (2 * shared) / (nw.length + kw.length);
     if (score > best && score >= 0.5) { best = score; bestKey = key; }
   }
+  if (!bestKey && window.DEV_MODE) console.warn('[TrueLine] Unmatched team:', fullName);
   return bestKey;
 }
 
@@ -1321,7 +1330,7 @@ async function loadTorvik() {
   const ts     = parseInt(localStorage.getItem('torvik_ts') || '0');
   if (cached && Date.now() - ts < 6 * 3600 * 1000) {
     ratings = JSON.parse(cached);
-    setSt('st-ratings', `Ratings: ${Object.keys(ratings).length} teams (cached)`, 'ok');
+    setSt('st-ratings', `Ratings: ${Object.keys(ratings).length} teams · cached ${cacheAge(ts)}`, 'ok');
     return;
   }
   setSt('st-ratings', 'Ratings: loading…', '');
@@ -1794,7 +1803,7 @@ function assembleGames() {
     // Match current odds
     const oddsGame = oddsList.find(og => {
       const oh = matchTeam(og.home_team), oa = matchTeam(og.away_team);
-      return (oh && oh === hKey) || (oa && oa === aKey);
+      return (oh === hKey && oa === aKey) || (oh === aKey && oa === hKey);
     });
     let vegasSpread = null, vegasTotal = null;
     if (oddsGame) {
@@ -1805,7 +1814,7 @@ function assembleGames() {
     // Opening line movement
     const openGame = openSnap?.find(og => {
       const oh = matchTeam(og.home_team), oa = matchTeam(og.away_team);
-      return (oh && oh === hKey) || (oa && oa === aKey);
+      return (oh === hKey && oa === aKey) || (oh === aKey && oa === hKey);
     });
     const openSpread = openGame ? getLine(openGame.bookmakers, 'spreads', hKey) : null;
     const openTotal  = openGame ? getLine(openGame.bookmakers, 'totals',  hKey) : null;
@@ -1821,8 +1830,9 @@ function assembleGames() {
     // Apply B2B penalty to prediction
     if (pred && (hB2B || aB2B)) {
       const B2B_PEN = 1.8;
-      if (hB2B) { pred.margin -= B2B_PEN; pred.total -= B2B_PEN; }
-      if (aB2B) { pred.margin += B2B_PEN; pred.total -= B2B_PEN; }
+      if (hB2B) pred.margin -= B2B_PEN;
+      if (aB2B) pred.margin += B2B_PEN;
+      if (hB2B || aB2B) pred.total -= B2B_PEN; // cap: one total penalty max, margin effects cancel when both on B2B
       pred.margin = Math.round(pred.margin * 10) / 10;
       pred.total  = Math.round(pred.total  * 10) / 10;
       pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
