@@ -1874,10 +1874,6 @@ function normalCDF(z) {
 }
 // Empirical std dev of model errors (fitted from 16k games via optimize.py)
 const NCAAB_SIGMA = 12.5;
-// KenPom luck adjustment: positive luck = team overperformed in close games → regress down
-// Scale: 25 pts/unit (luck ±0.10 → ±2.5 pts). Cap: ±3 pts.
-const LUCK_SCALE = 25;
-const LUCK_CAP   = 3;
 
 // Estimate point impact of a team's injuries; cap at 4 pts
 function injuryImpact(injuries) {
@@ -2076,24 +2072,6 @@ function assembleGames() {
       if (hInj + aInj >= 0.5) {
         pred.total  -= (hInj + aInj) * 0.35; // both teams missing players → lower total
         pred.total   = Math.round(pred.total * 10) / 10;
-      }
-    }
-
-    // KenPom luck regression: positive luck = team won more close games than efficiency predicts
-    // → likely to regress; we reduce their margin contribution accordingly.
-    if (pred) {
-      const hLuck = kenpomTeams[hKey]?.luck;
-      const aLuck = kenpomTeams[aKey]?.luck;
-      if (hLuck != null || aLuck != null) {
-        const raw = ((aLuck ?? 0) - (hLuck ?? 0)) * LUCK_SCALE;
-        const luckAdj = Math.max(-LUCK_CAP, Math.min(LUCK_CAP, raw));
-        if (Math.abs(luckAdj) >= 0.1) {
-          pred.margin += luckAdj;
-          pred.margin  = Math.round(pred.margin * 10) / 10;
-          pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-          pred.awayWinProb = 100 - pred.homeWinProb;
-        }
-        pred.luckAdj = Math.round(luckAdj * 10) / 10;
       }
     }
 
@@ -3314,19 +3292,16 @@ function showGameModal(gameId) {
   if (g.hForm?.net && Math.abs(g.hForm.net)>=1.5) ctx.push([g.hForm.net>0?'📈':'📉', `${esc(hName)} form: ${g.hForm.net>0?'+':''}${g.hForm.net.toFixed(1)} net efficiency`]);
   (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
   (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
+  // KenPom luck shown as context only — tested against 16k games, found to add noise (+0.39 MAE), not applied to model
   if (g.hLuck != null && Math.abs(g.hLuck) >= 0.05) {
     const icon = g.hLuck > 0 ? '🍀' : '📉';
-    const dir  = g.hLuck > 0 ? `+${(g.hLuck*100).toFixed(0)}% wins vs expected — regression risk` : `${(g.hLuck*100).toFixed(0)}% wins vs expected — regression upside`;
-    ctx.push([icon, `${esc(hName)} KenPom luck: ${dir}`]);
+    const dir  = g.hLuck > 0 ? `lucky (+${(g.hLuck*100).toFixed(0)}% wins vs expected)` : `unlucky (${(g.hLuck*100).toFixed(0)}% wins vs expected)`;
+    ctx.push([icon, `${esc(hName)} KenPom luck: ${dir} — context only, not applied to model`]);
   }
   if (g.aLuck != null && Math.abs(g.aLuck) >= 0.05) {
     const icon = g.aLuck > 0 ? '🍀' : '📉';
-    const dir  = g.aLuck > 0 ? `+${(g.aLuck*100).toFixed(0)}% wins vs expected — regression risk` : `${(g.aLuck*100).toFixed(0)}% wins vs expected — regression upside`;
-    ctx.push([icon, `${esc(aName)} KenPom luck: ${dir}`]);
-  }
-  if (pred?.luckAdj && Math.abs(pred.luckAdj) >= 0.1) {
-    const favored = pred.luckAdj > 0 ? hName : aName;
-    ctx.push(['⚖️', `Luck adj: ${pred.luckAdj > 0 ? '+' : ''}${pred.luckAdj.toFixed(1)} pts to ${esc(favored)} (opponent regression)`]);
+    const dir  = g.aLuck > 0 ? `lucky (+${(g.aLuck*100).toFixed(0)}% wins vs expected)` : `unlucky (${(g.aLuck*100).toFixed(0)}% wins vs expected)`;
+    ctx.push([icon, `${esc(aName)} KenPom luck: ${dir} — context only, not applied to model`]);
   }
   if (ctx.length) {
     html += `<div class="gd-section">
