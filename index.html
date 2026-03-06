@@ -1191,8 +1191,9 @@ let teamIdToConf = {};  // ESPN team id → conference short name (from groups A
 
 // ── Contextual model data ──────────────────────────────────
 let teamsPlayedYesterday = new Set(); // ESPN team IDs of teams that played yesterday
+let teamDaysRest  = {};               // ESPN team ID → days since last game (1–7)
 let recentRatings = {};               // teamKey → Torvik ratings from last 14 days
-let injuryMap     = {};               // ESPN teamId → [{ name, status }]
+let injuryMap     = {};               // ESPN teamId → [{ name, status, mpg }]
 let currentIsoDate = '';              // ISO date of current view (YYYY-MM-DD)
 
 // Conference → timezone bucket (0=Eastern, 1=Central, 2=Mountain, 3=Pacific)
@@ -1608,29 +1609,54 @@ async function loadOdds(isoDate) {
 }
 
 // ══════════════════════════════════════════════════════════
-// DATA: YESTERDAY'S GAMES (back-to-back detection)
+// DATA: REST DATA (7-day lookback — B2B + short-rest detection)
 // ══════════════════════════════════════════════════════════
-async function loadYesterdayGames(dateStr) {
-  const d = new Date(`${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  const yStr = `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
-  const cacheKey = `b2b_${yStr}`;
+async function loadRestData(dateStr) {
+  const cacheKey = `rest_${dateStr}`;
   const cached = sessionStorage.getItem(cacheKey);
-  if (cached) { teamsPlayedYesterday = new Set(JSON.parse(cached)); return; }
-  try {
-    const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${yStr}`, { signal: AbortSignal.timeout(8000) });
-    const data = await r.json();
-    const ids = [];
+  if (cached) {
+    teamDaysRest = JSON.parse(cached);
+    teamsPlayedYesterday = new Set(Object.keys(teamDaysRest).filter(id => teamDaysRest[id] === 1));
+    return;
+  }
+
+  const target = new Date(`${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T12:00:00Z`);
+
+  // Fetch up to 7 prior days in parallel; first (most recent) occurrence wins
+  const fetches = [];
+  for (let daysBack = 1; daysBack <= 7; daysBack++) {
+    const d = new Date(target);
+    d.setUTCDate(d.getUTCDate() - daysBack);
+    const dStr = `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
+    fetches.push(
+      fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dStr}`, { signal: AbortSignal.timeout(8000) })
+        .then(r => r.json())
+        .then(data => ({ daysBack, data }))
+        .catch(() => ({ daysBack, data: null }))
+    );
+  }
+
+  const results = await Promise.allSettled(fetches);
+  // Sort ascending so most recent (daysBack=1) overwrites older entries
+  const sorted = results
+    .filter(r => r.status === 'fulfilled' && r.value.data)
+    .map(r => r.value)
+    .sort((a, b) => b.daysBack - a.daysBack); // process oldest first so recent wins
+
+  const restMap = {};
+  for (const { daysBack, data } of sorted) {
     for (const ev of (data.events || [])) {
       for (const comp of (ev.competitions || [])) {
         for (const c of (comp.competitors || [])) {
-          if (c.team?.id) ids.push(c.team.id);
+          if (c.team?.id) restMap[c.team.id] = daysBack;
         }
       }
     }
-    teamsPlayedYesterday = new Set(ids);
-    sessionStorage.setItem(cacheKey, JSON.stringify(ids));
-  } catch(e) { teamsPlayedYesterday = new Set(); }
+  }
+
+  teamDaysRest = restMap;
+  teamsPlayedYesterday = new Set(Object.keys(restMap).filter(id => restMap[id] === 1));
+  sessionStorage.setItem(cacheKey, JSON.stringify(restMap));
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1671,10 +1697,14 @@ async function loadTeamInjuries(teamId) {
     );
     const d = await r.json();
     const injured = [];
+    // Position → estimated minutes per game (NCAAB starters average 28–30 mpg)
+    const POS_MPG = { PG: 28, G: 27, SG: 26, SF: 25, F: 24, PF: 22, C: 22 };
     for (const athlete of (d.athletes || [])) {
       const statusName = athlete.status?.type?.name || athlete.status?.name || '';
       if (['Out', 'Doubtful', 'Injured Reserve', 'Day-To-Day', 'injured'].includes(statusName)) {
-        injured.push({ name: athlete.displayName || athlete.shortName || '?', status: statusName });
+        const pos = (athlete.position?.abbreviation || '').toUpperCase();
+        const mpg = POS_MPG[pos] || 18;
+        injured.push({ name: athlete.displayName || athlete.shortName || '?', status: statusName, mpg });
       }
     }
     injuryMap[teamId] = injured;
@@ -1711,6 +1741,19 @@ function normalCDF(z) {
 }
 // Empirical std dev of model errors (fitted from 16k games via optimize.py)
 const NCAAB_SIGMA = 12.5;
+
+// Estimate point impact of a team's injuries; cap at 4 pts
+function injuryImpact(injuries) {
+  const SEVERITY = { 'Out': 1.0, 'Injured Reserve': 1.0, 'Doubtful': 0.7, 'Day-To-Day': 0.4, 'injured': 0.9 };
+  const BASE_PTS = 2.5; // pts a full-time (40 mpg) starter contributes when removed
+  let total = 0;
+  for (const inj of (injuries || [])) {
+    const sev   = SEVERITY[inj.status] ?? 0.5;
+    const usage = (inj.mpg || 18) / 40;
+    total += sev * usage * BASE_PTS;
+  }
+  return Math.min(total, 4);
+}
 
 // Predict game: returns { margin, total, hScore, aScore, hRating, aRating, homeWinProb, awayWinProb }
 // margin > 0 → home team wins by that many (after home court adj)
@@ -1845,20 +1888,32 @@ function assembleGames() {
     const totalMove = (vegasTotal && openTotal && vegasTotal.point !== openTotal.point)
       ? Math.round((vegasTotal.point - openTotal.point) * 10) / 10 : null;
 
-    // Back-to-back flags
-    const hB2B = teamsPlayedYesterday.has(g.homeTeamId);
-    const aB2B = teamsPlayedYesterday.has(g.awayTeamId);
+    // Rest: days since last game (1 = B2B, 2-3 = short rest, 4+ = normal)
+    const hDaysRest = teamDaysRest[g.homeTeamId] ?? 7;
+    const aDaysRest = teamDaysRest[g.awayTeamId] ?? 7;
+    const hB2B = hDaysRest === 1;
+    const aB2B = aDaysRest === 1;
 
-    // Apply B2B penalty to prediction
-    if (pred && (hB2B || aB2B)) {
-      const B2B_PEN = 1.8;
-      if (hB2B) pred.margin -= B2B_PEN;
-      if (aB2B) pred.margin += B2B_PEN;
-      if (hB2B || aB2B) pred.total -= B2B_PEN; // cap: one total penalty max, margin effects cancel when both on B2B
-      pred.margin = Math.round(pred.margin * 10) / 10;
-      pred.total  = Math.round(pred.total  * 10) / 10;
-      pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-      pred.awayWinProb = 100 - pred.homeWinProb;
+    // Apply rest adjustments to prediction
+    if (pred) {
+      const B2B_PEN = 1.8; // calibrated from 16k game dataset
+      let restAdj = 0;
+      // B2B penalty (plays yesterday)
+      if (hB2B) restAdj -= B2B_PEN;
+      if (aB2B) restAdj += B2B_PEN;
+      // Rest differential: ~0.15 pts per extra day of rest advantage (non-B2B only)
+      if (!hB2B && !aB2B) {
+        const diff = hDaysRest - aDaysRest;
+        if (Math.abs(diff) >= 2) restAdj += Math.max(-1.5, Math.min(1.5, diff * 0.15));
+      }
+      if (restAdj !== 0) {
+        pred.margin += restAdj;
+        pred.total  -= Math.abs(restAdj) * 0.4; // fatigued team scores less overall
+        pred.margin  = Math.round(pred.margin * 10) / 10;
+        pred.total   = Math.round(pred.total  * 10) / 10;
+        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+        pred.awayWinProb = 100 - pred.homeWinProb;
+      }
     }
 
     // Travel adjustment: away team crossing 2+ time zones gets a small penalty
@@ -1872,9 +1927,25 @@ function assembleGames() {
       pred.awayWinProb = 100 - pred.homeWinProb;
     }
 
-    // Injury data + form delta
+    // Injury data: apply MPG-weighted impact to model predictions
     const hInjuries = injuryMap[g.homeTeamId] || [];
     const aInjuries = injuryMap[g.awayTeamId] || [];
+    if (pred && (hInjuries.length || aInjuries.length)) {
+      const hInj = injuryImpact(hInjuries);
+      const aInj = injuryImpact(aInjuries);
+      const injAdj = aInj - hInj; // +ve = away team more impacted → home favored more
+      if (Math.abs(injAdj) >= 0.3) {
+        pred.margin += injAdj;
+        pred.margin  = Math.round(pred.margin * 10) / 10;
+        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+        pred.awayWinProb = 100 - pred.homeWinProb;
+      }
+      if (hInj + aInj >= 0.5) {
+        pred.total  -= (hInj + aInj) * 0.35; // both teams missing players → lower total
+        pred.total   = Math.round(pred.total * 10) / 10;
+      }
+    }
+
     const hForm = getFormDelta(hKey);
     const aForm = getFormDelta(aKey);
 
@@ -1882,7 +1953,7 @@ function assembleGames() {
       ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
       hConf, aConf,
       spreadMove, totalMove,
-      hB2B, aB2B,
+      hB2B, aB2B, hDaysRest, aDaysRest,
       hInjuries, aInjuries,
       hForm, aForm,
       awayTravel: travelDiff >= 2,
@@ -2089,15 +2160,16 @@ function renderMobileCard(g) {
         : `${esc(displayName(g.aKey, g.away).split(' ').pop())} ${pred.awayWinProb}%`}</span>`
     : '';
 
-  function cmCtx(b2b, injuries, form) {
+  function cmCtx(b2b, daysRest, injuries, form) {
     let s = '';
     if (b2b) s += `<span class="ctx-badge b2b-tag">B2B</span>`;
+    else if (daysRest === 2) s += `<span class="ctx-badge b2b-tag" style="opacity:.7">SR</span>`;
     if (injuries.length) s += `<span class="ctx-badge inj-flag">⚠</span>`;
     if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}">${form.net > 0 ? '↑' : '↓'}</span>`;
     return s;
   }
-  const aBadges = cmCtx(g.aB2B, g.aInjuries||[], g.aForm);
-  const hBadges = cmCtx(g.hB2B, g.hInjuries||[], g.hForm);
+  const aBadges = cmCtx(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
+  const hBadges = cmCtx(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm);
 
   const linesAndAdvice = `
     <div class="cm-lines">
@@ -2391,10 +2463,11 @@ function renderCard(g) {
   const rankedMatchupBadge = bothRanked ? `<span class="ranked-badge">Ranked Matchup</span>` : '';
 
   // Contextual badges
-  function teamBadges(b2b, injuries, form) {
+  function teamBadges(b2b, daysRest, injuries, form) {
     let s = '';
-    if (b2b) s += `<span class="ctx-badge b2b-tag" title="Back-to-back game">B2B</span>`;
-    if (injuries.length) s += `<span class="ctx-badge inj-flag" title="${esc(injuries.map(i=>i.name+' ('+i.status+')').join(', '))}">⚠ ${injuries.length > 1 ? injuries.length+' out' : injuries[0].name}</span>`;
+    if (b2b) s += `<span class="ctx-badge b2b-tag" title="Back-to-back game (played yesterday)">B2B</span>`;
+    else if (daysRest === 2) s += `<span class="ctx-badge b2b-tag" style="opacity:.7" title="Short rest — played 2 days ago">SR</span>`;
+    if (injuries.length) s += `<span class="ctx-badge inj-flag" title="${esc(injuries.map(i=>i.name+' ('+i.status+(i.mpg?', ~'+i.mpg+' mpg':'')+')').join(', '))}">⚠ ${injuries.length > 1 ? injuries.length+' out' : injuries[0].name}</span>`;
     if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}" title="Last-14-day trend: adjO ${form.dO > 0?'+':''}${form.dO} / adjD ${form.dD > 0?'+':''}${form.dD}">${form.net > 0 ? '↑' : '↓'} ${Math.abs(form.net).toFixed(1)}</span>`;
     return s;
   }
@@ -2415,8 +2488,8 @@ function renderCard(g) {
     return `<span class="line-move ${move > 0 ? 'lm-up' : 'lm-dn'}" title="Line moved ${move > 0 ? 'toward home' : 'toward away'} since open">${move > 0 ? '↑' : '↓'}${Math.abs(move).toFixed(1)}</span>`;
   }
 
-  const aCtx = teamBadges(g.aB2B, g.aInjuries||[], g.aForm);
-  const hCtx = teamBadges(g.hB2B, g.hInjuries||[], g.hForm);
+  const aCtx = teamBadges(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
+  const hCtx = teamBadges(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm);
   const travelBadge = g.awayTravel ? `<span class="ctx-badge travel-tag" title="Away team traveling 2+ time zones">✈ travel</span>` : '';
   const earlyBadge  = confidenceBadge();
 
@@ -3047,13 +3120,19 @@ function showGameModal(gameId) {
 
   // ── Contextual Factors ──
   const ctx = [];
-  if (g.aB2B) ctx.push(['⚠️', `${esc(aName)} on a back-to-back`]);
-  if (g.hB2B) ctx.push(['⚠️', `${esc(hName)} on a back-to-back`]);
+  if (g.aB2B) ctx.push(['⚠️', `${esc(aName)} on a back-to-back (−1.8 pts applied)`]);
+  if (g.hB2B) ctx.push(['⚠️', `${esc(hName)} on a back-to-back (−1.8 pts applied)`]);
+  if (!g.aB2B && g.aDaysRest === 2) ctx.push(['😓', `${esc(aName)} on short rest (2 days)`]);
+  if (!g.hB2B && g.hDaysRest === 2) ctx.push(['😓', `${esc(hName)} on short rest (2 days)`]);
+  if (!g.hB2B && !g.aB2B && g.hDaysRest != null && g.aDaysRest != null) {
+    const diff = g.hDaysRest - g.aDaysRest;
+    if (Math.abs(diff) >= 3) ctx.push(['🛌', `Rest advantage: ${diff > 0 ? esc(hName) : esc(aName)} has ${Math.abs(diff)} more days rest`]);
+  }
   if (g.awayTravel) ctx.push(['✈️', 'Away team crossing 2+ time zones']);
   if (g.aForm?.net && Math.abs(g.aForm.net)>=1.5) ctx.push([g.aForm.net>0?'📈':'📉', `${esc(aName)} form: ${g.aForm.net>0?'+':''}${g.aForm.net.toFixed(1)} net efficiency`]);
   if (g.hForm?.net && Math.abs(g.hForm.net)>=1.5) ctx.push([g.hForm.net>0?'📈':'📉', `${esc(hName)} form: ${g.hForm.net>0?'+':''}${g.hForm.net.toFixed(1)} net efficiency`]);
-  (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)})`]));
-  (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)})`]));
+  (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
+  (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
   if (ctx.length) {
     html += `<div class="gd-section">
       <div class="gd-section-title">Contextual Factors</div>
@@ -3548,7 +3627,7 @@ async function refresh() {
       loadConferences(),
       loadTorvik(),
       loadESPN(dateStr),
-      loadYesterdayGames(dateStr),
+      loadRestData(dateStr),
       loadOdds(isoDate),
     ]);
     currentIsoDate = isoDate;
