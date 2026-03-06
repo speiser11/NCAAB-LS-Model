@@ -1764,7 +1764,7 @@ async function loadBettingData(isoDate) {
     return;
   }
   const anDate = isoDate.replace(/-/g, '');
-  const url = `https://api.actionnetwork.com/web/v2/scoreboard/publicbetting/ncaab?bookIds=15,30,270,1538,1797,2990,4727,366,283,68,2790,348&date=${anDate}&division=D1&periods=event&tournament=0`;
+  const url = `https://api.actionnetwork.com/web/v2/scoreboard/publicbetting/ncaab?date=${anDate}&division=D1&periods=event&tournament=0`;
   try {
     const data = await fetchViaProxy(url);
     // Log raw structure once so we can confirm field names
