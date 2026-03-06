@@ -1121,7 +1121,6 @@ input[type=date] {
       <label>To</label>
       <input type="date" id="bt-to">
       <button class="btn primary" onclick="runBacktest()">Run</button>
-      <span style="font-size:.65rem;color:var(--muted)">Max 14 days · uses current ratings (no look-ahead correction)</span>
     </div>
     <div id="bt-results"></div>
   </div>
@@ -2771,8 +2770,13 @@ function renderTopPicks(games) {
 }
 
 // ── Historical accuracy scorecard ─────────────────────────
-// Only count games on/after this date — day 1 of fresh tracking
-const ACC_START_DATE = '20260303';
+// Season start: Nov 1 of current academic year
+// (before July → prior year's Nov; July+ → current year's Nov)
+const ACC_START_DATE = (() => {
+  const now = new Date();
+  const yr = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
+  return `${yr}1101`;
+})();
 
 let _accCache = null, _accCacheTs = 0;
 
@@ -3690,6 +3694,16 @@ async function runBacktest() {
 
   if (!all.length) { document.getElementById('bt-results').innerHTML = '<div class="loading">No games with predictions found in that range.</div>'; return; }
 
+  const oddsGames  = all.filter(g => g.vegasSpread != null || g.vegasTotal != null).length;
+  const oddsNote   = oddsGames < all.length
+    ? `${oddsGames}/${all.length} games have stored odds — ATS/O·U columns are blank for the rest.`
+    : `All ${all.length} games have stored odds.`;
+
+  const warning = `<div style="background:var(--warn-bg,#fff8e1);border:1px solid var(--warn-border,#f9a825);border-radius:6px;padding:.5rem .75rem;font-size:.72rem;color:var(--warn-text,#6d4c00);margin-bottom:.75rem;line-height:1.5">
+    ⚠️ <strong>Lookahead bias:</strong> backtest uses <em>today's</em> Torvik ratings, not the ratings that existed on each game date — results are optimistic.
+    Historical odds are stored daily to the Gist; ${oddsNote}
+  </div>`;
+
   const mae       = all.reduce((s,g) => s + g.error, 0) / all.length;
   const within35  = all.filter(g => g.error <= 3.5).length / all.length * 100;
   const within7   = all.filter(g => g.error <= 7).length   / all.length * 100;
@@ -3763,7 +3777,7 @@ async function runBacktest() {
     </tr>`;
   }).join('');
 
-  document.getElementById('bt-results').innerHTML = stats + edgeBreakdown + `
+  document.getElementById('bt-results').innerHTML = warning + stats + edgeBreakdown + `
     <div style="margin:.8rem 0 .4rem;font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.05em;">GAME LOG</div>
     <table class="bt-table">
       <thead><tr><th>Date</th><th>Matchup</th><th>Result (Tot)</th><th>Model</th><th>Line / O·U</th><th>Err</th><th>ATS</th><th>O/U</th></tr></thead>
