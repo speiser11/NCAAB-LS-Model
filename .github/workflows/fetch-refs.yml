@@ -1,9 +1,10 @@
 name: Fetch KenPom Referee Stats
 
+# NOTE: KenPom blocks GitHub Actions IP ranges with a 403.
+# This workflow is kept for reference but the scraper should be run locally.
+# See optimize/scrape_refs.py for local usage instructions.
 on:
-  schedule:
-    - cron: '30 14 * * *'   # 10:30am ET daily (30 min after Torvik run)
-  workflow_dispatch:          # allows manual trigger from GitHub UI
+  workflow_dispatch:   # manual trigger only — no schedule
 
 jobs:
   fetch-refs:
@@ -13,7 +14,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install requests beautifulsoup4 cloudscraper
 
       - name: Scrape KenPom refs and push to Gist
         env:
