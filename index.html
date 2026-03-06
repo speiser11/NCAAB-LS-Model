@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrueLine LS</title>
+<link rel="icon" href="data:,">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── Tokens ── */
@@ -1173,12 +1174,6 @@ async function fetchViaProxy(url) {
       const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
       const w = await r.json();
       return typeof w.contents === 'string' ? JSON.parse(w.contents) : (() => { throw new Error('empty'); })();
-    },
-    // 4. thingproxy
-    async () => {
-      const r = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.json();
     },
   ];
   const errors = [];
