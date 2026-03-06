@@ -1786,31 +1786,34 @@ async function loadBettingData(isoDate) {
   try {
     const data = await fetchAN();
     // Log structure to confirm field names
-    const liveGame = data.games?.find(g => g.status === 'scheduled' || g.status === 'in-progress') || data.games?.[0];
-    if (liveGame) {
-      const bookId = Object.keys(liveGame.markets || {})[0];
-      const eventMarkets = liveGame.markets?.[bookId]?.event || {};
-      console.log('[ActionNetwork] market types:', Object.keys(eventMarkets));
-      const firstMarket = Object.values(eventMarkets)[0];
-      console.log('[ActionNetwork] sample outcome:', JSON.stringify(firstMarket?.[0]));
+    const scheduledGame = data.games?.find(g => g.status === 'scheduled' || g.status === 'in-progress');
+    if (scheduledGame) {
+      const bk = Object.keys(scheduledGame.markets || {})[0];
+      const sp = scheduledGame.markets?.[bk]?.event?.spread;
+      console.log('[ActionNetwork] scheduled game spread:', JSON.stringify(sp));
     }
-    for (const game of (data.games || data.scoreboard || [])) {
+    for (const game of (data.games || [])) {
+      // Team identity: match by home_team_id / away_team_id
       const teams = game.teams || [];
-      const homeTeam = teams.find(t => t.id === game.home_team_id || t.type === 'home' || t.side === 'home');
-      const awayTeam = teams.find(t => t.id === game.away_team_id || t.type === 'away' || t.side === 'away');
-      if (!homeTeam || !awayTeam) continue;
-      const hName = homeTeam.full_name || homeTeam.display_name || homeTeam.name || '';
-      const aName = awayTeam.full_name || awayTeam.display_name || awayTeam.name || '';
-      const hKey = matchTeam(hName);
-      const aKey = matchTeam(aName);
+      const homeInfo = teams.find(t => t.id === game.home_team_id);
+      const awayInfo = teams.find(t => t.id === game.away_team_id);
+      if (!homeInfo || !awayInfo) continue;
+      const hKey = matchTeam(homeInfo.full_name || homeInfo.display_name || '');
+      const aKey = matchTeam(awayInfo.full_name || awayInfo.display_name || '');
       if (!hKey || !aKey) continue;
 
-      const hMeta  = homeTeam.meta || homeTeam.consensus || homeTeam || {};
-      const aMeta  = awayTeam.meta || awayTeam.consensus || awayTeam || {};
-      const hSprBets = Math.round((hMeta.spread_bets_pct  ?? hMeta.bets_pct  ?? hMeta.spread?.bets_pct  ?? 0) * 100);
-      const aSprBets = Math.round((aMeta.spread_bets_pct  ?? aMeta.bets_pct  ?? aMeta.spread?.bets_pct  ?? 0) * 100);
-      const hSprMny  = Math.round((hMeta.spread_money_pct ?? hMeta.money_pct ?? hMeta.spread?.money_pct ?? 0) * 100);
-      const aSprMny  = Math.round((aMeta.spread_money_pct ?? aMeta.money_pct ?? aMeta.spread?.money_pct ?? 0) * 100);
+      // Spread public betting: markets[bookId].event.spread[].{side, bet_info}
+      const bookId = Object.keys(game.markets || {})[0];
+      if (!bookId) continue;
+      const spreadOutcomes = game.markets[bookId]?.event?.spread || [];
+      const hSpread = spreadOutcomes.find(o => o.side === 'home');
+      const aSpread = spreadOutcomes.find(o => o.side === 'away');
+
+      // percent is 0–1 float from API
+      const hSprBets = Math.round((hSpread?.bet_info?.tickets?.percent ?? 0) * 100);
+      const aSprBets = Math.round((aSpread?.bet_info?.tickets?.percent ?? 0) * 100);
+      const hSprMny  = Math.round((hSpread?.bet_info?.money?.percent   ?? 0) * 100);
+      const aSprMny  = Math.round((aSpread?.bet_info?.money?.percent   ?? 0) * 100);
       if (!hSprBets && !aSprBets) continue;
       bettingMap[`${hKey}|${aKey}`] = {
         homeSpreadBetPct: hSprBets, awaySpreadBetPct: aSprBets,
