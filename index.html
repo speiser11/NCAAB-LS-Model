@@ -1786,10 +1786,13 @@ async function loadBettingData(isoDate) {
   try {
     const data = await fetchAN();
     // Log structure to confirm field names
-    const firstGame = data.games?.[0];
-    if (firstGame) {
-      console.log('[ActionNetwork] meta:', JSON.stringify(firstGame.meta));
-      console.log('[ActionNetwork] markets:', JSON.stringify(firstGame.markets).slice(0, 1000));
+    const liveGame = data.games?.find(g => g.status === 'scheduled' || g.status === 'in-progress') || data.games?.[0];
+    if (liveGame) {
+      const bookId = Object.keys(liveGame.markets || {})[0];
+      const eventMarkets = liveGame.markets?.[bookId]?.event || {};
+      console.log('[ActionNetwork] market types:', Object.keys(eventMarkets));
+      const firstMarket = Object.values(eventMarkets)[0];
+      console.log('[ActionNetwork] sample outcome:', JSON.stringify(firstMarket?.[0]));
     }
     for (const game of (data.games || data.scoreboard || [])) {
       const teams = game.teams || [];
