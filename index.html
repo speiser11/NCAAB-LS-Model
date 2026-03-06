@@ -1755,7 +1755,7 @@ async function loadRefData() {
 // ══════════════════════════════════════════════════════════
 async function loadBettingData(isoDate) {
   bettingMap = {};
-  const cacheKey = `betting_${isoDate}`;
+  const cacheKey = `betting2_${isoDate}`;
   const cached = sessionStorage.getItem(cacheKey);
   if (cached) {
     bettingMap = JSON.parse(cached);
@@ -1796,22 +1796,35 @@ async function loadBettingData(isoDate) {
       const aKey = matchTeam(awayInfo.full_name || awayInfo.display_name || '');
       if (!hKey || !aKey) continue;
 
-      // Spread public betting: markets[bookId].event.spread[].{side, bet_info}
+      // Betting data: markets[bookId].event.{spread,total}[].{side, bet_info}
       const bookId = Object.keys(game.markets || {})[0];
       if (!bookId) continue;
-      const spreadOutcomes = game.markets[bookId]?.event?.spread || [];
+      const eventMkts = game.markets[bookId]?.event || {};
+
+      const spreadOutcomes = eventMkts.spread || [];
       const hSpread = spreadOutcomes.find(o => o.side === 'home');
       const aSpread = spreadOutcomes.find(o => o.side === 'away');
 
+      const totalOutcomes = eventMkts.total || [];
+      const overTotal  = totalOutcomes.find(o => o.side === 'over');
+      const underTotal = totalOutcomes.find(o => o.side === 'under');
+
       // percent is already 0–100 integer from API
-      const hSprBets = hSpread?.bet_info?.tickets?.percent ?? 0;
-      const aSprBets = aSpread?.bet_info?.tickets?.percent ?? 0;
-      const hSprMny  = hSpread?.bet_info?.money?.percent   ?? 0;
-      const aSprMny  = aSpread?.bet_info?.money?.percent   ?? 0;
-      if (!hSprBets && !aSprBets) continue;
+      const hSprBets  = hSpread?.bet_info?.tickets?.percent  ?? 0;
+      const aSprBets  = aSpread?.bet_info?.tickets?.percent  ?? 0;
+      const hSprMny   = hSpread?.bet_info?.money?.percent    ?? 0;
+      const aSprMny   = aSpread?.bet_info?.money?.percent    ?? 0;
+      const overBets  = overTotal?.bet_info?.tickets?.percent ?? 0;
+      const underBets = underTotal?.bet_info?.tickets?.percent ?? 0;
+      const overMny   = overTotal?.bet_info?.money?.percent   ?? 0;
+      const underMny  = underTotal?.bet_info?.money?.percent  ?? 0;
+
+      if (!hSprBets && !aSprBets && !overBets && !underBets) continue;
       bettingMap[`${hKey}|${aKey}`] = {
         homeSpreadBetPct: hSprBets, awaySpreadBetPct: aSprBets,
         homeSpreadMnyPct: hSprMny,  awaySpreadMnyPct: aSprMny,
+        overBetPct: overBets, underBetPct: underBets,
+        overMnyPct: overMny,  underMnyPct: underMny,
       };
     }
     const n = Object.keys(bettingMap).length;
@@ -3285,16 +3298,19 @@ function showGameModal(gameId) {
   // ── Public Betting % ──
   if (g.betting) {
     const b = g.betting;
-    const hB = b.homeSpreadBetPct, aB = b.awaySpreadBetPct;
-    const hM = b.homeSpreadMnyPct, aM = b.awaySpreadMnyPct;
     const hi = pct => pct >= 60 ? ' style="color:var(--accent);font-weight:700"' : '';
     html += `<div class="gd-section">
-      <div class="gd-section-title">Public Betting — Spread (ActionNetwork)</div>
+      <div class="gd-section-title">Public Betting (ActionNetwork)</div>
       <table class="gd-table">
         <tr><th></th><th>${esc(aName)}</th><th>${esc(hName)}</th></tr>
-        ${hB||aB ? `<tr><td>Tickets (bets)</td><td${hi(aB)}>${aB}%</td><td${hi(hB)}>${hB}%</td></tr>` : ''}
-        ${hM||aM ? `<tr><td>Money ($)</td><td${hi(aM)}>${aM}%</td><td${hi(hM)}>${hM}%</td></tr>` : ''}
+        ${b.homeSpreadBetPct||b.awaySpreadBetPct ? `<tr><td>Spread tickets</td><td${hi(b.awaySpreadBetPct)}>${b.awaySpreadBetPct}%</td><td${hi(b.homeSpreadBetPct)}>${b.homeSpreadBetPct}%</td></tr>` : ''}
+        ${b.homeSpreadMnyPct||b.awaySpreadMnyPct ? `<tr><td>Spread money</td><td${hi(b.awaySpreadMnyPct)}>${b.awaySpreadMnyPct}%</td><td${hi(b.homeSpreadMnyPct)}>${b.homeSpreadMnyPct}%</td></tr>` : ''}
       </table>
+      ${b.overBetPct||b.underBetPct ? `<table class="gd-table" style="margin-top:.4rem">
+        <tr><th></th><th>Over</th><th>Under</th></tr>
+        <tr><td>Total tickets</td><td${hi(b.overBetPct)}>${b.overBetPct}%</td><td${hi(b.underBetPct)}>${b.underBetPct}%</td></tr>
+        ${b.overMnyPct||b.underMnyPct ? `<tr><td>Total money</td><td${hi(b.overMnyPct)}>${b.overMnyPct}%</td><td${hi(b.underMnyPct)}>${b.underMnyPct}%</td></tr>` : ''}
+      </table>` : ''}
     </div>`;
   }
 
