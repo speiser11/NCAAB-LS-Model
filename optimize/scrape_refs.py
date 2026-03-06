@@ -2,61 +2,88 @@
 Scrape KenPom official (referee) stats and push to the GitHub Gist
 alongside torvik-ratings.json as a new file 'kenpom-refs.json'.
 
+NOTE: KenPom blocks GitHub Actions IP ranges (403 Forbidden on login page).
+Run this locally from your machine — KenPom doesn't block residential IPs.
+
 Environment variables required:
   KENPOM_USER   — your KenPom login email
   KENPOM_PASS   — your KenPom password
-  GITHUB_TOKEN  — GitHub PAT with gist write scope
-  GIST_ID       — ID of the target Gist (same one used for Torvik data)
+  GITHUB_TOKEN  — GitHub PAT with gist write scope (same token used for Torvik)
+  GIST_ID       — ID of the target Gist (defaults to the Torvik gist)
 
-Usage (local):
+Usage (Windows, one-time or via Task Scheduler):
   set KENPOM_USER=you@email.com
   set KENPOM_PASS=yourpassword
   set GITHUB_TOKEN=ghp_xxx
-  set GIST_ID=44dd1f1464e3d7e2689b25ba758d4ea9
   py optimize/scrape_refs.py
+
+Referee stats only change weekly — running this once per week (or once per
+season) is sufficient. The app falls back gracefully when the file is absent.
 """
 
 import os
+import re
 import json
 import sys
 import requests
+import cloudscraper
+from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
-KENPOM_BASE  = 'https://kenpom.com'
-LOGIN_URL    = f'{KENPOM_BASE}/user/login/'
+KENPOM_BASE   = 'https://kenpom.com'
+LOGIN_URL     = f'{KENPOM_BASE}/user/login/'
 OFFICIALS_URL = f'{KENPOM_BASE}/officials.php'
 
 
 def kenpom_session(email: str, password: str) -> requests.Session:
-    s = requests.Session()
-    s.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    })
+    # cloudscraper handles Cloudflare's JS challenge automatically
+    s = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
 
-    # Load login page to capture any CSRF/hidden fields
-    r = s.get(LOGIN_URL, timeout=15)
-    r.raise_for_status()
-    soup = BeautifulSoup(r.text, 'html.parser')
-    form = soup.find('form')
-    form_data = {'email': email, 'password': password}
+    # Visit homepage to get cookies and find the login form action URL
+    r0 = s.get(KENPOM_BASE + '/', timeout=15)
+    soup0 = BeautifulSoup(r0.text, 'html.parser')
 
-    # Carry any hidden input fields (CSRF tokens, etc.)
+    # Find the login form — try by id, then by action pattern, then first form
+    form = (soup0.find('form', {'id': 'login-form'})
+            or soup0.find('form', action=lambda a: a and 'login' in a.lower())
+            or soup0.find('form'))
+
     if form:
-        for inp in form.find_all('input', {'type': 'hidden'}):
+        action = form.get('action', '')
+        login_post_url = action if action.startswith('http') else urljoin(KENPOM_BASE + '/', action)
+        print(f'  Found login form, action: {login_post_url}')
+    else:
+        # Fall back to known URL patterns
+        login_post_url = KENPOM_BASE + '/user/login_post.php'
+        print(f'  No login form found on homepage, trying: {login_post_url}')
+
+    form_data = {}
+    if form:
+        for inp in form.find_all('input'):
             if inp.get('name'):
                 form_data[inp['name']] = inp.get('value', '')
 
-    r2 = s.post(LOGIN_URL, data=form_data, timeout=15)
+    form_data['email']    = email
+    form_data['password'] = password
+
+    r2 = s.post(login_post_url, data=form_data, timeout=15)
     r2.raise_for_status()
 
-    # Verify login succeeded by checking for logout link
-    if 'logout' not in r2.text.lower() and 'sign out' not in r2.text.lower():
-        # Some KenPom setups redirect to home on success — check cookies
-        if not any('kenpom' in c.lower() or 'session' in c.lower() for c in s.cookies.keys()):
-            raise RuntimeError(
-                'KenPom login appears to have failed. '
-                'Check KENPOM_USER / KENPOM_PASS environment variables.'
-            )
+    # Accept login if: response contains logout link, OR we got a session cookie,
+    # OR the handler returned a redirect back to the homepage (common pattern)
+    logged_in = (
+        'logout' in r2.text.lower()
+        or 'sign out' in r2.text.lower()
+        or any('session' in c.lower() or 'auth' in c.lower() or 'user' in c.lower()
+               for c in s.cookies.keys())
+        or r2.url == KENPOM_BASE + '/'
+        or r2.url == KENPOM_BASE
+    )
+    if not logged_in:
+        raise RuntimeError(
+            'KenPom login appears to have failed. '
+            'Check KENPOM_USER / KENPOM_PASS environment variables.'
+        )
     return s
 
 
@@ -65,32 +92,35 @@ def scrape_officials(session: requests.Session) -> dict:
     r.raise_for_status()
     soup = BeautifulSoup(r.text, 'html.parser')
 
-    # KenPom uses a DataTable with id="officials-table" or similar
     table = soup.find('table', {'id': 'officials-table'}) or soup.find('table')
     if not table:
         raise RuntimeError('Could not find officials table on kenpom.com/officials.php')
 
-    thead = table.find('thead')
-    tbody = table.find('tbody')
-    if not thead or not tbody:
-        raise RuntimeError('Officials table missing thead or tbody')
+    # Collect all rows — KenPom may not use <thead>/<tbody>
+    all_rows = table.find_all('tr')
+    if not all_rows:
+        raise RuntimeError('Officials table has no rows')
 
-    headers = [th.get_text(strip=True) for th in thead.find_all('th')]
+    # First row with <th> cells = header row; otherwise use first <tr>
+    header_row = next((r for r in all_rows if r.find('th')), all_rows[0])
+    headers = [cell.get_text(strip=True) for cell in header_row.find_all(['th', 'td'])]
     print(f'  Columns found: {headers}')
 
-    # Column name mappings (KenPom may rename these between seasons)
+    # Data rows = all rows that have <td> cells
+    data_rows = [r for r in all_rows if r.find('td')]
+
+    # Column name mappings — exact match first, no partial fallback to avoid mismatches
     COL_ALIASES = {
-        'official':  ['Official', 'Name', 'Referee'],
-        'games':     ['Games', 'G', 'GP'],
-        'foulRate':  ['Foul Rate', 'Fouls/40', 'Fouls Per 40', 'Foul Rate/40'],
-        'ftRate':    ['FT Rate', 'Adj FT Rate', 'FTRate'],
-        'conf':      ['Conf', 'Conference'],
+        'official': ['NameFAA', 'Official', 'Name', 'Referee'],
+        'rating':   ['Rating'],
+        'games':    ['Gms', 'Games', 'GP'],
+        'lastGame': ['Last Game'],
     }
 
     def find_col(aliases):
         for alias in aliases:
             for i, h in enumerate(headers):
-                if h.strip().lower() == alias.lower():
+                if h.strip().lower() == alias.strip().lower():
                     return i
         return None
 
@@ -98,32 +128,37 @@ def scrape_officials(session: requests.Session) -> dict:
     print(f'  Column indices: {idx}')
 
     if idx['official'] is None:
-        raise RuntimeError(f'Cannot find official name column in headers: {headers}')
+        raise RuntimeError(f'Cannot find official name column. Headers were: {headers}')
 
     refs = {}
-    for row in tbody.find_all('tr'):
+    for row in data_rows:
         cells = [td.get_text(strip=True) for td in row.find_all('td')]
-        if not cells:
+        if not cells or len(cells) < 2:
             continue
 
-        name = cells[idx['official']] if idx['official'] < len(cells) else ''
-        if not name:
+        raw_name = cells[idx['official']] if idx['official'] < len(cells) else ''
+        if not raw_name:
             continue
+
+        # KenPom appends the bias rating to the name e.g. "Kipp Kissinger-0.6"
+        # Extract it and clean the name
+        bias_match = re.search(r'([+-]\d+\.\d+)$', raw_name)
+        name  = raw_name[:bias_match.start()].strip() if bias_match else raw_name.strip()
+        bias  = float(bias_match.group(1)) if bias_match else None
 
         entry = {'name': name}
+        if bias is not None:
+            entry['bias'] = bias   # +ve = ref favors home, -ve = favors away
+        if idx['rating'] is not None and idx['rating'] < len(cells):
+            try: entry['rating'] = float(cells[idx['rating']])
+            except ValueError: pass
         if idx['games'] is not None and idx['games'] < len(cells):
-            try: entry['games'] = int(cells[idx['games']])
+            try: entry['games'] = int(float(cells[idx['games']]))
             except ValueError: pass
-        if idx['foulRate'] is not None and idx['foulRate'] < len(cells):
-            try: entry['foulRate'] = float(cells[idx['foulRate']])
-            except ValueError: pass
-        if idx['ftRate'] is not None and idx['ftRate'] < len(cells):
-            try: entry['ftRate'] = float(cells[idx['ftRate']])
-            except ValueError: pass
-        if idx['conf'] is not None and idx['conf'] < len(cells):
-            entry['conf'] = cells[idx['conf']]
+        if idx['lastGame'] is not None and idx['lastGame'] < len(cells):
+            entry['lastGame'] = cells[idx['lastGame']]
 
-        refs[name.lower()] = entry  # keyed by lowercase name for JS lookup
+        refs[name.lower()] = entry  # keyed by clean lowercase name for JS lookup
 
     return refs
 
