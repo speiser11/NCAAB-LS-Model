@@ -1763,9 +1763,20 @@ async function loadBettingData(isoDate) {
     if (n) { document.getElementById('st-betting').style.display = ''; setSt('st-betting', `Public: ${n} games`, 'ok'); }
     return;
   }
-  const url = `https://api.actionnetwork.com/web/v1/games?sport=ncaab&date=${isoDate}`;
+  // Try sport codes in order — ActionNetwork has changed these before
+  const anDate = isoDate.replace(/-/g, '');  // some endpoints want YYYYMMDD
+  const urlsToTry = [
+    `https://api.actionnetwork.com/web/v1/games?sport=ncaab&date=${isoDate}`,
+    `https://api.actionnetwork.com/web/v1/games?sport=college-basketball&date=${isoDate}`,
+    `https://api.actionnetwork.com/web/v1/games?sport=ncaab&date=${anDate}`,
+  ];
+  let data = null;
+  for (const url of urlsToTry) {
+    try { data = await fetchViaProxy(url); if (data?.games?.length) break; }
+    catch(e) { /* try next */ }
+  }
   try {
-    const data = await fetchViaProxy(url);
+    if (!data) throw new Error('all URLs failed');
     for (const game of (data.games || [])) {
       const teams = game.teams || [];
       // Identify home/away by id match or type field
@@ -3250,11 +3261,12 @@ function showGameModal(gameId) {
   if ((g.refStats || []).length) {
     const refRows = g.refStats.map(r => {
       let note = '';
-      if (r.foulRate != null) {
-        if      (r.foulRate >= 44) note = ' <span style="color:var(--red);font-size:.7em">whistle-heavy</span>';
-        else if (r.foulRate <= 36) note = ' <span style="color:var(--green);font-size:.7em">low-foul</span>';
+      if (r.bias != null) {
+        if      (r.bias >=  1.0) note = ' <span style="color:var(--green);font-size:.7em">home-leaning</span>';
+        else if (r.bias <= -1.0) note = ' <span style="color:var(--yellow);font-size:.7em">away-leaning</span>';
       }
-      const stats = r.games != null ? ` <span style="color:var(--muted);font-size:.72em">(${r.games}G${r.foulRate!=null?' · foul rate '+r.foulRate.toFixed(1):''})</span>` : '';
+      const biasStr = r.bias != null ? ` bias ${r.bias > 0 ? '+' : ''}${r.bias.toFixed(1)}` : '';
+      const stats = r.games != null ? ` <span style="color:var(--muted);font-size:.72em">(${r.games}G${biasStr})</span>` : '';
       return `<li>${esc(r.name)}${stats}${note}</li>`;
     });
     html += `<div class="gd-section">
