@@ -1705,8 +1705,8 @@ function normalCDF(z) {
   const result = 1 - phi * poly;
   return z >= 0 ? result : 1 - result;
 }
-// Historical std dev of NCAAB final game margins (~10-11 pts)
-const NCAAB_SIGMA = 10.5;
+// Empirical std dev of model errors (fitted from 16k games via optimize.py)
+const NCAAB_SIGMA = 12.5;
 
 // Predict game: returns { margin, total, hScore, aScore, hRating, aRating, homeWinProb, awayWinProb }
 // margin > 0 → home team wins by that many (after home court adj)
@@ -1742,8 +1742,8 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
   };
 }
 
-// Blend season-long Torvik ratings with last-14-day form (30% weight on recent)
-const FORM_WEIGHT = 0.30;
+// Form blending weight — empirically validated at 0 (Torvik already incorporates recency)
+const FORM_WEIGHT = 0.0;
 function blendRatings(key) {
   const base = ratings[key];
   if (!base) return null;
