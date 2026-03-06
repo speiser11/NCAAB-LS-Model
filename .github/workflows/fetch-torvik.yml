@@ -2,7 +2,7 @@ name: Fetch Torvik Ratings
 
 on:
   schedule:
-    - cron: '0 14 * * *'  # 10am ET daily
+    - cron: '0 14,16,18,20,22,0,2 * * *'  # Every 2hrs: 10am–10pm ET
   workflow_dispatch:        # allows manual trigger from GitHub UI
 
 jobs:
