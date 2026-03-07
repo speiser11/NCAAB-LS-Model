@@ -2059,23 +2059,21 @@ function getLine(bookmakers, market, homeTeamKey) {
   if (!Object.keys(allPts).length) return null;
 
   if (market === 'spreads') {
-    // Normalize to home-team perspective per bookmaker.
-    // For each bookmaker: if the home team's name resolves to homeTeamKey, use
-    // its point directly. Otherwise negate the away team's point (spreads are
-    // symmetric). This prevents wrong-sign edges when a name collision causes
-    // the away team's outcome to land under homeTeamKey in allPts.
+    // Identify the favorite by spread value (most negative point), then convert
+    // to home-team perspective. Using the spread value as the primary signal
+    // avoids name-resolution collisions that can flip the sign.
     const pts = [];
     for (const bm of bookmakers) {
       const mkt = bm.markets?.find(m => m.key === 'spreads');
       if (!mkt) continue;
-      let homePoint = null, awayPoint = null;
-      for (const o of mkt.outcomes || []) {
-        const k = matchTeam(o.name) || normTeam(o.name);
-        if (k === homeTeamKey) homePoint = o.point;
-        else awayPoint = o.point;
-      }
-      if (homePoint != null) pts.push(homePoint);
-      else if (awayPoint != null) pts.push(-awayPoint);
+      const outcomes = (mkt.outcomes || []).filter(o => o.point != null);
+      if (!outcomes.length) continue;
+      // Favorite = outcome with the lowest (most negative) point
+      const fav = outcomes.reduce((a, b) => a.point <= b.point ? a : b);
+      const favKey = matchTeam(fav.name) || normTeam(fav.name);
+      // Favorite is home → use their point directly (negative = home favored)
+      // Favorite is away → negate to get home-underdog perspective (positive)
+      pts.push(favKey === homeTeamKey ? fav.point : -fav.point);
     }
     if (!pts.length) return null;
     const avg = pts.reduce((s, p) => s + p, 0) / pts.length;
