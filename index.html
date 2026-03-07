@@ -1512,36 +1512,42 @@ async function loadConferences() {
 // DATA: ESPN GAMES
 // ══════════════════════════════════════════════════════════
 async function loadESPN(dateStr) {
-  const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dateStr}`);
-  const d = await r.json();
-  espnList = (d.events || []).map(ev => {
-    const comp = ev.competitions?.[0];
-    const cs   = comp?.competitors || [];
-    const home = cs.find(c => c.homeAway === 'home');
-    const away = cs.find(c => c.homeAway === 'away');
-    return {
-      id:          ev.id,
-      home:        home?.team?.displayName || '',
-      away:        away?.team?.displayName || '',
-      homeScore:   home?.score || '0',
-      awayScore:   away?.score || '0',
-      time:        ev.date,
-      statusName:  comp?.status?.type?.name || '',
-      shortDetail: comp?.status?.type?.shortDetail || '',
-      period:      comp?.status?.period || 0,
-      clock:       comp?.status?.displayClock || '',
-      neutral:     comp?.neutralSite || false,
-      homeRank:    parseInt(home?.curatedRank?.current) || 99,
-      awayRank:    parseInt(away?.curatedRank?.current) || 99,
-      homeTeamId:  home?.team?.id || '',
-      awayTeamId:  away?.team?.id || '',
-      homeConfId:  home?.team?.conferenceId || '',
-      awayConfId:  away?.team?.conferenceId || '',
-      officials:   (comp?.officials || []).map(o => o.displayName || o.fullName || '').filter(Boolean),
-    };
-  });
-  _lastESPNRefresh = new Date();
-  setSt('st-games', `Games: ${espnList.length}`, espnList.length ? 'ok' : 'warn');
+  try {
+    const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dateStr}`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error(`ESPN ${r.status}`);
+    const d = await r.json();
+    espnList = (d.events || []).map(ev => {
+      const comp = ev.competitions?.[0];
+      const cs   = comp?.competitors || [];
+      const home = cs.find(c => c.homeAway === 'home');
+      const away = cs.find(c => c.homeAway === 'away');
+      return {
+        id:          ev.id,
+        home:        home?.team?.displayName || '',
+        away:        away?.team?.displayName || '',
+        homeScore:   home?.score || '0',
+        awayScore:   away?.score || '0',
+        time:        ev.date,
+        statusName:  comp?.status?.type?.name || '',
+        shortDetail: comp?.status?.type?.shortDetail || '',
+        period:      comp?.status?.period || 0,
+        clock:       comp?.status?.displayClock || '',
+        neutral:     comp?.neutralSite || false,
+        homeRank:    parseInt(home?.curatedRank?.current) || 99,
+        awayRank:    parseInt(away?.curatedRank?.current) || 99,
+        homeTeamId:  home?.team?.id || '',
+        awayTeamId:  away?.team?.id || '',
+        homeConfId:  home?.team?.conferenceId || '',
+        awayConfId:  away?.team?.conferenceId || '',
+        officials:   (comp?.officials || []).map(o => o.displayName || o.fullName || '').filter(Boolean),
+      };
+    });
+    _lastESPNRefresh = new Date();
+    setSt('st-games', `Games: ${espnList.length}`, espnList.length ? 'ok' : 'warn');
+  } catch(e) {
+    setSt('st-games', 'Games: fetch error', 'err');
+    console.warn('loadESPN failed:', e.message);
+  }
 }
 
 // ══════════════════════════════════════════════════════════
