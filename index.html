@@ -1212,6 +1212,7 @@ let avgAdjD      = 106.09;  // D1 mean adjD — recomputed after each Torvik loa
 let espnList     = [];  // ESPN game objects
 let oddsList     = [];  // Odds API objects
 let pregameLines = {};  // gameId → {spread, total} — locked when game tips off, never overwritten by live odds
+let prePredictions = {};  // gameId → frozen pred snapshot at game start
 let oddsLeft     = null;
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
@@ -1634,9 +1635,11 @@ async function loadYesterdayGames(dateStr) {
 // DATA: RECENT TORVIK (last 14 days — form delta)
 // ══════════════════════════════════════════════════════════
 async function loadRecentTorvik() {
+  // localStorage (not sessionStorage) so all devices share the same form data and produce
+  // identical blended ratings → identical predictions regardless of when the app was opened.
   const cacheKey = `torvik_recent_${todayStr()}`;
-  const cached = sessionStorage.getItem(cacheKey);
-  if (cached) { recentRatings = JSON.parse(cached); return; }
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) { recentRatings = JSON.parse(cached); setSt('st-form', `Form: ${Object.keys(recentRatings).length} teams (cached)`, 'ok'); return; }
   const end = new Date();
   const begin = new Date(); begin.setDate(begin.getDate() - 14);
   const fmt = d => `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
@@ -1644,7 +1647,7 @@ async function loadRecentTorvik() {
   try {
     const data = await fetchViaProxy(url);
     recentRatings = parseTorvik(data);
-    sessionStorage.setItem(cacheKey, JSON.stringify(recentRatings));
+    localStorage.setItem(cacheKey, JSON.stringify(recentRatings));
     setSt('st-form', `Form: ${Object.keys(recentRatings).length} teams`, 'ok');
   } catch(e) {
     recentRatings = {};
@@ -1659,8 +1662,10 @@ async function loadRecentTorvik() {
 let teamSeasonStats = {}; // teamId (string) → { ppg, oppg, pace }
 
 async function loadTeamStats(teamIds) {
+  // localStorage (not sessionStorage) so all devices share the same PPG blend and
+  // produce identical displayTotals regardless of when/where the app was opened.
   const cacheKey = `team_stats_${todayStr()}`;
-  const cached = sessionStorage.getItem(cacheKey);
+  const cached = localStorage.getItem(cacheKey);
   if (cached) { teamSeasonStats = JSON.parse(cached); setSt('st-ppg', `PPG: ${Object.keys(teamSeasonStats).length} teams (cached)`, 'ok'); return; }
 
   const fetchOne = async id => {
@@ -1692,7 +1697,7 @@ async function loadTeamStats(teamIds) {
   for (let i = 0; i < teamIds.length; i += 8) {
     await Promise.all(teamIds.slice(i, i + 8).map(fetchOne));
   }
-  sessionStorage.setItem(cacheKey, JSON.stringify(teamSeasonStats));
+  localStorage.setItem(cacheKey, JSON.stringify(teamSeasonStats));
   setSt('st-ppg', `PPG: ${Object.keys(teamSeasonStats).length} teams`, 'ok');
 }
 
@@ -1852,43 +1857,114 @@ function assembleGames() {
   })();
 
   return espnList.map(g => {
-    const hKey = matchTeam(g.homeFull || g.home);
-    const aKey = matchTeam(g.awayFull || g.away);
+    // Try the full ESPN displayName first (strips mascot via progressive word removal).
+    // Fall back to shortDisplayName — critical for 1-word Torvik keys like "duke", "gonzaga",
+    // "purdue" etc. where the full "Duke Blue Devils" strips to "duke blue" (2-word min) and fails.
+    const hKey = matchTeam(g.homeFull) || matchTeam(g.home);
+    const aKey = matchTeam(g.awayFull) || matchTeam(g.away);
 
     // Conferences (needed for travel calc)
     const hConf = (hKey && ratings[hKey]?.conf) || teamIdToConf[g.homeTeamId] || confIdMap[g.homeConfId] || '';
     const aConf = (aKey && ratings[aKey]?.conf) || teamIdToConf[g.awayTeamId] || confIdMap[g.awayConfId] || '';
 
-    // Form-blended ratings for predict()
-    const pred = predict(hKey, aKey, g.neutral, blendRatings(hKey), blendRatings(aKey));
+    // ── isStarted must be computed first — used to freeze both odds AND predictions ──
+    const isStarted = g.statusName === 'STATUS_IN_PROGRESS' ||
+                      g.statusName === 'STATUS_HALFTIME'     ||
+                      g.statusName === 'STATUS_FINAL'        ||
+                      g.statusName === 'STATUS_END_PERIOD';
 
-    // Blend efficiency total with actual PPG-based estimate when ESPN stats are loaded.
-    // displayTotal = 50% efficiency model + 50% PPG model — reduces wild outliers.
-    // pred.total stays as the raw efficiency value for reference/backtest.
-    if (pred) {
-      const hSt = teamSeasonStats[String(g.homeTeamId)];
-      const aSt = teamSeasonStats[String(g.awayTeamId)];
-      if (hSt?.ppg && aSt?.ppg && hSt?.oppg && aSt?.oppg) {
-        const AVG_D1_PPG = 73.5;
-        const ppgH = hSt.ppg * (aSt.oppg / AVG_D1_PPG);
-        const ppgA = aSt.ppg * (hSt.oppg / AVG_D1_PPG);
-        pred.displayTotal = Math.round((0.5 * pred.total + 0.5 * (ppgH + ppgA)) * 10) / 10;
-        pred.ppgTotal = Math.round((ppgH + ppgA) * 10) / 10;
-        pred.hPace = hSt.pace;
-        pred.aPace = aSt.pace;
+    // ── Prediction (frozen for started games) ────────────────────────────────
+    // Once a game tips off, the full pred snapshot is locked. Torvik updates weekly,
+    // so computing fresh mid-game produces the same values as at tip-off.
+    let pred;
+    if (isStarted) {
+      // 1) In-memory cache (fastest, survives auto-refresh within the session)
+      if (prePredictions[g.id]) {
+        pred = prePredictions[g.id];
       } else {
-        pred.displayTotal = pred.total;
+        // 2) localStorage per-game cache (survives page reload / fresh open mid-game)
+        try {
+          const saved = localStorage.getItem(`ppd_${g.id}`);
+          if (saved) {
+            pred = JSON.parse(saved);
+            prePredictions[g.id] = pred; // promote to memory
+          }
+        } catch(e) {}
+
+        // 3) Fallback: compute now and immediately freeze
+        //    (safe — Torvik is weekly; same-day values = tip-off values)
+        if (!pred) {
+          pred = predict(hKey, aKey, g.neutral, blendRatings(hKey), blendRatings(aKey));
+          if (pred) {
+            const hSt = teamSeasonStats[String(g.homeTeamId)];
+            const aSt = teamSeasonStats[String(g.awayTeamId)];
+            if (hSt?.ppg && aSt?.ppg && hSt?.oppg && aSt?.oppg) {
+              const AVG_D1_PPG = 73.5;
+              const ppgH = hSt.ppg * (aSt.oppg / AVG_D1_PPG);
+              const ppgA = aSt.ppg * (hSt.oppg / AVG_D1_PPG);
+              pred.displayTotal = Math.round((0.5 * pred.total + 0.5 * (ppgH + ppgA)) * 10) / 10;
+              pred.ppgTotal = Math.round((ppgH + ppgA) * 10) / 10;
+              pred.hPace = hSt.pace;
+              pred.aPace = aSt.pace;
+            } else {
+              pred.displayTotal = pred.total;
+            }
+            // B2B penalty
+            const hB2B_freeze = teamsPlayedYesterday.has(g.homeTeamId);
+            const aB2B_freeze = teamsPlayedYesterday.has(g.awayTeamId);
+            if (hB2B_freeze || aB2B_freeze) {
+              const B2B_PEN = 1.8;
+              if (hB2B_freeze) { pred.margin -= B2B_PEN; pred.total -= B2B_PEN; }
+              if (aB2B_freeze) { pred.margin += B2B_PEN; pred.total -= B2B_PEN; }
+              pred.margin = Math.round(pred.margin * 10) / 10;
+              pred.total  = Math.round(pred.total  * 10) / 10;
+              pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+              pred.awayWinProb = 100 - pred.homeWinProb;
+            }
+            // Travel adjustment
+            const hTz_freeze = CONF_TZ[hConf] ?? 0;
+            const aTz_freeze = CONF_TZ[aConf] ?? 0;
+            const travelDiff_freeze = !g.neutral ? Math.abs(aTz_freeze - hTz_freeze) : 0;
+            if (travelDiff_freeze >= 2) {
+              pred.margin += 0.75;
+              pred.margin = Math.round(pred.margin * 10) / 10;
+              pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+              pred.awayWinProb = 100 - pred.homeWinProb;
+            }
+          }
+          prePredictions[g.id] = pred;
+          try { localStorage.setItem(`ppd_${g.id}`, JSON.stringify(pred)); } catch(e) {}
+        }
       }
+    } else {
+      // Upcoming game — compute normally, persist so it survives tip-off
+      pred = predict(hKey, aKey, g.neutral, blendRatings(hKey), blendRatings(aKey));
+      // Blend efficiency total with actual PPG-based estimate when ESPN stats are loaded.
+      // displayTotal = 50% efficiency model + 50% PPG model — reduces wild outliers.
+      // pred.total stays as the raw efficiency value for reference/backtest.
+      if (pred) {
+        const hSt = teamSeasonStats[String(g.homeTeamId)];
+        const aSt = teamSeasonStats[String(g.awayTeamId)];
+        if (hSt?.ppg && aSt?.ppg && hSt?.oppg && aSt?.oppg) {
+          const AVG_D1_PPG = 73.5;
+          const ppgH = hSt.ppg * (aSt.oppg / AVG_D1_PPG);
+          const ppgA = aSt.ppg * (hSt.oppg / AVG_D1_PPG);
+          pred.displayTotal = Math.round((0.5 * pred.total + 0.5 * (ppgH + ppgA)) * 10) / 10;
+          pred.ppgTotal = Math.round((ppgH + ppgA) * 10) / 10;
+          pred.hPace = hSt.pace;
+          pred.aPace = aSt.pace;
+        } else {
+          pred.displayTotal = pred.total;
+        }
+      }
+      // B2B and travel adjustments are applied below (in the !isStarted block),
+      // then pred is saved to prePredictions + localStorage after those adjustments.
     }
 
     // ── Odds assignment ──────────────────────────────────────────────────────
     // RULE: once a game tips off, lines are frozen forever.
     // Priority for live/final:  memory cache → localStorage per-game → opening snapshot → nothing
     // Priority for upcoming:    current odds API → persist to memory + localStorage
-    const isStarted = g.statusName === 'STATUS_IN_PROGRESS' ||
-                      g.statusName === 'STATUS_HALFTIME'     ||
-                      g.statusName === 'STATUS_FINAL'        ||
-                      g.statusName === 'STATUS_END_PERIOD';
 
     let vegasSpread = null, vegasTotal = null;
 
@@ -1951,30 +2027,40 @@ function assembleGames() {
     const totalMove = (vegasTotal && openTotal && vegasTotal.point !== openTotal.point)
       ? Math.round((vegasTotal.point - openTotal.point) * 10) / 10 : null;
 
-    // Back-to-back flags
+    // Back-to-back flags (kept for display badges and upcoming-game adjustments)
     const hB2B = teamsPlayedYesterday.has(g.homeTeamId);
     const aB2B = teamsPlayedYesterday.has(g.awayTeamId);
 
-    // Apply B2B penalty to prediction
-    if (pred && (hB2B || aB2B)) {
-      const B2B_PEN = 1.8;
-      if (hB2B) { pred.margin -= B2B_PEN; pred.total -= B2B_PEN; }
-      if (aB2B) { pred.margin += B2B_PEN; pred.total -= B2B_PEN; }
-      pred.margin = Math.round(pred.margin * 10) / 10;
-      pred.total  = Math.round(pred.total  * 10) / 10;
-      pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-      pred.awayWinProb = 100 - pred.homeWinProb;
-    }
-
-    // Travel adjustment: away team crossing 2+ time zones gets a small penalty
+    // Travel delta (kept for awayTravel badge and upcoming-game adjustments)
     const hTz = CONF_TZ[hConf] ?? 0;
     const aTz = CONF_TZ[aConf] ?? 0;
     const travelDiff = !g.neutral ? Math.abs(aTz - hTz) : 0;
-    if (pred && travelDiff >= 2) {
-      pred.margin += 0.75; // slight home team boost
-      pred.margin = Math.round(pred.margin * 10) / 10;
-      pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-      pred.awayWinProb = 100 - pred.homeWinProb;
+
+    // For started games, pred is already frozen (B2B + travel baked in at freeze time).
+    // Only apply these adjustments for upcoming games.
+    if (!isStarted) {
+      // Apply B2B penalty to prediction
+      if (pred && (hB2B || aB2B)) {
+        const B2B_PEN = 1.8;
+        if (hB2B) { pred.margin -= B2B_PEN; pred.total -= B2B_PEN; }
+        if (aB2B) { pred.margin += B2B_PEN; pred.total -= B2B_PEN; }
+        pred.margin = Math.round(pred.margin * 10) / 10;
+        pred.total  = Math.round(pred.total  * 10) / 10;
+        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+        pred.awayWinProb = 100 - pred.homeWinProb;
+      }
+
+      // Travel adjustment: away team crossing 2+ time zones gets a small penalty
+      if (pred && travelDiff >= 2) {
+        pred.margin += 0.75; // slight home team boost
+        pred.margin = Math.round(pred.margin * 10) / 10;
+        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+        pred.awayWinProb = 100 - pred.homeWinProb;
+      }
+
+      // Persist the fully-adjusted upcoming pred so it's ready to freeze at tip-off
+      prePredictions[g.id] = pred;
+      try { localStorage.setItem(`ppd_${g.id}`, JSON.stringify(pred)); } catch(e) {}
     }
 
     // Injury data + form delta
@@ -3749,8 +3835,12 @@ function onDateChange() {
   teamsPlayedYesterday = new Set();
   injuryMap = {};
   pregameLines = {};
-  // Clear persisted per-game pre-game lines (stale from previous date)
+  prePredictions = {};
+  // Clear persisted per-game and per-date caches (stale from previous date)
   try { Object.keys(localStorage).filter(k => k.startsWith('pgl_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
+  try { Object.keys(localStorage).filter(k => k.startsWith('ppd_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
+  try { Object.keys(localStorage).filter(k => k.startsWith('torvik_recent_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
+  try { Object.keys(localStorage).filter(k => k.startsWith('team_stats_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
   refresh();
 }
 
