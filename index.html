@@ -1310,27 +1310,23 @@ function matchTeam(fullName) {
   const norm = normTeam(fullName);
   if (ratings[norm]) return norm;
 
-  // Strip trailing words one at a time (removes mascot progressively).
-  // Stop at 2 words — single-word strip is too risky (e.g. "loyola" matches wrong team).
-  // Also check ALIAS at each step so "Loyola Maryland Greyhounds" → "loyola maryland" → alias → "loyola md".
+  // Strip trailing words one at a time (removes mascot progressively)
   const words = norm.split(' ');
-  for (let len = words.length - 1; len >= 2; len--) {
+  for (let len = words.length - 1; len >= 1; len--) {
     const shorter = words.slice(0, len).join(' ');
     const resolved = ALIAS[shorter] || shorter;
     if (ratings[resolved]) return resolved;
   }
 
-  // Fuzzy: Dice coefficient on shared meaningful words.
-  // Require score >= 0.65 AND at least 2 shared words to prevent false positives
-  // like "Loyola Maryland Greyhounds" matching "Maryland" on a single shared word.
+  // Fuzzy: Dice coefficient on shared words
   const nw = words.filter(w => w.length > 2);
   let best = 0, bestKey = null;
   for (const key of Object.keys(ratings)) {
     const kw = key.split(' ').filter(w => w.length > 2);
     const shared = nw.filter(w => kw.includes(w)).length;
-    if (shared < 2) continue;
+    if (!shared) continue;
     const score = (2 * shared) / (nw.length + kw.length);
-    if (score > best && score >= 0.65) { best = score; bestKey = key; }
+    if (score > best && score >= 0.5) { best = score; bestKey = key; }
   }
   if (bestKey) return bestKey;
 
