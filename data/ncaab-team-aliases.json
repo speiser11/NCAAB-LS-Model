@@ -1,5 +1,17 @@
 [
   {
+    "id": 0,
+    "canonical": "Albany",
+    "display": "Albany Great Danes",
+    "aliases": [
+      "Albany",
+      "UAlbany",
+      "Albany Great Danes",
+      "UAlbany Great Danes",
+      "Great Danes"
+    ]
+  },
+  {
     "id": 1,
     "canonical": "Boston College",
     "display": "Boston College Eagles",
@@ -673,6 +685,7 @@
     "display": "Ole Miss Rebels",
     "aliases": [
       "Ole Miss",
+      "Ole Miss Rebels",
       "Mississippi",
       "Miss.",
       "Rebels",
@@ -2526,11 +2539,14 @@
   },
   {
     "id": 245,
-    "canonical": "Long Island",
+    "canonical": "LIU",
     "display": "LIU Sharks",
     "aliases": [
-      "Long Island",
       "LIU",
+      "Long Island",
+      "Long Island University",
+      "Long Island University Sharks",
+      "LIU Sharks",
       "Sharks"
     ]
   },
@@ -2670,7 +2686,9 @@
     "display": "SIUE Cougars",
     "aliases": [
       "SIU Edwardsville",
+      "SIU Edwardsville Cougars",
       "SIUE",
+      "SIUE Cougars",
       "Cougars SIUE"
     ]
   },
@@ -2896,11 +2914,14 @@
   },
   {
     "id": 282,
-    "canonical": "Arkansas-Pine Bluff",
+    "canonical": "Arkansas Pine Bluff",
     "display": "UAPB Golden Lions",
     "aliases": [
+      "Arkansas Pine Bluff",
       "Arkansas-Pine Bluff",
+      "Arkansas-Pine Bluff Golden Lions",
       "UAPB",
+      "UAPB Golden Lions",
       "Golden Lions"
     ]
   },
