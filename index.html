@@ -1345,7 +1345,8 @@ function matchTeam(fullName) {
     if (ratings[firstResolved]) return firstResolved;
   }
 
-  if (fullName) console.warn(`[TrueLine] matchTeam MISS: "${fullName}" → norm="${norm}"`);
+  // Only warn for multi-word strings that look like real team names
+  if (fullName && fullName.includes(' ')) console.warn(`[TrueLine] matchTeam MISS: "${fullName}" → norm="${norm}"`);
   return null;
 }
 
@@ -2049,7 +2050,8 @@ function getLine(bookmakers, market, homeTeamKey) {
     const mkt = bm.markets?.find(m => m.key === market);
     if (!mkt) continue;
     for (const o of mkt.outcomes || []) {
-      const k = matchTeam(o.name) || normTeam(o.name);
+      // totals outcomes are "Over"/"Under" — not team names, skip matchTeam
+      const k = market === 'totals' ? normTeam(o.name) : (matchTeam(o.name) || normTeam(o.name));
       if (!allPts[k]) allPts[k] = [];
       allPts[k].push(o.point);
     }
