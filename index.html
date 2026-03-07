@@ -1350,8 +1350,8 @@ function getSeasonYear() {
 const GIST_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
 
 async function loadTorvik() {
-  // 6-hour localStorage cache (v2 = conf bug fixed)
-  const CACHE_VER = '2';
+  // 6-hour localStorage cache (v3 = normTeam paren handling updated)
+  const CACHE_VER = '3';
   if (localStorage.getItem('torvik_ver') !== CACHE_VER) {
     localStorage.removeItem('torvik_ratings');
     localStorage.removeItem('torvik_ts');
