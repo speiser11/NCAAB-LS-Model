@@ -986,14 +986,15 @@
   },
   {
     "id": 90,
-    "canonical": "San Jose State",
+    "canonical": "San Jose St.",
     "display": "San Jose State Spartans",
     "aliases": [
       "San Jose State",
       "San Jose State Spartans",
-      "SJSU",
       "San Jose St.",
-      "San Jose St"
+      "San Jose St",
+      "SJSU",
+      "Spartans SJSU"
     ]
   },
   {
