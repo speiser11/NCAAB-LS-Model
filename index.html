@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrueLine LS</title>
+<link rel="icon" href="data:,">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ── Tokens ── */
@@ -145,12 +146,10 @@ input[type=date]{
 
 /* ── Status bar (data load indicators) ── */
 .status-bar{
-  display:flex;gap:1rem;padding:.25rem 1.25rem;
+  display:flex;gap:1rem;padding:.3rem 1.25rem;
   background:var(--surface2);border-bottom:1px solid var(--border);
   font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);flex-wrap:wrap;
-  opacity:.55;transition:opacity .2s;
 }
-.status-bar:hover{opacity:1;}
 .sc{display:flex;align-items:center;gap:.25rem;}
 .sc.ok{color:var(--green);}
 .sc.err{color:var(--red);}
@@ -180,9 +179,9 @@ input[type=date]{
 .game-group{display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.5rem;}
 .group-header{
   display:flex;align-items:center;gap:.5rem;
-  font-family:'Inter',sans-serif;font-size:.6rem;font-weight:600;
-  text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
-  padding:.25rem 0 .3rem;border-bottom:1px solid var(--border);margin-bottom:.2rem;
+  font-family:'DM Mono',monospace;font-size:.6rem;
+  text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);
+  padding:.2rem 0;border-bottom:1px solid var(--border);margin-bottom:.15rem;
 }
 .group-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .group-dot.live{background:var(--red);box-shadow:0 0 6px var(--red);animation:pulse 1.5s infinite;}
@@ -198,8 +197,8 @@ input[type=date]{
   transition:transform .15s,box-shadow .15s;
 }
 .card:hover{transform:translateY(-1px);box-shadow:0 5px 24px rgba(0,0,0,.3);}
-.card.edge-hot{border-color:var(--green);box-shadow:var(--shadow),inset 3px 0 0 var(--green);}
-.card.edge-warm{border-color:var(--yellow);box-shadow:var(--shadow),inset 2px 0 0 var(--yellow);}
+.card.edge-hot{border-color:var(--green);}
+.card.edge-warm{border-color:var(--yellow);}
 
 /* Card header */
 .card-hd{
@@ -236,6 +235,10 @@ input[type=date]{
 .mnum-lbl{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);width:3rem;flex-shrink:0;}
 .mnum-val{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:.5px;line-height:1;color:var(--text);}
 .mnum-no-data{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);font-style:italic;padding:.3rem 0;}
+
+/* Edge tooltip */
+.edge-tip{display:inline-flex;align-items:center;justify-content:center;width:.9rem;height:.9rem;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:.5rem;color:var(--muted);cursor:default;margin-left:.25rem;vertical-align:middle;flex-shrink:0;}
+#edge-tooltip{position:fixed;background:#1e1e2e;color:#e8e8f0;font-family:'Inter',sans-serif;font-size:.6rem;font-weight:400;white-space:nowrap;padding:.3rem .55rem;border-radius:6px;border:1px solid #2e2e45;pointer-events:none;z-index:9999;display:none;}
 
 /* Edge pills */
 .edge-pill{
@@ -276,34 +279,33 @@ input[type=date]{
 .fm-val.neu{color:var(--muted);}
 
 /* ── Top picks bar ── */
-.top-picks-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:.45rem 1.25rem;}
-.picks-bar-inner{display:flex;align-items:stretch;gap:.55rem;overflow-x:auto;scrollbar-width:none;padding-bottom:.1rem;}
-.picks-bar-inner::-webkit-scrollbar{display:none;}
-.picks-group-hdr{font-family:'DM Mono',monospace;font-size:.5rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);white-space:nowrap;flex-shrink:0;writing-mode:vertical-rl;transform:rotate(180deg);align-self:stretch;display:flex;align-items:center;padding:.1rem 0;}
-.picks-group-cards{display:flex;align-items:center;gap:.4rem;flex-shrink:0;}
-.picks-bar-divider{width:1px;align-self:stretch;background:var(--border);flex-shrink:0;margin:0 .2rem;}
-.picks-accuracy-right{display:flex;gap:.28rem;align-items:center;align-self:center;margin-left:auto;flex-shrink:0;}
-.acc-badge{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.12rem .4rem;white-space:nowrap;}
+.top-picks-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:.65rem 1.25rem .75rem;}
+.picks-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;margin-bottom:.55rem;}
+.top-picks-title{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);}
+.picks-accuracy{display:flex;gap:.35rem;flex-wrap:wrap;}
+.acc-badge{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.15rem .45rem;white-space:nowrap;}
 .acc-badge .acc-pct{font-weight:700;color:var(--text);}
 .acc-badge.acc-good .acc-pct{color:var(--green);}
 .acc-badge.acc-bad .acc-pct{color:var(--red);}
+.picks-row{display:flex;gap:.55rem;overflow-x:auto;padding-bottom:.2rem;scrollbar-width:none;}
+.picks-row::-webkit-scrollbar{display:none;}
 .pick-card{
   flex-shrink:0;cursor:pointer;
-  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
-  padding:.5rem .75rem;width:162px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:.65rem .9rem;width:185px;
   transition:transform .12s,box-shadow .12s,border-color .12s;
 }
 .pick-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.25);}
-.pick-card.hot{border-color:var(--green);background:linear-gradient(135deg,rgba(46,204,113,.08) 0%,var(--surface2) 65%);}
-.pick-card.warm{border-color:var(--yellow);background:linear-gradient(135deg,rgba(245,166,35,.07) 0%,var(--surface2) 65%);}
-.pick-matchup{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted);margin-bottom:.22rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pick-main{font-family:'DM Mono',monospace;font-size:.78rem;font-weight:700;color:var(--text);margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.pick-meta{display:flex;align-items:baseline;gap:.35rem;}
-.pick-edge{font-family:'Bebas Neue',sans-serif;font-size:1.25rem;line-height:1;}
+.pick-card.hot{border-color:var(--green);}
+.pick-card.warm{border-color:var(--yellow);}
+.pick-matchup{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pick-main{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pick-meta{display:flex;align-items:baseline;gap:.4rem;margin-bottom:.3rem;}
+.pick-edge{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;line-height:1;}
 .pick-card.hot .pick-edge{color:var(--green);}
 .pick-card.warm .pick-edge{color:var(--yellow);}
-.pick-type-tag{font-family:'DM Mono',monospace;font-size:.52rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.05rem .28rem;}
-.picks-empty{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);padding:.2rem .4rem;align-self:center;}
+.pick-type-tag{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.06rem .3rem;}
+.pick-why{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);line-height:1.4;}
 
 /* ── Settings modal ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
@@ -775,9 +777,9 @@ input[type=date]{
   /* Layout & spacing */
   .container{padding:.75rem .15rem;}
   .game-group{gap:.45rem;margin-bottom:.85rem;}
-  .top-picks-bar{padding:.4rem .85rem;}
-  .pick-card{width:148px;padding:.45rem .6rem;}
-  .picks-bar-inner{gap:.4rem;}
+  .top-picks-bar{padding:.5rem .85rem .6rem;}
+  .pick-card{width:158px;padding:.5rem .7rem;}
+  .picks-row{gap:.4rem;}
 
   /* Card */
   .card{border-radius:11px;}
@@ -814,9 +816,10 @@ input[type=date]{
   .status-bar{padding:.25rem .85rem;font-size:.57rem;}
 
   /* Pick cards */
-  .pick-matchup{font-size:.54rem;}
-  .pick-main{font-size:.7rem;}
-  .pick-edge{font-size:1.1rem;}
+  .pick-matchup{font-size:.58rem;}
+  .pick-main{font-size:.75rem;}
+  .pick-edge{font-size:1rem;}
+  .pick-why{font-size:.55rem;}
 }
 
 /* ── Font overrides: Syne for brand/headings; Inter for numbers + UI ── */
@@ -840,8 +843,8 @@ input[type=date]{
   letter-spacing:-.02em;
 }
 /* Inter 800 is wider than old Bebas Neue — scale down to compensate */
-.mnum-val{ font-size:1.15rem; }
-.pick-edge{ font-size:1.35rem; }
+.mnum-val{ font-size:1.05rem; }
+.pick-edge{ font-size:1.15rem; }
 .bt-stat-val{ font-size:1.2rem; }
 .live-score-pts{ font-size:2.2rem; }
 .tm-name{ font-size:1.55rem;letter-spacing:-.01em; }
@@ -853,8 +856,9 @@ input[type=date]{
 .mblock-label,
 .status-badge,
 .factors-title,.factor-name,
+.top-picks-title,
 .acc-badge,
-.pick-matchup,.pick-main,.pick-type-tag,
+.pick-matchup,.pick-main,.pick-type-tag,.pick-why,
 .field label,.field small,
 .bt-controls label,.bt-stat-lbl,
 .bt-table th,
@@ -873,7 +877,7 @@ input[type=date] {
 /* Mobile overrides — must come AFTER base override block to win cascade */
 @media(max-width:640px){
   .brand-ncaab,.brand-model{ font-size:1.2rem; }
-  .mnum-val{ font-size:.96rem; }
+  .mnum-val{ font-size:.88rem; }
   .mnum-lbl{ font-size:.55rem;width:2.4rem; }
   .mnum-row{ margin-bottom:.18rem; }
   .pick-edge{ font-size:.95rem; }
@@ -892,12 +896,12 @@ input[type=date] {
 }
 
 /* ── Compact mobile card ── */
-.card-mobile{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.card-mobile.cm-hot{border-color:var(--green);box-shadow:inset 3px 0 0 var(--green);}
-.card-mobile.cm-warm{border-color:var(--yellow);box-shadow:inset 2px 0 0 var(--yellow);}
-.cm-hd{display:flex;align-items:center;justify-content:space-between;padding:.5rem .8rem;gap:.4rem;}
-.cm-teams{display:flex;align-items:center;gap:.28rem;flex:1;min-width:0;font-size:.84rem;font-weight:600;overflow:hidden;}
-.cm-tname{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:43%;}
+.card-mobile{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.card-mobile.cm-hot{border-color:var(--green);}
+.card-mobile.cm-warm{border-color:var(--yellow);}
+.cm-hd{display:flex;align-items:center;justify-content:space-between;padding:.38rem .7rem;gap:.4rem;}
+.cm-teams{display:flex;align-items:center;gap:.22rem;flex:1;min-width:0;font-size:.76rem;font-weight:600;overflow:hidden;}
+.cm-tname{cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38%;}
 .cm-tname:hover{color:var(--blue);}
 .cm-at{color:var(--muted);font-size:.68rem;flex-shrink:0;}
 .cm-rank{font-size:.58rem;color:#c8920a;font-weight:700;flex-shrink:0;}
@@ -913,29 +917,29 @@ input[type=date] {
 .cm-pace{font-size:.58rem;font-weight:600;flex-shrink:0;}
 .cm-pace.cm-over{color:var(--green);}
 .cm-pace.cm-under{color:var(--red);}
-.cm-lines{border-top:1px solid var(--border);padding:.3rem .8rem;display:flex;flex-direction:column;}
-.cm-row{display:flex;align-items:center;gap:.4rem;padding:.22rem 0;}
+.cm-lines{border-top:1px solid var(--border);padding:.28rem .7rem;display:flex;flex-direction:column;}
+.cm-row{display:flex;align-items:center;gap:.4rem;padding:.18rem 0;}
 .cm-row+.cm-row{border-top:1px solid var(--border);}
-.cm-lbl{font-family:'Inter',sans-serif;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);width:2.8rem;flex-shrink:0;}
-.cm-val{font-family:'Inter',sans-serif;font-weight:700;font-size:.76rem;color:var(--text);min-width:2.6rem;}
+.cm-lbl{font-family:'Inter',sans-serif;font-size:.56rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);width:2.8rem;flex-shrink:0;}
+.cm-val{font-family:'Inter',sans-serif;font-weight:700;font-size:.72rem;color:var(--text);min-width:2.6rem;}
 .cm-vs{font-size:.58rem;color:var(--border);flex-shrink:0;}
-.cm-vval{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);min-width:2.6rem;}
-.cm-edge{margin-left:auto;font-size:.68rem;font-weight:700;color:var(--muted);}
+.cm-vval{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);min-width:2.6rem;}
+.cm-edge{margin-left:auto;font-size:.62rem;font-weight:700;color:var(--muted);}
 .cm-edge.cm-good{color:var(--green);}
 .cm-edge.cm-mod{color:var(--yellow);}
-.cm-col-hdrs{display:flex;align-items:center;gap:.4rem;padding:.12rem 0 .2rem;border-bottom:1px solid var(--border);margin-bottom:.02rem;}
-.cm-col-hdr{font-family:'Inter',sans-serif;font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:2.6rem;}
+.cm-col-hdrs{display:flex;align-items:center;gap:.4rem;padding:.1rem 0 .18rem;border-bottom:1px solid var(--border);margin-bottom:.02rem;}
+.cm-col-hdr{font-family:'Inter',sans-serif;font-size:.52rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);min-width:2.6rem;}
 .cm-col-hdr.ch-lbl{width:2.8rem;flex-shrink:0;}
 .cm-col-hdr.ch-edge{margin-left:auto;}
-.cm-advice{display:flex;align-items:center;gap:.35rem;padding:.34rem .8rem;border-top:2px solid var(--border);font-family:'Inter',sans-serif;font-size:.72rem;font-weight:600;}
-.cm-advice.cm-act-strong{color:var(--green);background:rgba(46,204,113,.07);border-top-color:rgba(46,204,113,.35);}
-.cm-advice.cm-act-lean{color:var(--yellow);background:rgba(245,166,35,.06);border-top-color:rgba(245,166,35,.3);}
+.cm-advice{display:flex;align-items:center;gap:.35rem;padding:.28rem .7rem;border-top:1px solid var(--border);font-family:'Inter',sans-serif;font-size:.68rem;font-weight:600;}
+.cm-advice.cm-act-strong{color:var(--green);}
+.cm-advice.cm-act-lean{color:var(--yellow);}
 .cm-advice.cm-act-none{color:var(--muted);font-weight:400;}
 .cm-advice-text{flex:1;}
-.cm-wp{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:700;color:var(--blue);white-space:nowrap;margin-left:auto;flex-shrink:0;}
+.cm-wp{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:700;color:var(--blue);white-space:nowrap;margin-left:auto;flex-shrink:0;}
 
 /* Favored team name label next to spread number */
-.mnum-team{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;color:var(--muted);margin-left:.3rem;flex:1 1 3rem;min-width:3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mnum-team{font-family:'Inter',sans-serif;font-size:.62rem;font-weight:600;color:var(--muted);margin-left:.3rem;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cm-fav{font-size:.6rem;font-weight:500;color:var(--muted);margin-left:.15rem;}
 
 /* ── Contextual badges ────────────────────────────── */
@@ -947,13 +951,12 @@ input[type=date] {
 .form-up{color:var(--green);}
 .form-dn{color:var(--red);}
 .travel-tag{color:var(--muted);background:var(--surface2);border:1px solid var(--border);}
+.public-tag{color:var(--yellow);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.25);}
 
 /* Line movement */
 .line-move{font-family:'Inter',sans-serif;font-size:.58rem;font-weight:700;margin-left:.18rem;flex-shrink:0;}
 .lm-up{color:var(--green);}
 .lm-dn{color:var(--red);}
-/* PPG-blend indicator on totals */
-.cm-ppg-note{font-size:.6rem;color:var(--blue);cursor:help;vertical-align:super;margin-left:.1rem;opacity:.8;font-style:normal;}
 </style>
 </head>
 <body>
@@ -990,14 +993,14 @@ input[type=date] {
   <div class="stab-divider"></div>
   <div class="sub-nav-right">
     <div class="sort-pills">
-      <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge</button>
+      <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge<span class="edge-tip" data-tip="Edge = model line minus Vegas line. Lean ≥ 3pts · Take ≥ 6pts">?</span></button>
       <button class="sort-pill" data-sort="time" onclick="setSort('time')">Time</button>
       <button class="sort-pill" data-sort="rank" onclick="setSort('rank')">Ranked</button>
       <button class="sort-pill" data-sort="conf" onclick="setSort('conf')">By Conf</button>
     </div>
     <div class="subnav-sep"></div>
     <button class="chip-btn" id="fc-odds" onclick="toggleFilter('hasOdds')">Odds Only</button>
-    <button class="chip-btn" id="fc-edge" onclick="toggleFilter('edgeOnly')">Top Picks</button>
+    <button class="chip-btn" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 4</button>
     <button class="chip-btn" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
     <div class="subnav-sep"></div>
     <button class="chip-btn" id="fc-compact" onclick="toggleFilter('compact')" title="Compact view">⊟</button>
@@ -1022,7 +1025,7 @@ input[type=date] {
       </button>
       <div class="mobile-filter-panel" id="mobile-filter-panel">
         <label class="mfp-item"><input type="checkbox" id="mfp-odds" onchange="toggleFilter('hasOdds')"> Odds Only</label>
-        <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Top Picks</label>
+        <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 4</label>
         <label class="mfp-item"><input type="checkbox" id="mfp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25</label>
         <label class="mfp-item"><input type="checkbox" id="mfp-compact" onchange="toggleFilter('compact')"> Compact</label>
       </div>
@@ -1034,8 +1037,7 @@ input[type=date] {
   <span class="sc" id="st-ratings">Ratings: —</span>
   <span class="sc" id="st-games">Games: —</span>
   <span class="sc" id="st-odds">Odds: —</span>
-  <span class="sc" id="st-ppg">PPG: —</span>
-  <span class="sc" id="st-scale">Scale: —</span>
+  <span class="sc" id="st-betting" style="display:none">Public: —</span>
 </div>
 
 <div class="container">
@@ -1080,8 +1082,8 @@ input[type=date] {
     <h2>Settings</h2>
     <div class="field">
       <label>The Odds API Key</label>
-      <input type="text" id="inp-odds-key" placeholder="Get a free key at the-odds-api.com">
-      <small>Free tier: 500 requests/month. Odds are cached 30 min to save requests.</small>
+      <input type="text" id="inp-odds-key" placeholder="Paste your API key here">
+      <small>Free tier: 500 requests/month. Odds are cached 30 min to save requests. <a href="https://the-odds-api.com" target="_blank" rel="noopener" style="color:var(--blue)">Get a free key →</a></small>
     </div>
     <div class="field">
       <label>Home Court Advantage (pts)</label>
@@ -1090,32 +1092,18 @@ input[type=date] {
     </div>
     <div class="field">
       <label>Scoring Scale</label>
-      <input type="number" id="inp-score-scale" value="1.02" step="0.01" min="0.85" max="1.25">
-      <small>Fine-tunes predicted scores. Formula normalizes Torvik adjD against the D1 average (106.09 for 2024-25), so scoreScale should sit close to 1.0. Optimizer recommends 1.02.</small>
+      <input type="number" id="inp-score-scale" value="1.04" step="0.01" min="0.85" max="1.25">
+      <small>Fine-tunes predicted scores (affects both spread and total). Calibrated to 1.04 via optimizer.</small>
+    </div>
+    <div class="field">
+      <label>Total Fine-Tune (pts)</label>
+      <input type="number" id="inp-total-offset" value="-5" step="0.5" min="-10" max="10">
+      <small>Additional total adjustment on top of built-in calibration (0 = fully calibrated). Use if model totals feel consistently high or low.</small>
     </div>
     <div class="field">
       <label>Daily Odds Lock Time (local hour, 0–23)</label>
       <input type="number" id="inp-lock-hour" value="10" step="1" min="0" max="23">
       <small>Odds are locked at this hour each day and never update after that, regardless of when the page is opened. Default 10 = 10 AM local time.</small>
-    </div>
-    <div class="field">
-      <label>Spread Pick Edge (pts)</label>
-      <input type="number" id="inp-spread-edge" value="4" step="0.5" min="1" max="15">
-      <small>Min model-vs-Vegas edge to qualify as a spread top pick. Spread MAE ~9 pts — 4pt edge is a reasonable filter.</small>
-    </div>
-    <div class="field">
-      <label>Total Pick Edge (pts)</label>
-      <input type="number" id="inp-total-edge" value="7" step="0.5" min="4" max="20">
-      <small>Min model-vs-Vegas edge for total (O/U) picks. Totals have higher variance (MAE ~12 pts) so a higher threshold reduces noise. 7+ recommended.</small>
-    </div>
-    <!-- Settings Sync -->
-    <div class="field" style="margin-top:1.2rem;border-top:1px solid var(--border);padding-top:1rem;">
-      <label>Sync Settings Across Devices</label>
-      <div style="display:flex;gap:.5rem;margin-bottom:.4rem;">
-        <button class="btn" style="flex:1;font-size:.72rem;" onclick="copySettingsString()">Copy Settings</button>
-        <button class="btn" style="flex:1;font-size:.72rem;" onclick="pasteSettingsString()">Paste & Apply</button>
-      </div>
-      <small>Copy on one device, paste on the other — syncs all model settings instantly.</small>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeSettings()">Cancel</button>
@@ -1133,7 +1121,6 @@ input[type=date] {
       <label>To</label>
       <input type="date" id="bt-to">
       <button class="btn primary" onclick="runBacktest()">Run</button>
-      <span style="font-size:.65rem;color:var(--muted)">Max 14 days · uses current ratings (no look-ahead correction)</span>
     </div>
     <div id="bt-results"></div>
   </div>
@@ -1172,30 +1159,19 @@ const CONF_ID_MAP = {
 const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
 const TORVIK    = 'https://barttorvik.com/trank.php?json=1';
 
-// Try multiple CORS proxies in sequence — returns parsed JSON or throws
+// Try CORS proxies in sequence — returns parsed JSON or throws
 async function fetchViaProxy(url) {
+  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   const attempts = [
-    // 1. Direct (works if Torvik ever adds CORS headers, or from localhost)
-    async () => {
+    // 1. Direct — only on localhost (avoids CORS console error on GitHub Pages)
+    ...(isLocal ? [async () => {
       const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
-    },
-    // 2. corsproxy.io — returns raw response
+    }] : []),
+    // 2. corsproxy.io
     async () => {
       const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.json();
-    },
-    // 3. allorigins — wraps in {contents:"..."}
-    async () => {
-      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) });
-      const w = await r.json();
-      return typeof w.contents === 'string' ? JSON.parse(w.contents) : (() => { throw new Error('empty'); })();
-    },
-    // 4. thingproxy
-    async () => {
-      const r = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: AbortSignal.timeout(10000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     },
@@ -1208,19 +1184,20 @@ async function fetchViaProxy(url) {
 }
 
 let ratings      = {};  // normalized_key → {raw, adjO, adjD, adjT, barthag}
-let avgAdjD      = 106.09;  // D1 mean adjD — recomputed after each Torvik load
 let espnList     = [];  // ESPN game objects
 let oddsList     = [];  // Odds API objects
-let pregameLines = {};  // gameId → {spread, total} — locked when game tips off, never overwritten by live odds
-let prePredictions = {};  // gameId → frozen pred snapshot at game start
+let refData      = {};  // ref name (lower) → { games, foulRate, ftRate } from KenPom
+let kenpomTeams  = {};  // normalized team key → { name, rank, adjEM, adjO, adjD, adjT, luck }
+let bettingMap   = {};  // `${hKey}|${aKey}` → { homeSpreadPct, awaySpreadPct, homeMoneyPct, awayMoneyPct }
 let oddsLeft     = null;
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
 
 // ── Contextual model data ──────────────────────────────────
 let teamsPlayedYesterday = new Set(); // ESPN team IDs of teams that played yesterday
+let teamDaysRest  = {};               // ESPN team ID → days since last game (1–7)
 let recentRatings = {};               // teamKey → Torvik ratings from last 14 days
-let injuryMap     = {};               // ESPN teamId → [{ name, status }]
+let injuryMap     = {};               // ESPN teamId → [{ name, status, mpg }]
 let currentIsoDate = '';              // ISO date of current view (YYYY-MM-DD)
 
 // Conference → timezone bucket (0=Eastern, 1=Central, 2=Mountain, 3=Pacific)
@@ -1233,13 +1210,17 @@ const CONF_TZ = {
   'WCC':3,'Big West':3,'Pac-12':3,'PAC-12':3,
 };
 
+// v3: reset totalOffset to 0 (regression calibration now built into formula)
+if (localStorage.getItem('ncaab_cfg_ver') !== '4') {
+  localStorage.removeItem('ncaab_tot_off');
+  localStorage.setItem('ncaab_cfg_ver', '4');
+}
 let cfg = {
-  oddsKey:    localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
-  homeCourt:  parseFloat(localStorage.getItem('ncaab_hc')         || '3.5'),
-  scoreScale: parseFloat(localStorage.getItem('ncaab_scale_v2')   || '1.02'),
-  lockHour:   parseInt(localStorage.getItem('ncaab_lock_hour')    || '10'),
-  spreadEdge: parseFloat(localStorage.getItem('ncaab_spread_edge')|| '4'),
-  totalEdge:  parseFloat(localStorage.getItem('ncaab_total_edge') || '7'),
+  oddsKey:     localStorage.getItem('ncaab_odds_key')    || '944ed4dd5ae32d7edc979330325c9c0b',
+  homeCourt:   parseFloat(localStorage.getItem('ncaab_hc')     || '3.5'),
+  scoreScale:  parseFloat(localStorage.getItem('ncaab_scale')  || '1.04'),
+  totalOffset: parseFloat(localStorage.getItem('ncaab_tot_off')|| '-5'),
+  lockHour:    parseInt(localStorage.getItem('ncaab_lock_hour') || '10'),
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1289,10 +1270,8 @@ const ALIAS = {
   'ut arlington':'ut arlington','texas arlington':'ut arlington',
   'umkc':'kansas city','kansas city roos':'kansas city',
   'siu edwardsville':'siue','siue cougars':'siue',
-  'loyola (il)':'loyola chicago','loyola il':'loyola chicago','loyola chicago ramblers':'loyola chicago',
-  'loyola md':'loyola md','loyola maryland':'loyola md','loyola maryland greyhounds':'loyola md',
-  "st. john's (ny)":"st. john's","st. john's ny":"st. john's","st john's red storm":"st. john's",
-  "saint mary's ca":"saint mary's","st. mary's ca":"saint mary's",
+  'loyola (il)':'loyola chicago','loyola chicago ramblers':'loyola chicago',
+  "st. john's (ny)":"st. john's","st john's red storm":"st. john's",
   'njit':'njit','njit highlanders':'njit',
   'tcu horned frogs':'tcu','ut rio grande valley':'utrgv',
   'southeast missouri state':'se missouri state',
@@ -1306,11 +1285,19 @@ const ALIAS = {
   "saint peter's":"saint peter's","saint peter's peacocks":"saint peter's",
 };
 
+function cacheAge(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 2) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return m > 0 ? `${h}h ${m}m ago` : `${h}h ago`;
+}
+
 function normTeam(raw) {
   if (!raw) return '';
   let s = raw.toLowerCase()
     .replace(/[\u2018\u2019''`]/g,"'")
-    .replace(/\s*\(([^)]{1,6})\)\s*/g, ' $1 ')  // keep paren content: (MD)→md, (NY)→ny
+    .replace(/\s*\([^)]{0,6}\)\s*/g,' ')  // strip (NY), (FL) etc.
     .replace(/[^a-z0-9\s'&.-]/g,'')
     .replace(/([a-z])\.([a-z])\./g, '$1$2')  // n.c. → nc
     .replace(/\s+/g,' ')
@@ -1322,15 +1309,14 @@ function normTeam(raw) {
 
 // Find Torvik key that best matches a full team name (ESPN or Odds API)
 function matchTeam(fullName) {
-  const norm = normTeam(fullName);
+  const norm = normTeam(TeamResolver.getCanonical(fullName));
   if (ratings[norm]) return norm;
 
   // Strip trailing words one at a time (removes mascot progressively)
   const words = norm.split(' ');
   for (let len = words.length - 1; len >= 1; len--) {
     const shorter = words.slice(0, len).join(' ');
-    const resolved = ALIAS[shorter] || shorter;
-    if (ratings[resolved]) return resolved;
+    if (ratings[shorter]) return shorter;
   }
 
   // Fuzzy: Dice coefficient on shared words
@@ -1355,7 +1341,6 @@ function matchTeam(fullName) {
     if (ratings[firstResolved]) return firstResolved;
   }
 
-  // Log failures so we can identify missing ALIAS entries via browser DevTools console
   if (fullName) console.warn(`[TrueLine] matchTeam MISS: "${fullName}" → norm="${norm}"`);
   return null;
 }
@@ -1368,11 +1353,12 @@ function getSeasonYear() {
   return m >= 7 ? new Date().getFullYear() + 1 : new Date().getFullYear();
 }
 
-const GIST_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
+const GIST_URL      = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-ratings.json';
+const GIST_META_URL = 'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/torvik-meta.json';
 
 async function loadTorvik() {
-  // 6-hour localStorage cache (v3 = normTeam paren handling updated)
-  const CACHE_VER = '3';
+  // 6-hour localStorage cache (v2 = conf bug fixed)
+  const CACHE_VER = '2';
   if (localStorage.getItem('torvik_ver') !== CACHE_VER) {
     localStorage.removeItem('torvik_ratings');
     localStorage.removeItem('torvik_ts');
@@ -1380,12 +1366,17 @@ async function loadTorvik() {
   }
   const cached = localStorage.getItem('torvik_ratings');
   const ts     = parseInt(localStorage.getItem('torvik_ts') || '0');
-  if (cached && Date.now() - ts < 1 * 3600 * 1000) {
+  if (cached && Date.now() - ts < 6 * 3600 * 1000) {
     ratings = JSON.parse(cached);
-    const cv = Object.values(ratings).map(r => r.adjD).filter(v => v > 90 && v < 125);
-    if (cv.length > 50) avgAdjD = cv.reduce((s, v) => s + v, 0) / cv.length;
-    console.info(`[TrueLine] Torvik cached: ${Object.keys(ratings).length} teams, avg adjD=${avgAdjD.toFixed(2)}, scoreScale=${cfg.scoreScale}`);
-    setSt('st-ratings', `Ratings: ${Object.keys(ratings).length} teams (cached)`, 'ok');
+    const n = Object.keys(ratings).length;
+    // Try to show Gist freshness even when serving from local cache
+    fetch(GIST_META_URL, { signal: AbortSignal.timeout(5000) })
+      .then(r => r.ok ? r.json() : null)
+      .then(meta => {
+        const gistAge = meta?.updated_at ? ` · updated ${cacheAge(new Date(meta.updated_at).getTime())}` : '';
+        setSt('st-ratings', `Ratings: ${n} teams · cached ${cacheAge(ts)}${gistAge}`, 'ok');
+      })
+      .catch(() => setSt('st-ratings', `Ratings: ${n} teams · cached ${cacheAge(ts)}`, 'ok'));
     return;
   }
   setSt('st-ratings', 'Ratings: loading…', '');
@@ -1408,13 +1399,17 @@ async function loadTorvik() {
     showErr('Torvik data loaded but could not parse ratings. Open console for raw data to help debug field mapping.');
     return;
   }
-  // Recompute D1 average adjD from loaded ratings so predict() never uses a stale constant
-  const vals = Object.values(ratings).map(r => r.adjD).filter(v => v > 90 && v < 125);
-  if (vals.length > 50) avgAdjD = vals.reduce((s, v) => s + v, 0) / vals.length;
-  console.info(`[TrueLine] Torvik loaded: ${n} teams, avg adjD=${avgAdjD.toFixed(2)}, scoreScale=${cfg.scoreScale}`);
   localStorage.setItem('torvik_ratings', JSON.stringify(ratings));
   localStorage.setItem('torvik_ts', Date.now().toString());
-  setSt('st-ratings', `Ratings: ${n} teams`, 'ok');
+  // Fetch meta for Gist update timestamp (non-blocking — failure is silent)
+  fetch(GIST_META_URL, { signal: AbortSignal.timeout(5000) })
+    .then(r => r.ok ? r.json() : null)
+    .then(meta => {
+      if (!meta?.updated_at) { setSt('st-ratings', `Ratings: ${n} teams`, 'ok'); return; }
+      const gistAge = cacheAge(new Date(meta.updated_at).getTime());
+      setSt('st-ratings', `Ratings: ${n} teams · updated ${gistAge}`, 'ok');
+    })
+    .catch(() => setSt('st-ratings', `Ratings: ${n} teams`, 'ok'));
 }
 
 function parseTorvik(data) {
@@ -1523,10 +1518,8 @@ async function loadESPN(dateStr) {
     const away = cs.find(c => c.homeAway === 'away');
     return {
       id:          ev.id,
-      home:        home?.team?.shortDisplayName || home?.team?.location || home?.team?.displayName || '',
-      away:        away?.team?.shortDisplayName || away?.team?.location || away?.team?.displayName || '',
-      homeFull:    home?.team?.displayName || '',
-      awayFull:    away?.team?.displayName || '',
+      home:        home?.team?.displayName || '',
+      away:        away?.team?.displayName || '',
       homeScore:   home?.score || '0',
       awayScore:   away?.score || '0',
       time:        ev.date,
@@ -1541,6 +1534,7 @@ async function loadESPN(dateStr) {
       awayTeamId:  away?.team?.id || '',
       homeConfId:  home?.team?.conferenceId || '',
       awayConfId:  away?.team?.conferenceId || '',
+      officials:   (comp?.officials || []).map(o => o.displayName || o.fullName || '').filter(Boolean),
     };
   });
   _lastESPNRefresh = new Date();
@@ -1550,6 +1544,47 @@ async function loadESPN(dateStr) {
 // ══════════════════════════════════════════════════════════
 // DATA: THE ODDS API
 // ══════════════════════════════════════════════════════════
+
+// Per-game lock: once a game's commence_time passes, freeze its odds so top
+// plays don't reshuffle mid-day as games go live or disappear from the API.
+function applyPerGameLocks(isoDate) {
+  if (!oddsList.length && !localStorage.getItem(`odds_pgmap_${isoDate}`)) return;
+  const nowMs = Date.now();
+  const mapKey = `odds_pgmap_${isoDate}`;
+  let pgMap = {};
+  try { pgMap = JSON.parse(localStorage.getItem(mapKey) || '{}'); } catch {}
+
+  let dirty = false;
+  const liveIds = new Set(oddsList.map(g => g.id).filter(Boolean));
+
+  for (const og of oddsList) {
+    if (!og.id || !og.commence_time) continue;
+    const started = nowMs >= new Date(og.commence_time).getTime();
+    if (!started || !pgMap[og.id]) {
+      // Pre-game: keep refreshing with latest line (spreads can move before tip).
+      // Started but not yet locked: snapshot now.
+      pgMap[og.id] = og;
+      dirty = true;
+    }
+  }
+  if (dirty) localStorage.setItem(mapKey, JSON.stringify(pgMap));
+
+  // Rebuild oddsList: locked odds for started games, live odds for pre-game.
+  // Also re-add started games that dropped out of the live API response.
+  oddsList = [
+    ...oddsList.map(og => {
+      if (!og.id || !og.commence_time) return og;
+      const started = nowMs >= new Date(og.commence_time).getTime();
+      return (started && pgMap[og.id]) ? pgMap[og.id] : og;
+    }),
+    ...Object.values(pgMap).filter(og =>
+      !liveIds.has(og.id) &&
+      og.commence_time &&
+      nowMs >= new Date(og.commence_time).getTime()
+    ),
+  ];
+}
+
 async function loadOdds(isoDate) {
   if (!cfg.oddsKey) { setSt('st-odds', 'Odds: no API key', 'warn'); oddsList = []; return; }
 
@@ -1579,11 +1614,22 @@ async function loadOdds(isoDate) {
     return;
   }
 
+  // Pre-game lock: if today's odds are locked, always use them — skip API entirely
+  const lockDate = localStorage.getItem('odds_lock_date');
+  const lockData = localStorage.getItem('odds_locked');
+  if (lockDate === isoDate && lockData) {
+    oddsList = JSON.parse(lockData);
+    applyPerGameLocks(isoDate);
+    setSt('st-odds', `Odds: ${oddsList.length} games (locked pre-game)`, 'ok');
+    return;
+  }
+
   // 30-min session cache
   const cc = sessionStorage.getItem('odds_cache');
   const ct = parseInt(sessionStorage.getItem('odds_ts') || '0');
   if (cc && Date.now() - ct < 30 * 60 * 1000) {
     oddsList = JSON.parse(cc);
+    applyPerGameLocks(isoDate);
     setSt('st-odds', `Odds: ${oddsList.length} games (cached)`, 'ok');
     return;
   }
@@ -1617,11 +1663,13 @@ async function loadOdds(isoDate) {
     oddsList = Array.isArray(data) ? data : [];
     sessionStorage.setItem('odds_cache', JSON.stringify(oddsList));
     sessionStorage.setItem('odds_ts', Date.now().toString());
-    // Save opening snapshot on first successful fetch (used for live-game line lock in assembleGames)
+    // Save opening snapshot (used for line-movement comparison)
     if (oddsList.length > 0) {
       const snapKey = `odds_opening_${isoDate}`;
       if (!localStorage.getItem(snapKey)) localStorage.setItem(snapKey, JSON.stringify(oddsList));
     }
+    // Per-game lock: freeze each game's odds at tip-off time
+    applyPerGameLocks(isoDate);
     setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
   } catch(e) {
     setSt('st-odds', 'Odds: fetch error', 'err');
@@ -1631,40 +1679,63 @@ async function loadOdds(isoDate) {
 }
 
 // ══════════════════════════════════════════════════════════
-// DATA: YESTERDAY'S GAMES (back-to-back detection)
+// DATA: REST DATA (7-day lookback — B2B + short-rest detection)
 // ══════════════════════════════════════════════════════════
-async function loadYesterdayGames(dateStr) {
-  const d = new Date(`${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  const yStr = `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
-  const cacheKey = `b2b_${yStr}`;
+async function loadRestData(dateStr) {
+  const cacheKey = `rest_${dateStr}`;
   const cached = sessionStorage.getItem(cacheKey);
-  if (cached) { teamsPlayedYesterday = new Set(JSON.parse(cached)); return; }
-  try {
-    const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${yStr}`, { signal: AbortSignal.timeout(8000) });
-    const data = await r.json();
-    const ids = [];
+  if (cached) {
+    teamDaysRest = JSON.parse(cached);
+    teamsPlayedYesterday = new Set(Object.keys(teamDaysRest).filter(id => teamDaysRest[id] === 1));
+    return;
+  }
+
+  const target = new Date(`${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}T12:00:00Z`);
+
+  // Fetch up to 7 prior days in parallel; first (most recent) occurrence wins
+  const fetches = [];
+  for (let daysBack = 1; daysBack <= 7; daysBack++) {
+    const d = new Date(target);
+    d.setUTCDate(d.getUTCDate() - daysBack);
+    const dStr = `${d.getUTCFullYear()}${String(d.getUTCMonth()+1).padStart(2,'0')}${String(d.getUTCDate()).padStart(2,'0')}`;
+    fetches.push(
+      fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dStr}`, { signal: AbortSignal.timeout(8000) })
+        .then(r => r.json())
+        .then(data => ({ daysBack, data }))
+        .catch(() => ({ daysBack, data: null }))
+    );
+  }
+
+  const results = await Promise.allSettled(fetches);
+  // Sort ascending so most recent (daysBack=1) overwrites older entries
+  const sorted = results
+    .filter(r => r.status === 'fulfilled' && r.value.data)
+    .map(r => r.value)
+    .sort((a, b) => b.daysBack - a.daysBack); // process oldest first so recent wins
+
+  const restMap = {};
+  for (const { daysBack, data } of sorted) {
     for (const ev of (data.events || [])) {
       for (const comp of (ev.competitions || [])) {
         for (const c of (comp.competitors || [])) {
-          if (c.team?.id) ids.push(c.team.id);
+          if (c.team?.id) restMap[c.team.id] = daysBack;
         }
       }
     }
-    teamsPlayedYesterday = new Set(ids);
-    sessionStorage.setItem(cacheKey, JSON.stringify(ids));
-  } catch(e) { teamsPlayedYesterday = new Set(); }
+  }
+
+  teamDaysRest = restMap;
+  teamsPlayedYesterday = new Set(Object.keys(restMap).filter(id => restMap[id] === 1));
+  sessionStorage.setItem(cacheKey, JSON.stringify(restMap));
 }
 
 // ══════════════════════════════════════════════════════════
 // DATA: RECENT TORVIK (last 14 days — form delta)
 // ══════════════════════════════════════════════════════════
 async function loadRecentTorvik() {
-  // localStorage (not sessionStorage) so all devices share the same form data and produce
-  // identical blended ratings → identical predictions regardless of when the app was opened.
   const cacheKey = `torvik_recent_${todayStr()}`;
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) { recentRatings = JSON.parse(cached); setSt('st-form', `Form: ${Object.keys(recentRatings).length} teams (cached)`, 'ok'); return; }
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) { recentRatings = JSON.parse(cached); return; }
   const end = new Date();
   const begin = new Date(); begin.setDate(begin.getDate() - 14);
   const fmt = d => `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
@@ -1672,58 +1743,12 @@ async function loadRecentTorvik() {
   try {
     const data = await fetchViaProxy(url);
     recentRatings = parseTorvik(data);
-    localStorage.setItem(cacheKey, JSON.stringify(recentRatings));
+    sessionStorage.setItem(cacheKey, JSON.stringify(recentRatings));
     setSt('st-form', `Form: ${Object.keys(recentRatings).length} teams`, 'ok');
   } catch(e) {
     recentRatings = {};
     setSt('st-form', 'Form: unavailable', 'warn');
   }
-}
-
-// ══════════════════════════════════════════════════════════
-// DATA: ESPN TEAM SEASON STATS (PPG, OPPG, pace)
-// One call per team per session — gives actual scoring anchor missing from Torvik
-// ══════════════════════════════════════════════════════════
-let teamSeasonStats = {}; // teamId (string) → { ppg, oppg, pace }
-
-async function loadTeamStats(teamIds) {
-  // localStorage (not sessionStorage) so all devices share the same PPG blend and
-  // produce identical displayTotals regardless of when/where the app was opened.
-  const cacheKey = `team_stats_${todayStr()}`;
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) { teamSeasonStats = JSON.parse(cached); setSt('st-ppg', `PPG: ${Object.keys(teamSeasonStats).length} teams (cached)`, 'ok'); return; }
-
-  const fetchOne = async id => {
-    try {
-      const r = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams/${id}/statistics`,
-        { signal: AbortSignal.timeout(6000) }
-      );
-      if (!r.ok) return;
-      const d = await r.json();
-      // Flatten all stat entries across all categories into one lookup
-      const flat = {};
-      (d.results?.stats?.categories || d.stats?.categories || [])
-        .forEach(cat => (cat.stats || []).forEach(s => { flat[s.name] = s.value; }));
-      const ppg  = flat.avgPoints        ?? flat.points        ?? null;
-      const oppg = flat.avgPointsAllowed ?? flat.pointsAllowed ?? null;
-      const fga  = flat.avgFieldGoalsAttempted  ?? flat.fieldGoalsAttempted  ?? null;
-      const fta  = flat.avgFreeThrowsAttempted  ?? flat.freeThrowsAttempted  ?? null;
-      const oreb = flat.avgOffensiveRebounds    ?? flat.offensiveRebounds     ?? null;
-      const to_  = flat.avgTurnovers            ?? flat.turnovers             ?? null;
-      // Oliver possession estimate: FGA − OREB + TO + 0.44×FTA
-      const pace = (fga != null && oreb != null && to_ != null && fta != null)
-        ? Math.round((fga - oreb + to_ + 0.44 * fta) * 10) / 10 : null;
-      if (ppg) teamSeasonStats[String(id)] = { ppg, oppg, pace };
-    } catch { /* skip — non-critical */ }
-  };
-
-  // Batch 8 at a time to stay well under ESPN rate limits
-  for (let i = 0; i < teamIds.length; i += 8) {
-    await Promise.all(teamIds.slice(i, i + 8).map(fetchOne));
-  }
-  localStorage.setItem(cacheKey, JSON.stringify(teamSeasonStats));
-  setSt('st-ppg', `PPG: ${Object.keys(teamSeasonStats).length} teams`, 'ok');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1742,10 +1767,14 @@ async function loadTeamInjuries(teamId) {
     );
     const d = await r.json();
     const injured = [];
+    // Position → estimated minutes per game (NCAAB starters average 28–30 mpg)
+    const POS_MPG = { PG: 28, G: 27, SG: 26, SF: 25, F: 24, PF: 22, C: 22 };
     for (const athlete of (d.athletes || [])) {
       const statusName = athlete.status?.type?.name || athlete.status?.name || '';
       if (['Out', 'Doubtful', 'Injured Reserve', 'Day-To-Day', 'injured'].includes(statusName)) {
-        injured.push({ name: athlete.displayName || athlete.shortName || '?', status: statusName });
+        const pos = (athlete.position?.abbreviation || '').toUpperCase();
+        const mpg = POS_MPG[pos] || 18;
+        injured.push({ name: athlete.displayName || athlete.shortName || '?', status: statusName, mpg });
       }
     }
     injuryMap[teamId] = injured;
@@ -1767,6 +1796,134 @@ async function loadInjuries() {
 }
 
 // ══════════════════════════════════════════════════════════
+// DATA: KENPOM REF STATS (from Gist, updated nightly by GitHub Action)
+// ══════════════════════════════════════════════════════════
+async function loadRefData() {
+  const cacheKey = `refs_${todayStr()}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) { refData = JSON.parse(cached); return; }
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/kenpom-refs.json`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    refData = await r.json();
+    sessionStorage.setItem(cacheKey, JSON.stringify(refData));
+  } catch(e) {
+    refData = {}; // silently unavailable until scraper runs for first time
+  }
+}
+
+async function loadKenpomTeams() {
+  const cacheKey = `kenpom_teams_${todayStr()}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) { kenpomTeams = JSON.parse(cached); return; }
+  try {
+    const r = await fetch(
+      'https://gist.githubusercontent.com/speiser11/44dd1f1464e3d7e2689b25ba758d4ea9/raw/kenpom-teams.json',
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    kenpomTeams = await r.json();
+    sessionStorage.setItem(cacheKey, JSON.stringify(kenpomTeams));
+  } catch(e) {
+    kenpomTeams = {};  // silently unavailable until scraper has run
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// DATA: ACTION NETWORK PUBLIC BETTING % (CORS via corsproxy)
+// ══════════════════════════════════════════════════════════
+async function loadBettingData(isoDate) {
+  bettingMap = {};
+  const cacheKey = `betting2_${isoDate}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    bettingMap = JSON.parse(cached);
+    const n = Object.keys(bettingMap).length;
+    if (n) { document.getElementById('st-betting').style.display = ''; setSt('st-betting', `Public: ${n} games`, 'ok'); }
+    return;
+  }
+  const anDate = isoDate.replace(/-/g, '');
+  const anUrl  = `https://api.actionnetwork.com/web/v2/scoreboard/publicbetting/ncaab?date=${anDate}&division=D1&periods=event&tournament=0`;
+
+  async function fetchAN() {
+    // 1. Direct fetch (ActionNetwork sometimes allows cross-origin)
+    try {
+      const r = await fetch(anUrl, { signal: AbortSignal.timeout(8000) });
+      if (r.ok) return r.json();
+    } catch(e) { /* blocked — try proxies */ }
+    // 2. codetabs proxy (higher size limit than corsproxy.io)
+    try {
+      const r = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(anUrl)}`, { signal: AbortSignal.timeout(12000) });
+      if (r.ok) return r.json();
+    } catch(e) { /* try next */ }
+    // 3. corsproxy.io as last resort
+    const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(anUrl)}`, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
+
+  try {
+    const data = await fetchAN();
+    // Log structure to confirm field names
+    for (const game of (data.games || [])) {
+      // Team identity: match by home_team_id / away_team_id
+      const teams = game.teams || [];
+      const homeInfo = teams.find(t => t.id === game.home_team_id);
+      const awayInfo = teams.find(t => t.id === game.away_team_id);
+      if (!homeInfo || !awayInfo) continue;
+      const hKey = matchTeam(homeInfo.full_name || homeInfo.display_name || '');
+      const aKey = matchTeam(awayInfo.full_name || awayInfo.display_name || '');
+      if (!hKey || !aKey) continue;
+
+      // Betting data: markets[bookId].event.{spread,total}[].{side, bet_info}
+      const bookId = Object.keys(game.markets || {})[0];
+      if (!bookId) continue;
+      const eventMkts = game.markets[bookId]?.event || {};
+
+      const spreadOutcomes = eventMkts.spread || [];
+      const hSpread = spreadOutcomes.find(o => o.side === 'home');
+      const aSpread = spreadOutcomes.find(o => o.side === 'away');
+
+      const totalOutcomes = eventMkts.total || [];
+      const overTotal  = totalOutcomes.find(o => o.side === 'over');
+      const underTotal = totalOutcomes.find(o => o.side === 'under');
+
+      // percent is already 0–100 integer from API
+      const hSprBets  = hSpread?.bet_info?.tickets?.percent  ?? 0;
+      const aSprBets  = aSpread?.bet_info?.tickets?.percent  ?? 0;
+      const hSprMny   = hSpread?.bet_info?.money?.percent    ?? 0;
+      const aSprMny   = aSpread?.bet_info?.money?.percent    ?? 0;
+      const overBets  = overTotal?.bet_info?.tickets?.percent ?? 0;
+      const underBets = underTotal?.bet_info?.tickets?.percent ?? 0;
+      const overMny   = overTotal?.bet_info?.money?.percent   ?? 0;
+      const underMny  = underTotal?.bet_info?.money?.percent  ?? 0;
+
+      if (!hSprBets && !aSprBets && !overBets && !underBets) continue;
+      bettingMap[`${hKey}|${aKey}`] = {
+        homeSpreadBetPct: hSprBets, awaySpreadBetPct: aSprBets,
+        homeSpreadMnyPct: hSprMny,  awaySpreadMnyPct: aSprMny,
+        overBetPct: overBets, underBetPct: underBets,
+        overMnyPct: overMny,  underMnyPct: underMny,
+      };
+    }
+    const n = Object.keys(bettingMap).length;
+    document.getElementById('st-betting').style.display = '';
+    if (n) {
+      sessionStorage.setItem(cacheKey, JSON.stringify(bettingMap));
+      setSt('st-betting', `Public: ${n} games`, 'ok');
+    } else {
+      setSt('st-betting', 'Public: no data', 'warn');
+    }
+  } catch(e) {
+    setSt('st-betting', 'Public: unavailable', 'warn');
+    document.getElementById('st-betting').style.display = '';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 // MODEL
 // ══════════════════════════════════════════════════════════
 
@@ -1780,8 +1937,21 @@ function normalCDF(z) {
   const result = 1 - phi * poly;
   return z >= 0 ? result : 1 - result;
 }
-// Historical std dev of NCAAB final game margins (~10-11 pts)
-const NCAAB_SIGMA = 10.5;
+// Empirical std dev of model errors (fitted from 16k games via optimize.py)
+const NCAAB_SIGMA = 12.5;
+
+// Estimate point impact of a team's injuries; cap at 4 pts
+function injuryImpact(injuries) {
+  const SEVERITY = { 'Out': 1.0, 'Injured Reserve': 1.0, 'Doubtful': 0.7, 'Day-To-Day': 0.4, 'injured': 0.9 };
+  const BASE_PTS = 2.5; // pts a full-time (40 mpg) starter contributes when removed
+  let total = 0;
+  for (const inj of (injuries || [])) {
+    const sev   = SEVERITY[inj.status] ?? 0.5;
+    const usage = (inj.mpg || 18) / 40;
+    total += sev * usage * BASE_PTS;
+  }
+  return Math.min(total, 4);
+}
 
 // Predict game: returns { margin, total, hScore, aScore, hRating, aRating, homeWinProb, awayWinProb }
 // margin > 0 → home team wins by that many (after home court adj)
@@ -1794,10 +1964,11 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
   // Geometric mean of tempos biases slightly toward the slower team — more realistic
   // than a simple average, which overestimates pace when tempos are mismatched
   const poss   = Math.sqrt(h.adjT * a.adjT);
-  // Normalize adjD relative to the D1 mean (computed dynamically from loaded ratings).
-  // This keeps scoreScale near 1.0 regardless of how Torvik's baseline drifts season to season.
-  const hScore = h.adjO * (a.adjD / avgAdjD) * poss / 100 * cfg.scoreScale;
-  const aScore = a.adjO * (h.adjD / avgAdjD) * poss / 100 * cfg.scoreScale;
+  // Normalize adjD against D1 average (~104.82) so adjO is used as absolute pts/100poss
+  // and adjD scales relative to average defense. scoreScale ≈ 1.0 with this formulation.
+  const AVG_ADJ_D = 106.09;  // updated to 2024-25 D1 average (was 104.82 = 2022-23 era)
+  const hScore = h.adjO * (a.adjD / AVG_ADJ_D) * poss / 100 * cfg.scoreScale;
+  const aScore = a.adjO * (h.adjD / AVG_ADJ_D) * poss / 100 * cfg.scoreScale;
 
   const hc     = neutral ? 0 : cfg.homeCourt;
   const margin = (hScore - aScore) + hc;  // positive = home favored
@@ -1806,7 +1977,7 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
 
   return {
     margin:  Math.round(margin  * 10) / 10,
-    total:   Math.round((hScore + aScore) * 10) / 10,
+    total:   Math.round(((hScore + aScore) * 0.847 + 18.7 + cfg.totalOffset) * 10) / 10,
     hScore:  Math.round((hScore + hc / 2) * 10) / 10,
     aScore:  Math.round((aScore - hc / 2) * 10) / 10,
     hRating: h,
@@ -1816,8 +1987,8 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
   };
 }
 
-// Blend season-long Torvik ratings with last-14-day form (30% weight on recent)
-const FORM_WEIGHT = 0.30;
+// Form blending weight — empirically validated at 0 (Torvik already incorporates recency)
+const FORM_WEIGHT = 0.0;
 function blendRatings(key) {
   const base = ratings[key];
   if (!base) return null;
@@ -1882,169 +2053,32 @@ function assembleGames() {
   })();
 
   return espnList.map(g => {
-    // Try the full ESPN displayName first (strips mascot via progressive word removal).
-    // Fall back to shortDisplayName — critical for 1-word Torvik keys like "duke", "gonzaga",
-    // "purdue" etc. where the full "Duke Blue Devils" strips to "duke blue" (2-word min) and fails.
-    const hKey = matchTeam(g.homeFull) || matchTeam(g.home);
-    const aKey = matchTeam(g.awayFull) || matchTeam(g.away);
+    const hKey = matchTeam(g.home);
+    const aKey = matchTeam(g.away);
 
     // Conferences (needed for travel calc)
     const hConf = (hKey && ratings[hKey]?.conf) || teamIdToConf[g.homeTeamId] || confIdMap[g.homeConfId] || '';
     const aConf = (aKey && ratings[aKey]?.conf) || teamIdToConf[g.awayTeamId] || confIdMap[g.awayConfId] || '';
 
-    // ── isStarted must be computed first — used to freeze both odds AND predictions ──
-    const isStarted = g.statusName === 'STATUS_IN_PROGRESS' ||
-                      g.statusName === 'STATUS_HALFTIME'     ||
-                      g.statusName === 'STATUS_FINAL'        ||
-                      g.statusName === 'STATUS_END_PERIOD';
+    // Form-blended ratings for predict()
+    const pred = predict(hKey, aKey, g.neutral, blendRatings(hKey), blendRatings(aKey));
 
-    // ── Prediction (frozen for started games) ────────────────────────────────
-    // Once a game tips off, the full pred snapshot is locked. Torvik updates weekly,
-    // so computing fresh mid-game produces the same values as at tip-off.
-    let pred;
-    if (isStarted) {
-      // 1) In-memory cache (fastest, survives auto-refresh within the session)
-      if (prePredictions[g.id]) {
-        pred = prePredictions[g.id];
-      } else {
-        // 2) localStorage per-game cache (survives page reload / fresh open mid-game)
-        try {
-          const saved = localStorage.getItem(`ppd_${g.id}`);
-          if (saved) {
-            pred = JSON.parse(saved);
-            prePredictions[g.id] = pred; // promote to memory
-          }
-        } catch(e) {}
-
-        // 3) Fallback: compute now and immediately freeze
-        //    (safe — Torvik is weekly; same-day values = tip-off values)
-        if (!pred) {
-          pred = predict(hKey, aKey, g.neutral, blendRatings(hKey), blendRatings(aKey));
-          if (pred) {
-            const hSt = teamSeasonStats[String(g.homeTeamId)];
-            const aSt = teamSeasonStats[String(g.awayTeamId)];
-            if (hSt?.ppg && aSt?.ppg && hSt?.oppg && aSt?.oppg) {
-              const AVG_D1_PPG = 73.5;
-              const ppgH = hSt.ppg * (aSt.oppg / AVG_D1_PPG);
-              const ppgA = aSt.ppg * (hSt.oppg / AVG_D1_PPG);
-              pred.displayTotal = Math.round((0.5 * pred.total + 0.5 * (ppgH + ppgA)) * 10) / 10;
-              pred.ppgTotal = Math.round((ppgH + ppgA) * 10) / 10;
-              pred.hPace = hSt.pace;
-              pred.aPace = aSt.pace;
-            } else {
-              pred.displayTotal = pred.total;
-            }
-            // B2B penalty
-            const hB2B_freeze = teamsPlayedYesterday.has(g.homeTeamId);
-            const aB2B_freeze = teamsPlayedYesterday.has(g.awayTeamId);
-            if (hB2B_freeze || aB2B_freeze) {
-              const B2B_PEN = 1.8;
-              if (hB2B_freeze) { pred.margin -= B2B_PEN; pred.total -= B2B_PEN; }
-              if (aB2B_freeze) { pred.margin += B2B_PEN; pred.total -= B2B_PEN; }
-              pred.margin = Math.round(pred.margin * 10) / 10;
-              pred.total  = Math.round(pred.total  * 10) / 10;
-              pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-              pred.awayWinProb = 100 - pred.homeWinProb;
-            }
-            // Travel adjustment
-            const hTz_freeze = CONF_TZ[hConf] ?? 0;
-            const aTz_freeze = CONF_TZ[aConf] ?? 0;
-            const travelDiff_freeze = !g.neutral ? Math.abs(aTz_freeze - hTz_freeze) : 0;
-            if (travelDiff_freeze >= 2) {
-              pred.margin += 0.75;
-              pred.margin = Math.round(pred.margin * 10) / 10;
-              pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-              pred.awayWinProb = 100 - pred.homeWinProb;
-            }
-          }
-          prePredictions[g.id] = pred;
-          try { localStorage.setItem(`ppd_${g.id}`, JSON.stringify(pred)); } catch(e) {}
-        }
-      }
-    } else {
-      // Upcoming game — compute normally, persist so it survives tip-off
-      pred = predict(hKey, aKey, g.neutral, blendRatings(hKey), blendRatings(aKey));
-      // Blend efficiency total with actual PPG-based estimate when ESPN stats are loaded.
-      // displayTotal = 50% efficiency model + 50% PPG model — reduces wild outliers.
-      // pred.total stays as the raw efficiency value for reference/backtest.
-      if (pred) {
-        const hSt = teamSeasonStats[String(g.homeTeamId)];
-        const aSt = teamSeasonStats[String(g.awayTeamId)];
-        if (hSt?.ppg && aSt?.ppg && hSt?.oppg && aSt?.oppg) {
-          const AVG_D1_PPG = 73.5;
-          const ppgH = hSt.ppg * (aSt.oppg / AVG_D1_PPG);
-          const ppgA = aSt.ppg * (hSt.oppg / AVG_D1_PPG);
-          pred.displayTotal = Math.round((0.5 * pred.total + 0.5 * (ppgH + ppgA)) * 10) / 10;
-          pred.ppgTotal = Math.round((ppgH + ppgA) * 10) / 10;
-          pred.hPace = hSt.pace;
-          pred.aPace = aSt.pace;
-        } else {
-          pred.displayTotal = pred.total;
-        }
-      }
-      // B2B and travel adjustments are applied below (in the !isStarted block),
-      // then pred is saved to prePredictions + localStorage after those adjustments.
-    }
-
-    // ── Odds assignment ──────────────────────────────────────────────────────
-    // RULE: once a game tips off, lines are frozen forever.
-    // Priority for live/final:  memory cache → localStorage per-game → opening snapshot → nothing
-    // Priority for upcoming:    current odds API → persist to memory + localStorage
-
-    let vegasSpread = null, vegasTotal = null;
-
-    if (isStarted) {
-      if (pregameLines[g.id]) {
-        // 1) In-memory cache (fastest, survives auto-refresh)
-        vegasSpread = pregameLines[g.id].spread;
-        vegasTotal  = pregameLines[g.id].total;
-      } else {
-        // 2) localStorage per-game cache (survives page reload)
-        try {
-          const saved = localStorage.getItem(`pgl_${g.id}`);
-          if (saved) {
-            const p = JSON.parse(saved);
-            vegasSpread = p.spread; vegasTotal = p.total;
-            pregameLines[g.id] = p; // promote to memory
-          }
-        } catch(e) {}
-
-        // 3) Opening snapshot fallback (full Odds API dump from first fetch today)
-        if (!vegasSpread && !vegasTotal && openSnap) {
-          const og = openSnap.find(o => {
-            const oh = matchTeam(o.home_team), oa = matchTeam(o.away_team);
-            return (oh && oh === hKey) || (oa && oa === aKey);
-          });
-          if (og) {
-            vegasSpread = getLine(og.bookmakers, 'spreads', hKey);
-            vegasTotal  = getLine(og.bookmakers, 'totals',  hKey);
-          }
-          pregameLines[g.id] = { spread: vegasSpread, total: vegasTotal };
-          try { localStorage.setItem(`pgl_${g.id}`, JSON.stringify(pregameLines[g.id])); } catch(e) {}
-        }
-      }
-    } else {
-      // Game upcoming — use current odds API
-      const oddsGame = oddsList.find(og => {
-        const oh = matchTeam(og.home_team), oa = matchTeam(og.away_team);
-        return (oh && oh === hKey) || (oa && oa === aKey);
-      });
-      if (oddsGame) {
-        vegasSpread = getLine(oddsGame.bookmakers, 'spreads', hKey);
-        vegasTotal  = getLine(oddsGame.bookmakers, 'totals',  hKey);
-      }
-      // Persist pre-game lines so they survive tip-off and page reloads
-      if (vegasSpread || vegasTotal) {
-        pregameLines[g.id] = { spread: vegasSpread, total: vegasTotal };
-        try { localStorage.setItem(`pgl_${g.id}`, JSON.stringify(pregameLines[g.id])); } catch(e) {}
-      }
-    }
-
-    // Opening line movement — only shown for upcoming games vs the day's first fetch
-    const openGame = (!isStarted && openSnap) ? openSnap.find(og => {
+    // Match current odds
+    const oddsGame = oddsList.find(og => {
       const oh = matchTeam(og.home_team), oa = matchTeam(og.away_team);
-      return (oh && oh === hKey) || (oa && oa === aKey);
-    }) : null;
+      return (oh === hKey && oa === aKey) || (oh === aKey && oa === hKey);
+    });
+    let vegasSpread = null, vegasTotal = null;
+    if (oddsGame) {
+      vegasSpread = getLine(oddsGame.bookmakers, 'spreads', hKey);
+      vegasTotal  = getLine(oddsGame.bookmakers, 'totals',  hKey);
+    }
+
+    // Opening line movement
+    const openGame = openSnap?.find(og => {
+      const oh = matchTeam(og.home_team), oa = matchTeam(og.away_team);
+      return (oh === hKey && oa === aKey) || (oh === aKey && oa === hKey);
+    });
     const openSpread = openGame ? getLine(openGame.bookmakers, 'spreads', hKey) : null;
     const openTotal  = openGame ? getLine(openGame.bookmakers, 'totals',  hKey) : null;
     const spreadMove = (vegasSpread && openSpread && vegasSpread.point !== openSpread.point)
@@ -2052,56 +2086,84 @@ function assembleGames() {
     const totalMove = (vegasTotal && openTotal && vegasTotal.point !== openTotal.point)
       ? Math.round((vegasTotal.point - openTotal.point) * 10) / 10 : null;
 
-    // Back-to-back flags (kept for display badges and upcoming-game adjustments)
-    const hB2B = teamsPlayedYesterday.has(g.homeTeamId);
-    const aB2B = teamsPlayedYesterday.has(g.awayTeamId);
+    // Rest: days since last game (1 = B2B, 2-3 = short rest, 4+ = normal)
+    const hDaysRest = teamDaysRest[g.homeTeamId] ?? 7;
+    const aDaysRest = teamDaysRest[g.awayTeamId] ?? 7;
+    const hB2B = hDaysRest === 1;
+    const aB2B = aDaysRest === 1;
 
-    // Travel delta (kept for awayTravel badge and upcoming-game adjustments)
+    // Apply rest adjustments to prediction
+    if (pred) {
+      const B2B_PEN = 1.8; // calibrated from 16k game dataset
+      let restAdj = 0;
+      // B2B penalty (plays yesterday)
+      if (hB2B) restAdj -= B2B_PEN;
+      if (aB2B) restAdj += B2B_PEN;
+      // Rest differential (0.15 pts/day) tested against 16k games — adds noise, no signal. Removed.
+      if (restAdj !== 0) {
+        pred.margin += restAdj;
+        pred.total  -= Math.abs(restAdj) * 0.4; // fatigued team scores less overall
+        pred.margin  = Math.round(pred.margin * 10) / 10;
+        pred.total   = Math.round(pred.total  * 10) / 10;
+        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+        pred.awayWinProb = 100 - pred.homeWinProb;
+      }
+    }
+
+    // Travel adjustment: away team crossing 2+ time zones gets a small penalty
     const hTz = CONF_TZ[hConf] ?? 0;
     const aTz = CONF_TZ[aConf] ?? 0;
     const travelDiff = !g.neutral ? Math.abs(aTz - hTz) : 0;
-
-    // For started games, pred is already frozen (B2B + travel baked in at freeze time).
-    // Only apply these adjustments for upcoming games.
-    if (!isStarted) {
-      // Apply B2B penalty to prediction
-      if (pred && (hB2B || aB2B)) {
-        const B2B_PEN = 1.8;
-        if (hB2B) { pred.margin -= B2B_PEN; pred.total -= B2B_PEN; }
-        if (aB2B) { pred.margin += B2B_PEN; pred.total -= B2B_PEN; }
-        pred.margin = Math.round(pred.margin * 10) / 10;
-        pred.total  = Math.round(pred.total  * 10) / 10;
-        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-        pred.awayWinProb = 100 - pred.homeWinProb;
-      }
-
-      // Travel adjustment: away team crossing 2+ time zones gets a small penalty
-      if (pred && travelDiff >= 2) {
-        pred.margin += 0.75; // slight home team boost
-        pred.margin = Math.round(pred.margin * 10) / 10;
-        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
-        pred.awayWinProb = 100 - pred.homeWinProb;
-      }
-
-      // Persist the fully-adjusted upcoming pred so it's ready to freeze at tip-off
-      prePredictions[g.id] = pred;
-      try { localStorage.setItem(`ppd_${g.id}`, JSON.stringify(pred)); } catch(e) {}
+    if (pred && travelDiff >= 2) {
+      pred.margin += 0.75; // slight home team boost
+      pred.margin = Math.round(pred.margin * 10) / 10;
+      pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+      pred.awayWinProb = 100 - pred.homeWinProb;
     }
 
-    // Injury data + form delta
+    // Injury data: apply MPG-weighted impact to model predictions
     const hInjuries = injuryMap[g.homeTeamId] || [];
     const aInjuries = injuryMap[g.awayTeamId] || [];
+    if (pred && (hInjuries.length || aInjuries.length)) {
+      const hInj = injuryImpact(hInjuries);
+      const aInj = injuryImpact(aInjuries);
+      const injAdj = aInj - hInj; // +ve = away team more impacted → home favored more
+      if (Math.abs(injAdj) >= 0.3) {
+        pred.margin += injAdj;
+        pred.margin  = Math.round(pred.margin * 10) / 10;
+        pred.homeWinProb = Math.round(normalCDF(pred.margin / NCAAB_SIGMA) * 100);
+        pred.awayWinProb = 100 - pred.homeWinProb;
+      }
+      if (hInj + aInj >= 0.5) {
+        pred.total  -= (hInj + aInj) * 0.35; // both teams missing players → lower total
+        pred.total   = Math.round(pred.total * 10) / 10;
+      }
+    }
+
     const hForm = getFormDelta(hKey);
     const aForm = getFormDelta(aKey);
+
+    // Refs: officials from ESPN + KenPom tendency lookup
+    const refs = g.officials || [];
+    const refStats = refs.map(name => {
+      const s = refData[name.toLowerCase()];
+      return s ? { name, ...s } : { name };
+    });
+
+    // Public betting % from ActionNetwork
+    const betting = bettingMap[`${hKey}|${aKey}`] || null;
 
     return {
       ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
       hConf, aConf,
       spreadMove, totalMove,
-      hB2B, aB2B,
+      hB2B, aB2B, hDaysRest, aDaysRest,
       hInjuries, aInjuries,
       hForm, aForm,
       awayTravel: travelDiff >= 2,
+      refs, refStats, betting,
+      hLuck: kenpomTeams[hKey]?.luck,
+      aLuck: kenpomTeams[aKey]?.luck,
     };
   });
 }
@@ -2193,9 +2255,8 @@ function getAdvice(g) {
   const hShort = displayName(g.hKey, g.home);
   const aShort = displayName(g.aKey, g.away);
 
-  const dispTotal = pred.displayTotal ?? pred.total;
   const sEdge = vegasSpread ? pred.margin - (-vegasSpread.point) : null;
-  const tEdge = vegasTotal  ? dispTotal  - vegasTotal.point      : null;
+  const tEdge = vegasTotal  ? pred.total - vegasTotal.point      : null;
 
   const sAbs = sEdge !== null ? Math.abs(sEdge) : 0;
   const tAbs = tEdge !== null ? Math.abs(tEdge) : 0;
@@ -2203,8 +2264,8 @@ function getAdvice(g) {
   const spreadTeam = sEdge !== null ? (sEdge > 0 ? hShort : aShort) : null;
   const totalDir   = tEdge !== null ? (tEdge > 0 ? 'Over'  : 'Under') : null;
 
-  const sStrong = sAbs >= cfg.spreadEdge + 3, sLean = sAbs >= cfg.spreadEdge;
-  const tStrong = tAbs >= cfg.totalEdge  + 3, tLean = tAbs >= cfg.totalEdge;
+  const sStrong = sAbs >= 6, sLean = sAbs >= 3;
+  const tStrong = tAbs >= 8,  tLean = tAbs >= 5;
 
   if (!sLean && !tLean) return { text: 'No Action', cls: 'cm-act-none' };
 
@@ -2261,29 +2322,26 @@ function renderMobileCard(g) {
     }
   }
 
-  // O/U row — displayTotal is the PPG-blended total (or raw if stats not loaded)
+  // O/U row
   let totalRow;
   if (!pred) {
     totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val cm-muted">No data</span></div>`;
   } else {
-    const dispTot  = pred.displayTotal ?? pred.total;
-    const modelTot = dispTot.toFixed(1);
-    const ppgNote  = pred.ppgTotal != null
-      ? `<span class="cm-ppg-note" title="Efficiency model: ${pred.total.toFixed(1)} · PPG model: ${pred.ppgTotal.toFixed(1)}">⊕</span>` : '';
+    const modelTot = pred.total.toFixed(1);
     if (vegasTotal) {
-      const edge = dispTot - vegasTotal.point;
-      const eCls = Math.abs(edge) >= cfg.totalEdge ? ' cm-good' : Math.abs(edge) >= cfg.totalEdge - 2 ? ' cm-mod' : '';
+      const edge = pred.total - vegasTotal.point;
+      const eCls = Math.abs(edge) >= 7 ? ' cm-good' : Math.abs(edge) >= 4 ? ' cm-mod' : '';
       const tmv = g.totalMove != null && Math.abs(g.totalMove) >= 0.5 ? `<span class="line-move ${g.totalMove > 0 ? 'lm-up' : 'lm-dn'}">${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove).toFixed(1)}</span>` : '';
       totalRow = `<div class="cm-row">
         <span class="cm-lbl">O/U</span>
-        <span class="cm-val">${modelTot}${ppgNote}</span>
+        <span class="cm-val">${modelTot}</span>
         <span class="cm-vs">vs</span>
         <span class="cm-vval">${vegasTotal.point}</span>
         ${tmv}
         <span class="cm-edge${eCls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
       </div>`;
     } else {
-      totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val">${modelTot}${ppgNote}</span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
+      totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val">${modelTot}</span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
     }
   }
 
@@ -2305,19 +2363,20 @@ function renderMobileCard(g) {
   const advice = getAdvice(g);
   const wpBadge = pred
     ? `<span class="cm-wp">${pred.homeWinProb > pred.awayWinProb
-        ? `${esc(teamAbbr(g.hKey, g.home))} ${pred.homeWinProb}%`
-        : `${esc(teamAbbr(g.aKey, g.away))} ${pred.awayWinProb}%`}</span>`
+        ? `${esc(displayName(g.hKey, g.home).split(' ').pop())} ${pred.homeWinProb}%`
+        : `${esc(displayName(g.aKey, g.away).split(' ').pop())} ${pred.awayWinProb}%`}</span>`
     : '';
 
-  function cmCtx(b2b, injuries, form) {
+  function cmCtx(b2b, daysRest, injuries, form) {
     let s = '';
     if (b2b) s += `<span class="ctx-badge b2b-tag">B2B</span>`;
+    else if (daysRest === 2) s += `<span class="ctx-badge b2b-tag" style="opacity:.7">SR</span>`;
     if (injuries.length) s += `<span class="ctx-badge inj-flag">⚠</span>`;
     if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}">${form.net > 0 ? '↑' : '↓'}</span>`;
     return s;
   }
-  const aBadges = cmCtx(g.aB2B, g.aInjuries||[], g.aForm);
-  const hBadges = cmCtx(g.hB2B, g.hInjuries||[], g.hForm);
+  const aBadges = cmCtx(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
+  const hBadges = cmCtx(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm);
 
   const linesAndAdvice = `
     <div class="cm-lines">
@@ -2325,13 +2384,14 @@ function renderMobileCard(g) {
         <span class="cm-col-hdr ch-lbl"></span>
         <span class="cm-col-hdr">Model</span>
         <span class="cm-col-hdr">Vegas</span>
-        <span class="cm-col-hdr ch-edge">Edge</span>
+        <span class="cm-col-hdr ch-edge">Edge<span class="edge-tip" data-tip="Model spread/total minus Vegas line. Lean ≥ 3pts · Take ≥ 6pts">?</span></span>
       </div>
       ${spreadRow}${totalRow}
     </div>
     <div class="cm-advice ${advice.cls}">
       <span class="cm-advice-text">${advice.text}</span>
       ${wpBadge}
+      ${(() => { if (!g.betting) return ''; const p = Math.max(g.betting.homeSpreadBetPct||0, g.betting.awaySpreadBetPct||0); return p >= 65 ? `<span class="ctx-badge public-tag" style="font-size:.5rem" title="${p}% public bets on spread">🎰 ${p}%</span>` : ''; })()}
       <button class="gd-btn" onclick="event.stopPropagation();showGameModal('${g.id}')">Details</button>
     </div>`;
 
@@ -2388,7 +2448,10 @@ function renderCard(g) {
       const vegasFav = esc(spreadFavName(vegasPoint, g.hKey, g.home, g.aKey, g.away));
       const edge = (-modelHomeSpread) - (-vegasPoint);
       const cls  = edgeCls(edge);
-      const edgeNum = `${edge > 0 ? '+' : ''}${edge.toFixed(1)}`;
+      const edgeDir = edge > 0
+        ? displayName(g.hKey, g.home)
+        : displayName(g.aKey, g.away);
+      const edgeLabel = `${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${esc(edgeDir)}`;
       spreadHtml = `
         <div class="mnum-row">
           <span class="mnum-lbl">Model</span>
@@ -2401,8 +2464,8 @@ function renderCard(g) {
           <span class="mnum-team">${vegasFav}</span>
           ${moveBadge(g.spreadMove)}
           ${Math.abs(edge) >= 4
-            ? `<span class="edge-pill ${cls}">${edgeNum}</span>`
-            : `<span class="mnum-edge-sm ${cls}">${edgeNum}</span>`}
+            ? `<span class="edge-pill ${cls}">${edgeLabel}</span>`
+            : `<span class="mnum-edge-sm ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>`}
         </div>
       `;
     } else {
@@ -2422,24 +2485,21 @@ function renderCard(g) {
   if (!pred) {
     totalHtml = `<div class="mnum-no-data">No ratings matched</div>`;
   } else {
-    const dispTot  = pred.displayTotal ?? pred.total;
-    const modelTot = dispTot.toFixed(1);
-    const ppgNote  = pred.ppgTotal != null
-      ? `<span class="cm-ppg-note" title="Efficiency model: ${pred.total.toFixed(1)} · PPG model: ${pred.ppgTotal.toFixed(1)}">⊕</span>` : '';
+    const modelTot = pred.total.toFixed(1);
     if (vegasTotal) {
-      const edge = dispTot - vegasTotal.point;
+      const edge = pred.total - vegasTotal.point;
       const cls  = edgeCls(edge);
       const dir  = edge > 0 ? 'OVER' : 'UNDER';
       totalHtml = `
         <div class="mnum-row">
           <span class="mnum-lbl">Model</span>
-          <span class="mnum-val">${modelTot}${ppgNote}</span>
+          <span class="mnum-val">${modelTot}</span>
         </div>
         <div class="mnum-row">
           <span class="mnum-lbl">Vegas</span>
           <span class="mnum-val">${vegasTotal.point}</span>
           ${moveBadge(g.totalMove)}
-          ${Math.abs(edge) >= cfg.totalEdge
+          ${Math.abs(edge) >= 4
             ? `<span class="edge-pill ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${dir}</span>`
             : `<span class="mnum-edge-sm ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>`}
         </div>
@@ -2448,7 +2508,7 @@ function renderCard(g) {
       totalHtml = `
         <div class="mnum-row">
           <span class="mnum-lbl">Model</span>
-          <span class="mnum-val">${modelTot}${ppgNote}</span>
+          <span class="mnum-val">${modelTot}</span>
         </div>
         <div class="mnum-no-data">No Vegas line</div>
       `;
@@ -2530,8 +2590,8 @@ function renderCard(g) {
       let coverBadge = '';
       if (vegasSpread) {
         const gap = actualMargin + vegasSpread.point;
-        const hShort = esc(teamAbbr(g.hKey, g.home));
-        const aShort = esc(teamAbbr(g.aKey, g.away));
+        const hShort = esc(displayName(g.hKey, g.home).split(' ')[0]);
+        const aShort = esc(displayName(g.aKey, g.away).split(' ')[0]);
         if (Math.abs(gap) <= 0.5)  coverBadge = `<span class="fr-badge push">Push</span>`;
         else if (gap > 0)          coverBadge = `<span class="fr-badge cover">${hShort} Covered ✓</span>`;
         else                       coverBadge = `<span class="fr-badge no-cover">${aShort} Covered ✓</span>`;
@@ -2611,10 +2671,11 @@ function renderCard(g) {
   const rankedMatchupBadge = bothRanked ? `<span class="ranked-badge">Ranked Matchup</span>` : '';
 
   // Contextual badges
-  function teamBadges(b2b, injuries, form) {
+  function teamBadges(b2b, daysRest, injuries, form) {
     let s = '';
-    if (b2b) s += `<span class="ctx-badge b2b-tag" title="Back-to-back game">B2B</span>`;
-    if (injuries.length) s += `<span class="ctx-badge inj-flag" title="${esc(injuries.map(i=>i.name+' ('+i.status+')').join(', '))}">⚠ ${injuries.length > 1 ? injuries.length+' out' : injuries[0].name}</span>`;
+    if (b2b) s += `<span class="ctx-badge b2b-tag" title="Back-to-back game (played yesterday)">B2B</span>`;
+    else if (daysRest === 2) s += `<span class="ctx-badge b2b-tag" style="opacity:.7" title="Short rest — played 2 days ago">SR</span>`;
+    if (injuries.length) s += `<span class="ctx-badge inj-flag" title="${esc(injuries.map(i=>i.name+' ('+i.status+(i.mpg?', ~'+i.mpg+' mpg':'')+')').join(', '))}">⚠ ${injuries.length > 1 ? injuries.length+' out' : injuries[0].name}</span>`;
     if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}" title="Last-14-day trend: adjO ${form.dO > 0?'+':''}${form.dO} / adjD ${form.dD > 0?'+':''}${form.dD}">${form.net > 0 ? '↑' : '↓'} ${Math.abs(form.net).toFixed(1)}</span>`;
     return s;
   }
@@ -2635,10 +2696,21 @@ function renderCard(g) {
     return `<span class="line-move ${move > 0 ? 'lm-up' : 'lm-dn'}" title="Line moved ${move > 0 ? 'toward home' : 'toward away'} since open">${move > 0 ? '↑' : '↓'}${Math.abs(move).toFixed(1)}</span>`;
   }
 
-  const aCtx = teamBadges(g.aB2B, g.aInjuries||[], g.aForm);
-  const hCtx = teamBadges(g.hB2B, g.hInjuries||[], g.hForm);
+  const aCtx = teamBadges(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
+  const hCtx = teamBadges(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm);
   const travelBadge = g.awayTravel ? `<span class="ctx-badge travel-tag" title="Away team traveling 2+ time zones">✈ travel</span>` : '';
   const earlyBadge  = confidenceBadge();
+  // Public lean badge — show when ≥65% of bets on one side
+  function publicLeanBadge() {
+    if (!g.betting) return '';
+    const { homeSpreadBetPct: h, awaySpreadBetPct: a } = g.betting;
+    if (!h && !a) return '';
+    const pct = Math.max(h, a);
+    if (pct < 65) return '';
+    const side = h >= a ? displayName(g.hKey, g.home).split(' ').pop() : displayName(g.aKey, g.away).split(' ').pop();
+    return `<span class="ctx-badge public-tag" title="${pct}% of public bets on ${esc(side)} spread">🎰 ${pct}% public</span>`;
+  }
+  const publicBadge = publicLeanBadge();
 
   return `
     <div class="card${edgeCardCls}${rankedCls}" id="game-${g.id}">
@@ -2647,7 +2719,7 @@ function renderCard(g) {
           ${awayRankBadge}<span class="team-away team-link" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${esc(displayName(g.aKey, g.away))}</span>${aCtx}
           <span class="card-vs">@</span>
           ${homeRankBadge}<span class="team-home team-link" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${esc(displayName(g.hKey, g.home))}</span>${hCtx}
-          ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}${travelBadge}${earlyBadge}
+          ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}${travelBadge}${earlyBadge}${publicBadge}
         </div>
         <div style="display:flex;align-items:center;gap:.4rem;">${rankedMatchupBadge}${statusBadge}</div>
       </div>
@@ -2674,197 +2746,197 @@ function scrollToGame(id) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// Build a picks snapshot with enough data to evaluate results later
-function makePicksSnapshot(top5) {
-  return top5.map(p => {
-    const base = {
-      gameId: p.g.id,
-      aShort: teamAbbr(p.g.aKey, p.g.away),
-      hShort: teamAbbr(p.g.hKey, p.g.home),
-      hKey: p.g.hKey, aKey: p.g.aKey,
-      main: p.main, edge: p.edge, type: p.type, why: p.why,
-    };
-    if (p.type === 'spread') {
-      // backHome=true means we're taking the home team to cover
-      return { ...base, backHome: (p.g.pred.margin + p.g.vegasSpread.point) > 0, vegasSpreadPt: p.g.vegasSpread.point };
-    }
-    return { ...base, direction: p.g.pred.total > p.g.vegasTotal.point ? 'over' : 'under', totalLine: p.g.vegasTotal.point };
-  });
-}
-
 function renderTopPicks(games) {
   const bar = document.getElementById('top-picks-bar');
   if (!games.length) { bar.style.display = 'none'; return; }
 
-  function pickCard(p) {
-    const cls = p.edge >= 7 ? 'hot' : 'warm';
-    return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.gameId}')">
-      <div class="pick-matchup">${esc(p.aShort)} @ ${esc(p.hShort)}</div>
-      <div class="pick-main">${esc(p.main)}</div>
-      <div class="pick-meta"><span class="pick-edge">+${p.edge.toFixed(1)}</span></div>
-    </div>`;
-  }
-
-  function buildBar(atsSn, ouSn, locked) {
-    const lock = locked ? ' 🔒' : '';
-    const atsCards = atsSn.length
-      ? atsSn.map(pickCard).join('')
-      : `<span class="picks-empty">No ATS edge</span>`;
-    const ouCards = ouSn.length
-      ? ouSn.map(pickCard).join('')
-      : `<span class="picks-empty">No O/U edge</span>`;
+  // Helper to build bar HTML from a snapshot array
+  function buildPicksBar(snapshot, locked) {
+    const cards = snapshot.map(p => {
+      const cls = p.edge >= 7 ? 'hot' : 'warm';
+      const typeLabel = p.type === 'spread' ? 'ATS' : 'O/U';
+      return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.gameId}')">
+        <div class="pick-matchup">${esc(p.aShort)} @ ${esc(p.hShort)}</div>
+        <div class="pick-main">${esc(p.main)}</div>
+        <div class="pick-meta">
+          <span class="pick-edge">+${p.edge.toFixed(1)}</span>
+          <span class="pick-type-tag">${typeLabel}</span>
+        </div>
+        <div class="pick-why">${esc(p.why)}</div>
+      </div>`;
+    }).join('');
+    const title = locked ? '🔒 Top Picks (Locked)' : "Today's Top Picks<span class='edge-tip' data-tip='Edge = model spread minus Vegas line. Higher edge = stronger disagreement with Vegas.'>?</span>";
     bar.style.display = '';
     bar.innerHTML = `
-      <div class="picks-bar-inner">
-        <span class="picks-group-hdr">ATS${lock}</span>
-        <div class="picks-group-cards">${atsCards}</div>
-        <div class="picks-bar-divider"></div>
-        <span class="picks-group-hdr">O/U${lock}</span>
-        <div class="picks-group-cards">${ouCards}</div>
-        <div class="picks-accuracy-right" id="picks-accuracy-row">
-          <span class="acc-badge" style="opacity:.45">—</span>
+      <div class="picks-header">
+        <span class="top-picks-title" id="picks-title">${title}</span>
+        <div class="picks-accuracy" id="picks-accuracy-row">
+          <span class="acc-badge" style="opacity:.5">Loading accuracy…</span>
         </div>
-      </div>`;
-    // Evaluate history then render accuracy badges from locked logs
-    evaluatePicksHistory().then(() => loadAccuracyStats());
+      </div>
+      <div class="picks-row">${cards}</div>`;
+    loadAccuracyStats();
   }
 
   // If we have a time-based lock for today, always render from it
   const lockedDate = localStorage.getItem('picks_lock_date');
   const lockedData = localStorage.getItem('picks_locked');
   if (lockedDate === currentIsoDate && lockedData) {
-    const all = JSON.parse(lockedData);
-    buildBar(all.filter(p => p.type === 'spread'), all.filter(p => p.type === 'total'), true);
+    buildPicksBar(JSON.parse(lockedData), true);
     return;
   }
 
-  // Collect spread picks (top 3) and total picks (top 3) separately
-  const spreadPicks = [], totalPicks = [];
+  // Collect all spread + total picks with edge >= 4
+  const picks = [];
   for (const g of games) {
     if (!g.pred) continue;
     if (g.vegasSpread) {
       const se = g.pred.margin + g.vegasSpread.point;
       const absE = Math.abs(se);
-      if (absE >= cfg.spreadEdge) {
+      if (absE >= 4) {
         const backHome = se > 0;
-        const favKey  = backHome ? g.hKey : g.aKey;
-        const favFull = backHome ? g.home : g.away;
-        const lineVal = backHome ? g.vegasSpread.point : -g.vegasSpread.point;
+        const favKey   = backHome ? g.hKey : g.aKey;
+        const favFull  = backHome ? g.home : g.away;
+        const lineVal  = backHome ? g.vegasSpread.point : -g.vegasSpread.point;
         const modelVal = backHome ? -g.pred.margin : g.pred.margin;
-        spreadPicks.push({ g, edge: absE, type: 'spread',
-          main: `${teamAbbr(favKey, favFull)} ${fmtSpread(lineVal.toFixed(1))}`,
-          why: `Model ${fmtSpread(modelVal.toFixed(1))} · Vegas ${fmtSpread(lineVal.toFixed(1))} · ${absE.toFixed(1)}pt edge` });
+        const lastName = displayName(favKey, favFull).split(' ').slice(-1)[0];
+        picks.push({
+          g, edge: absE, type: 'spread',
+          main: `${lastName} ${fmtSpread(lineVal.toFixed(1))}`,
+          why: `Model ${fmtSpread(modelVal.toFixed(1))} · Vegas ${fmtSpread(lineVal.toFixed(1))} · ${absE.toFixed(1)}pt edge`,
+        });
       }
     }
     if (g.vegasTotal) {
-      const dispTot = g.pred.displayTotal ?? g.pred.total;
-      const te = dispTot - g.vegasTotal.point;
+      const te = g.pred.total - g.vegasTotal.point;
       const absE = Math.abs(te);
-      if (absE >= cfg.totalEdge) {
-        totalPicks.push({ g, edge: absE, type: 'total',
+      if (absE >= 4) {
+        picks.push({
+          g, edge: absE, type: 'total',
           main: `${te > 0 ? 'OVER' : 'UNDER'} ${g.vegasTotal.point}`,
-          why: `Model ${dispTot.toFixed(1)} · Line ${g.vegasTotal.point} · ${absE.toFixed(1)}pt edge` });
+          why: `Model ${g.pred.total.toFixed(1)} · Line ${g.vegasTotal.point} · ${absE.toFixed(1)}pt edge`,
+        });
       }
     }
   }
-  spreadPicks.sort((a, b) => b.edge - a.edge);
-  totalPicks.sort((a, b) => b.edge - a.edge);
-  const top3S = spreadPicks.slice(0, 3);
-  const top3T = totalPicks.slice(0, 3);
-  if (!top3S.length && !top3T.length) { bar.style.display = 'none'; return; }
+  picks.sort((a, b) => b.edge - a.edge);
+  const top5 = picks.slice(0, 5);
+  if (!top5.length) { bar.style.display = 'none'; return; }
 
-  // Lock snapshot once the daily lock hour has passed
+  // Save snapshot once the daily lock hour has passed
   const isPastLockHour = new Date().getHours() >= cfg.lockHour;
-  if (isPastLockHour) {
-    const snapshot = [...makePicksSnapshot(top3S), ...makePicksSnapshot(top3T)];
+  if (isPastLockHour && top5.length) {
+    const snapshot = top5.map(p => ({
+      gameId: p.g.id,
+      aShort: displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0],
+      hShort: displayName(p.g.hKey, p.g.home).split(' ').slice(-1)[0],
+      main: p.main,
+      edge: p.edge,
+      type: p.type,
+      why: p.why,
+    }));
     localStorage.setItem('picks_lock_date', currentIsoDate);
     localStorage.setItem('picks_locked', JSON.stringify(snapshot));
-    if (!localStorage.getItem(`picks_log_${currentIsoDate}`))
-      localStorage.setItem(`picks_log_${currentIsoDate}`, JSON.stringify({ date: currentIsoDate, picks: snapshot }));
-    buildBar(snapshot.filter(p => p.type === 'spread'), snapshot.filter(p => p.type === 'total'), true);
+    buildPicksBar(snapshot, true);
     return;
   }
 
-  buildBar(makePicksSnapshot(top3S), makePicksSnapshot(top3T), false);
-}
-
-// ── Picks record: scan picks_log_ keys, fetch finals, compute W/L/P ──────────
-async function evaluatePicksHistory() {
-  const _n = new Date();
-  const todayStr = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
-  const keys = Object.keys(localStorage).filter(k => k.startsWith('picks_log_'));
-  let w = 0, l = 0, p = 0;
-  for (const key of keys) {
-    let log; try { log = JSON.parse(localStorage.getItem(key)); } catch { continue; }
-    if (!log?.picks?.length) continue;
-    const needsEval = log.date < todayStr && log.picks.some(pk => !pk.result);
-    if (needsEval) {
-      try {
-        const dateStr = log.date.replace(/-/g, '');
-        const espnGames = await fetchESPNFinal(dateStr);
-        let changed = false;
-        for (const pk of log.picks) {
-          if (pk.result) continue;
-          const g = espnGames.find(g =>
-            matchTeam(g.homeFull || g.home) === pk.hKey && matchTeam(g.awayFull || g.away) === pk.aKey);
-          if (!g) continue;
-          const actual = g.homeScore - g.awayScore;
-          if (pk.type === 'spread') {
-            const cn = actual + pk.vegasSpreadPt;
-            pk.result = cn === 0 ? 'push' : (cn > 0) === pk.backHome ? 'win' : 'loss';
-          } else {
-            const tot = g.homeScore + g.awayScore;
-            const dir = tot > pk.totalLine ? 'over' : tot < pk.totalLine ? 'under' : 'push';
-            pk.result = dir === 'push' ? 'push' : dir === pk.direction ? 'win' : 'loss';
-          }
-          changed = true;
-        }
-        if (changed) localStorage.setItem(key, JSON.stringify(log));
-      } catch { /* skip day if fetch fails */ }
-    }
-    for (const pk of log.picks) {
-      if (pk.result === 'win') w++;
-      else if (pk.result === 'loss') l++;
-      else if (pk.result === 'push') p++;
-    }
-  }
-  return { w, l, p };
+  // Pre-lock: render live (unlocked)
+  const snapshot = top5.map(p => ({
+    gameId: p.g.id,
+    aShort: displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0],
+    hShort: displayName(p.g.hKey, p.g.home).split(' ').slice(-1)[0],
+    main: p.main,
+    edge: p.edge,
+    type: p.type,
+    why: p.why,
+  }));
+  buildPicksBar(snapshot, false);
 }
 
 // ── Historical accuracy scorecard ─────────────────────────
-// Only count games on/after this date — day 1 of fresh tracking
-const ACC_START_DATE = '2026-03-03';
+// Season start: Nov 1 of current academic year
+// (before July → prior year's Nov; July+ → current year's Nov)
+const ACC_START_DATE = (() => {
+  const now = new Date();
+  const yr = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
+  return `${yr}1101`;
+})();
 
-// Compute Yday/Week/Month win rates from picks_log entries (pre-game locked lines).
-// evaluatePicksHistory() must be called first to populate 'result' fields.
-function loadAccuracyStats() {
-  const today = new Date();
-  const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  const shift = n => { const d = new Date(today); d.setDate(today.getDate() + n); return d; };
-  const todayStr  = iso(today);
-  const ydStr     = iso(shift(-1));
-  const wkStr     = iso(shift(-7));
-  const moStr     = iso(shift(-30));
+let _accCache = null, _accCacheTs = 0;
 
-  const yd = {w:0,l:0}, wk = {w:0,l:0}, mo = {w:0,l:0};
+async function loadAccuracyStats() {
+  const now = Date.now();
 
-  const keys = Object.keys(localStorage).filter(k => k.startsWith('picks_log_'));
-  for (const key of keys) {
-    let log; try { log = JSON.parse(localStorage.getItem(key)); } catch { continue; }
-    if (!log?.picks?.length) continue;
-    const d = log.date; // YYYY-MM-DD
-    if (d >= todayStr || d < ACC_START_DATE) continue; // skip today and pre-tracking
-    for (const pk of log.picks) {
-      if (!pk.result || pk.result === 'push') continue;
-      const win = pk.result === 'win' ? 1 : 0;
-      const loss = pk.result === 'loss' ? 1 : 0;
-      if (d === ydStr)  { yd.w += win; yd.l += loss; }
-      if (d >= wkStr)   { wk.w += win; wk.l += loss; }
-      if (d >= moStr)   { mo.w += win; mo.l += loss; }
-    }
+  // If locked for today, serve from localStorage immediately
+  const accLockDate = localStorage.getItem('acc_lock_date');
+  const accLockData = localStorage.getItem('acc_locked');
+  if (accLockDate === currentIsoDate && accLockData) {
+    _accCache = JSON.parse(accLockData);
+    _accCacheTs = now;
+    renderAccuracyBadges(_accCache);
+    return;
   }
 
-  renderAccuracyBadges({ yd, wk, mo });
+  if (_accCache && (now - _accCacheTs) < 30 * 60 * 1000) {
+    renderAccuracyBadges(_accCache);
+    return;
+  }
+  const toDateStr = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dy = String(d.getDate()).padStart(2,'0');
+    return `${y}${m}${dy}`;
+  };
+  const today = new Date();
+  const shiftDay = n => { const d = new Date(today); d.setDate(today.getDate() + n); return d; };
+  const dateRange = (start, end) => {
+    const dates = [], d = new Date(start);
+    while (d <= end) { dates.push(toDateStr(new Date(d))); d.setDate(d.getDate()+1); }
+    return dates;
+  };
+  const yest = shiftDay(-1);
+  const weekAgo = shiftDay(-7);
+  const monthAgo = shiftDay(-30);
+
+  async function scoreRange(dates) {
+    let w = 0, l = 0;
+    // Only score dates on/after ACC_START_DATE
+    for (const dateStr of dates.filter(d => d >= ACC_START_DATE)) {
+      try {
+        const games = await fetchESPNFinal(dateStr);
+        for (const g of games) {
+          const hKey = matchTeam(g.home), aKey = matchTeam(g.away);
+          const pred = predict(hKey, aKey, g.neutral);
+          if (!pred) continue;
+          const actual = g.homeScore - g.awayScore;
+          if (actual === 0) continue;
+          (pred.margin > 0) === (actual > 0) ? w++ : l++;
+        }
+      } catch(e) { /* skip */ }
+    }
+    return { w, l };
+  }
+
+  try {
+    const [yd, wk, mo] = await Promise.all([
+      scoreRange([toDateStr(yest)]),
+      scoreRange(dateRange(weekAgo, yest)),
+      scoreRange(dateRange(monthAgo, yest)),
+    ]);
+    _accCache = { yd, wk, mo };
+    _accCacheTs = now;
+    // Lock accuracy once the daily cutoff has passed
+    const isPastLockHour = new Date().getHours() >= cfg.lockHour;
+    if (isPastLockHour) {
+      localStorage.setItem('acc_lock_date', currentIsoDate);
+      localStorage.setItem('acc_locked', JSON.stringify(_accCache));
+    }
+    renderAccuracyBadges(_accCache);
+  } catch(e) {
+    const row = document.getElementById('picks-accuracy-row');
+    if (row) row.innerHTML = '';
+  }
 }
 
 function renderAccuracyBadges({ yd, wk, mo }) {
@@ -3053,8 +3125,6 @@ function render(games) {
     const q = filters.search;
     visible = visible.filter(g =>
       g.home.toLowerCase().includes(q) || g.away.toLowerCase().includes(q) ||
-      (g.homeFull && g.homeFull.toLowerCase().includes(q)) ||
-      (g.awayFull && g.awayFull.toLowerCase().includes(q)) ||
       (g.hKey && g.hKey.includes(q))   || (g.aKey && g.aKey.includes(q))
     );
   }
@@ -3274,19 +3344,73 @@ function showGameModal(gameId) {
 
   // ── Contextual Factors ──
   const ctx = [];
-  if (g.aB2B) ctx.push(['⚠️', `${esc(aName)} on a back-to-back`]);
-  if (g.hB2B) ctx.push(['⚠️', `${esc(hName)} on a back-to-back`]);
+  if (g.aB2B) ctx.push(['⚠️', `${esc(aName)} on a back-to-back (−1.8 pts applied)`]);
+  if (g.hB2B) ctx.push(['⚠️', `${esc(hName)} on a back-to-back (−1.8 pts applied)`]);
+  if (!g.aB2B && g.aDaysRest === 2) ctx.push(['😓', `${esc(aName)} on short rest (2 days)`]);
+  if (!g.hB2B && g.hDaysRest === 2) ctx.push(['😓', `${esc(hName)} on short rest (2 days)`]);
+  if (!g.hB2B && !g.aB2B && g.hDaysRest != null && g.aDaysRest != null) {
+    const diff = g.hDaysRest - g.aDaysRest;
+    if (Math.abs(diff) >= 3) ctx.push(['🛌', `Rest advantage: ${diff > 0 ? esc(hName) : esc(aName)} has ${Math.abs(diff)} more days rest`]);
+  }
   if (g.awayTravel) ctx.push(['✈️', 'Away team crossing 2+ time zones']);
   if (g.aForm?.net && Math.abs(g.aForm.net)>=1.5) ctx.push([g.aForm.net>0?'📈':'📉', `${esc(aName)} form: ${g.aForm.net>0?'+':''}${g.aForm.net.toFixed(1)} net efficiency`]);
   if (g.hForm?.net && Math.abs(g.hForm.net)>=1.5) ctx.push([g.hForm.net>0?'📈':'📉', `${esc(hName)} form: ${g.hForm.net>0?'+':''}${g.hForm.net.toFixed(1)} net efficiency`]);
-  (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)})`]));
-  (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)})`]));
+  (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
+  (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
+  // KenPom luck shown as context only — tested against 16k games, found to add noise (+0.39 MAE), not applied to model
+  if (g.hLuck != null && Math.abs(g.hLuck) >= 0.05) {
+    const icon = g.hLuck > 0 ? '🍀' : '📉';
+    const dir  = g.hLuck > 0 ? `lucky (+${(g.hLuck*100).toFixed(0)}% wins vs expected)` : `unlucky (${(g.hLuck*100).toFixed(0)}% wins vs expected)`;
+    ctx.push([icon, `${esc(hName)} KenPom luck: ${dir} — context only, not applied to model`]);
+  }
+  if (g.aLuck != null && Math.abs(g.aLuck) >= 0.05) {
+    const icon = g.aLuck > 0 ? '🍀' : '📉';
+    const dir  = g.aLuck > 0 ? `lucky (+${(g.aLuck*100).toFixed(0)}% wins vs expected)` : `unlucky (${(g.aLuck*100).toFixed(0)}% wins vs expected)`;
+    ctx.push([icon, `${esc(aName)} KenPom luck: ${dir} — context only, not applied to model`]);
+  }
   if (ctx.length) {
     html += `<div class="gd-section">
       <div class="gd-section-title">Contextual Factors</div>
       <ul class="gd-ctx-list">
         ${ctx.map(([icon,text])=>`<li class="gd-ctx-item"><span class="gd-ctx-icon">${icon}</span><span>${text}</span></li>`).join('')}
       </ul>
+    </div>`;
+  }
+
+  // ── Refs ──
+  if ((g.refStats || []).length) {
+    const refRows = g.refStats.map(r => {
+      let note = '';
+      if (r.bias != null) {
+        if      (r.bias >=  1.0) note = ' <span style="color:var(--green);font-size:.7em">home-leaning</span>';
+        else if (r.bias <= -1.0) note = ' <span style="color:var(--yellow);font-size:.7em">away-leaning</span>';
+      }
+      const biasStr = r.bias != null ? ` bias ${r.bias > 0 ? '+' : ''}${r.bias.toFixed(1)}` : '';
+      const stats = r.games != null ? ` <span style="color:var(--muted);font-size:.72em">(${r.games}G${biasStr})</span>` : '';
+      return `<li>${esc(r.name)}${stats}${note}</li>`;
+    });
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Officials</div>
+      <ul class="gd-ctx-list" style="list-style:none;padding:0">${refRows.join('')}</ul>
+    </div>`;
+  }
+
+  // ── Public Betting % ──
+  if (g.betting) {
+    const b = g.betting;
+    const hi = pct => pct >= 60 ? ' style="color:var(--accent);font-weight:700"' : '';
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Public Betting (ActionNetwork)</div>
+      <table class="gd-table">
+        <tr><th></th><th>${esc(aName)}</th><th>${esc(hName)}</th></tr>
+        ${b.homeSpreadBetPct||b.awaySpreadBetPct ? `<tr><td>Spread tickets</td><td${hi(b.awaySpreadBetPct)}>${b.awaySpreadBetPct}%</td><td${hi(b.homeSpreadBetPct)}>${b.homeSpreadBetPct}%</td></tr>` : ''}
+        ${b.homeSpreadMnyPct||b.awaySpreadMnyPct ? `<tr><td>Spread money</td><td${hi(b.awaySpreadMnyPct)}>${b.awaySpreadMnyPct}%</td><td${hi(b.homeSpreadMnyPct)}>${b.homeSpreadMnyPct}%</td></tr>` : ''}
+      </table>
+      ${b.overBetPct||b.underBetPct ? `<table class="gd-table" style="margin-top:.4rem">
+        <tr><th></th><th>Over</th><th>Under</th></tr>
+        <tr><td>Total tickets</td><td${hi(b.overBetPct)}>${b.overBetPct}%</td><td${hi(b.underBetPct)}>${b.underBetPct}%</td></tr>
+        ${b.overMnyPct||b.underMnyPct ? `<tr><td>Total money</td><td${hi(b.overMnyPct)}>${b.overMnyPct}%</td><td${hi(b.underMnyPct)}>${b.underMnyPct}%</td></tr>` : ''}
+      </table>` : ''}
     </div>`;
   }
 
@@ -3484,23 +3608,11 @@ function bestEdge(g) {
 // HELPERS
 // ══════════════════════════════════════════════════════════
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-const ALLCAPS = new Set(['nc','unc','ucla','usc','uab','utsa','utep','fiu','fau','siue','liu','njit','utrgv','smu','tcu','byu','unlv','lsu','vcu','uc','uta','uic','usf','umbc','ipfw',
-  'md','ny','fl','oh','ca','il','pa','va','tx','sc','ky','ga','az','nv','in','mi','mo','ok','ar','la','ms','tn','mn','ia','ks','ne','wv','nm','co','ut','id','or','wa']);
+const ALLCAPS = new Set(['nc','unc','ucla','usc','uab','utsa','utep','fiu','fau','siue','liu','njit','utrgv','smu','tcu','byu','unlv','lsu','vcu','uc','uta','uic','usf','umbc','ipfw']);
 function displayName(key, fallback) {
-  // Prefer the ESPN shortDisplayName/location (fallback) — already clean, no mascot, correct casing.
-  // The Torvik key (e.g. "loyola md", "uconn") is a lookup identifier, not a display string.
-  if (fallback) return fallback;
   if (key) return key.split(' ').map(w => ALLCAPS.has(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  return '?';
-}
-// Short label for space-constrained contexts
-function teamAbbr(key, fallback) {
-  // Prefer the Torvik key (naturally short e.g. "nc state", "loyola md") — format with ALLCAPS
-  if (key) return key.split(' ').map(w => ALLCAPS.has(w) ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-  // Fallback: last 2 words of ESPN display name (e.g. "South Carolina State" → "Carolina State")
-  const full = fallback || '?';
-  const w = full.split(' ');
-  return w.length > 2 ? w.slice(-2).join(' ') : full;
+  const w = (fallback||'').split(' ');
+  return w.length >= 3 ? w.slice(0,-1).join(' ') : (fallback || '?');
 }
 function setSt(id, txt, cls) {
   const el = document.getElementById(id);
@@ -3522,63 +3634,26 @@ function showErr(msg) {
 // ══════════════════════════════════════════════════════════
 function openSettings() {
   document.getElementById('inp-odds-key').value    = cfg.oddsKey;
-  document.getElementById('inp-home-court').value  = cfg.homeCourt;
+  document.getElementById('inp-home-court').value   = cfg.homeCourt;
   document.getElementById('inp-score-scale').value  = cfg.scoreScale;
-  document.getElementById('inp-lock-hour').value    = cfg.lockHour;
-  document.getElementById('inp-spread-edge').value  = cfg.spreadEdge;
-  document.getElementById('inp-total-edge').value   = cfg.totalEdge;
+  document.getElementById('inp-total-offset').value = cfg.totalOffset;
+  document.getElementById('inp-lock-hour').value   = cfg.lockHour;
   document.getElementById('settings-overlay').classList.add('open');
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
 function saveSettings() {
   cfg.oddsKey    = document.getElementById('inp-odds-key').value.trim();
-  cfg.homeCourt  = parseFloat(document.getElementById('inp-home-court').value) || 3.5;
-  cfg.scoreScale = parseFloat(document.getElementById('inp-score-scale').value) || 1.02;
-  cfg.lockHour   = parseInt(document.getElementById('inp-lock-hour').value) || 10;
-  cfg.spreadEdge = parseFloat(document.getElementById('inp-spread-edge').value) || 4;
-  cfg.totalEdge  = parseFloat(document.getElementById('inp-total-edge').value) || 7;
+  cfg.homeCourt   = parseFloat(document.getElementById('inp-home-court').value)   || 3.5;
+  cfg.scoreScale  = parseFloat(document.getElementById('inp-score-scale').value)  || 1.04;
+  cfg.totalOffset = parseFloat(document.getElementById('inp-total-offset').value) || 0;
+  cfg.lockHour    = parseInt(document.getElementById('inp-lock-hour').value) || 10;
   localStorage.setItem('ncaab_odds_key', cfg.oddsKey);
-  localStorage.setItem('ncaab_scale_v2', cfg.scoreScale);
-  localStorage.setItem('ncaab_hc', cfg.homeCourt);
+  localStorage.setItem('ncaab_scale',    cfg.scoreScale);
+  localStorage.setItem('ncaab_hc',       cfg.homeCourt);
+  localStorage.setItem('ncaab_tot_off',  cfg.totalOffset);
   localStorage.setItem('ncaab_lock_hour', cfg.lockHour);
-  localStorage.setItem('ncaab_spread_edge', cfg.spreadEdge);
-  localStorage.setItem('ncaab_total_edge', cfg.totalEdge);
   closeSettings();
   refresh();
-}
-
-function copySettingsString() {
-  const s = JSON.stringify({
-    k: cfg.oddsKey,
-    hc: cfg.homeCourt,
-    sc: cfg.scoreScale,
-    lh: cfg.lockHour,
-    se: cfg.spreadEdge,
-    te: cfg.totalEdge,
-  });
-  navigator.clipboard.writeText(s).then(() => {
-    alert('Settings copied! Paste this in the other device\'s "Paste & Apply" prompt.');
-  }).catch(() => {
-    prompt('Copy this string and paste it on your other device:', s);
-  });
-}
-
-function pasteSettingsString() {
-  const raw = prompt('Paste the settings string from your other device:');
-  if (!raw) return;
-  try {
-    const s = JSON.parse(raw.trim());
-    if (s.k   !== undefined) { cfg.oddsKey    = s.k;  localStorage.setItem('ncaab_odds_key',    s.k); }
-    if (s.hc  !== undefined) { cfg.homeCourt  = s.hc; localStorage.setItem('ncaab_hc',          s.hc); }
-    if (s.sc  !== undefined) { cfg.scoreScale = s.sc; localStorage.setItem('ncaab_scale_v2',    s.sc); }
-    if (s.lh  !== undefined) { cfg.lockHour   = s.lh; localStorage.setItem('ncaab_lock_hour',   s.lh); }
-    if (s.se  !== undefined) { cfg.spreadEdge = s.se; localStorage.setItem('ncaab_spread_edge', s.se); }
-    if (s.te  !== undefined) { cfg.totalEdge  = s.te; localStorage.setItem('ncaab_total_edge',  s.te); }
-    closeSettings();
-    refresh();
-  } catch {
-    alert('Invalid settings string — make sure you copied it exactly.');
-  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -3619,10 +3694,7 @@ async function fetchESPNFinal(dateStr) {
     const home = cs.find(c => c.homeAway === 'home');
     const away = cs.find(c => c.homeAway === 'away');
     return {
-      home: home?.team?.shortDisplayName || home?.team?.location || home?.team?.displayName || '',
-      homeFull: home?.team?.displayName || '',
-      away: away?.team?.shortDisplayName || away?.team?.location || away?.team?.displayName || '',
-      awayFull: away?.team?.displayName || '',
+      home: home?.team?.displayName || '', away: away?.team?.displayName || '',
       homeScore: parseInt(home?.score || '0'), awayScore: parseInt(away?.score || '0'),
       statusName: comp?.status?.type?.name || '', neutral: comp?.neutralSite || false,
     };
@@ -3718,6 +3790,16 @@ async function runBacktest() {
 
   if (!all.length) { document.getElementById('bt-results').innerHTML = '<div class="loading">No games with predictions found in that range.</div>'; return; }
 
+  const oddsGames  = all.filter(g => g.vegasSpread != null || g.vegasTotal != null).length;
+  const oddsNote   = oddsGames < all.length
+    ? `${oddsGames}/${all.length} games have stored odds — ATS/O·U columns are blank for the rest.`
+    : `All ${all.length} games have stored odds.`;
+
+  const warning = `<div style="background:var(--warn-bg,#fff8e1);border:1px solid var(--warn-border,#f9a825);border-radius:6px;padding:.5rem .75rem;font-size:.72rem;color:var(--warn-text,#6d4c00);margin-bottom:.75rem;line-height:1.5">
+    ⚠️ <strong>Lookahead bias:</strong> backtest uses <em>today's</em> Torvik ratings, not the ratings that existed on each game date — results are optimistic.
+    Historical odds are stored daily to the Gist; ${oddsNote}
+  </div>`;
+
   const mae       = all.reduce((s,g) => s + g.error, 0) / all.length;
   const within35  = all.filter(g => g.error <= 3.5).length / all.length * 100;
   const within7   = all.filter(g => g.error <= 7).length   / all.length * 100;
@@ -3791,7 +3873,7 @@ async function runBacktest() {
     </tr>`;
   }).join('');
 
-  document.getElementById('bt-results').innerHTML = stats + edgeBreakdown + `
+  document.getElementById('bt-results').innerHTML = warning + stats + edgeBreakdown + `
     <div style="margin:.8rem 0 .4rem;font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.05em;">GAME LOG</div>
     <table class="bt-table">
       <thead><tr><th>Date</th><th>Matchup</th><th>Result (Tot)</th><th>Model</th><th>Line / O·U</th><th>Err</th><th>ATS</th><th>O/U</th></tr></thead>
@@ -3823,23 +3905,21 @@ async function refresh() {
   const isoDate = toISODate(dateStr);
 
   try {
-    // Load ESPN first so we have team IDs for the stats fetch
-    await loadESPN(dateStr);
-    const teamIds = [...new Set(espnList.flatMap(g => [g.homeTeamId, g.awayTeamId].filter(Boolean)))];
-    // Load everything else (including team stats) in parallel — first render has all data
     await Promise.all([
       loadConferences(),
       loadTorvik(),
-      loadTeamStats(teamIds),
-      loadYesterdayGames(dateStr),
+      loadESPN(dateStr),
+      loadRestData(dateStr),
       loadOdds(isoDate),
     ]);
     currentIsoDate = isoDate;
-    setSt('st-scale', `Scale: ${cfg.scoreScale} · adjD avg: ${avgAdjD.toFixed(1)}`, 'ok');
     render(assembleGames());
-    // Form delta + injuries load in background — re-render when done
+    // Secondary data loads in background — each re-renders when done
     loadRecentTorvik().then(() => render(assembleGames())).catch(() => {});
     loadInjuries().then(() => render(assembleGames())).catch(() => {});
+    loadRefData().catch(() => {});  // no re-render needed — refs shown in modal on demand
+    loadKenpomTeams().then(() => render(assembleGames())).catch(() => {});
+    loadBettingData(isoDate).then(() => render(assembleGames())).catch(() => {});
   } catch(e) {
     document.getElementById('game-list').innerHTML = '<div class="loading">Error loading data.</div>';
     showErr(e.message || 'Unknown error');
@@ -3859,14 +3939,6 @@ function onDateChange() {
   // Clear per-date contextual caches
   teamsPlayedYesterday = new Set();
   injuryMap = {};
-  pregameLines = {};
-  prePredictions = {};
-  // pgl_* and ppd_* are intentionally NOT cleared on date change.
-  // ESPN game IDs are globally unique — yesterday's game IDs never collide with today's.
-  // Keeping them lets historical dates show their frozen odds and predictions.
-  // Only per-date form/stats caches are cleared since they are date-keyed by design.
-  try { Object.keys(localStorage).filter(k => k.startsWith('torvik_recent_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
-  try { Object.keys(localStorage).filter(k => k.startsWith('team_stats_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
   refresh();
 }
 
@@ -3881,8 +3953,30 @@ function onDateChange() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeTeamModal(); }
   });
-  refresh();
+  TeamResolver.init().then(() => refresh());
+})();
+
+// Edge tooltip — fixed-position to escape overflow-clipped containers
+(function() {
+  const tip = document.createElement('div');
+  tip.id = 'edge-tooltip';
+  document.body.appendChild(tip);
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('.edge-tip');
+    if (!el) return;
+    tip.textContent = el.dataset.tip;
+    tip.style.display = 'block';
+  });
+  document.addEventListener('mousemove', e => {
+    if (tip.style.display === 'none') return;
+    tip.style.left = (e.clientX - tip.offsetWidth / 2) + 'px';
+    tip.style.top  = (e.clientY + 14) + 'px';
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest('.edge-tip')) tip.style.display = 'none';
+  });
 })();
 </script>
+<script src="teamResolver.js"></script>
 </body>
 </html>
