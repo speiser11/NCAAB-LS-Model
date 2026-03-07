@@ -22,7 +22,7 @@
   async function init() {
     if (ready) return;
     try {
-      const res = await fetch('data/ncaab-team-aliases.json');
+      const res = await fetch('data/ncaab-team-aliases.json', { signal: AbortSignal.timeout(5000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const entries = await res.json();
       for (const entry of entries) {
