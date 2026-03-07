@@ -1332,7 +1332,11 @@ function matchTeam(fullName) {
     const score = (2 * shared) / (nw.length + kw.length);
     if (score > best && score >= 0.65) { best = score; bestKey = key; }
   }
-  return bestKey;
+  if (bestKey) return bestKey;
+
+  // Log failures so we can identify missing ALIAS entries via browser DevTools console
+  if (fullName) console.warn(`[TrueLine] matchTeam MISS: "${fullName}" → norm="${norm}"`);
+  return null;
 }
 
 // ══════════════════════════════════════════════════════════
