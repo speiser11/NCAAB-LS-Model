@@ -1517,6 +1517,47 @@ async function loadESPN(dateStr) {
 // ══════════════════════════════════════════════════════════
 // DATA: THE ODDS API
 // ══════════════════════════════════════════════════════════
+
+// Per-game lock: once a game's commence_time passes, freeze its odds so top
+// plays don't reshuffle mid-day as games go live or disappear from the API.
+function applyPerGameLocks(isoDate) {
+  if (!oddsList.length && !localStorage.getItem(`odds_pgmap_${isoDate}`)) return;
+  const nowMs = Date.now();
+  const mapKey = `odds_pgmap_${isoDate}`;
+  let pgMap = {};
+  try { pgMap = JSON.parse(localStorage.getItem(mapKey) || '{}'); } catch {}
+
+  let dirty = false;
+  const liveIds = new Set(oddsList.map(g => g.id).filter(Boolean));
+
+  for (const og of oddsList) {
+    if (!og.id || !og.commence_time) continue;
+    const started = nowMs >= new Date(og.commence_time).getTime();
+    if (!started || !pgMap[og.id]) {
+      // Pre-game: keep refreshing with latest line (spreads can move before tip).
+      // Started but not yet locked: snapshot now.
+      pgMap[og.id] = og;
+      dirty = true;
+    }
+  }
+  if (dirty) localStorage.setItem(mapKey, JSON.stringify(pgMap));
+
+  // Rebuild oddsList: locked odds for started games, live odds for pre-game.
+  // Also re-add started games that dropped out of the live API response.
+  oddsList = [
+    ...oddsList.map(og => {
+      if (!og.id || !og.commence_time) return og;
+      const started = nowMs >= new Date(og.commence_time).getTime();
+      return (started && pgMap[og.id]) ? pgMap[og.id] : og;
+    }),
+    ...Object.values(pgMap).filter(og =>
+      !liveIds.has(og.id) &&
+      og.commence_time &&
+      nowMs >= new Date(og.commence_time).getTime()
+    ),
+  ];
+}
+
 async function loadOdds(isoDate) {
   if (!cfg.oddsKey) { setSt('st-odds', 'Odds: no API key', 'warn'); oddsList = []; return; }
 
@@ -1551,6 +1592,7 @@ async function loadOdds(isoDate) {
   const lockData = localStorage.getItem('odds_locked');
   if (lockDate === isoDate && lockData) {
     oddsList = JSON.parse(lockData);
+    applyPerGameLocks(isoDate);
     setSt('st-odds', `Odds: ${oddsList.length} games (locked pre-game)`, 'ok');
     return;
   }
@@ -1560,6 +1602,7 @@ async function loadOdds(isoDate) {
   const ct = parseInt(sessionStorage.getItem('odds_ts') || '0');
   if (cc && Date.now() - ct < 30 * 60 * 1000) {
     oddsList = JSON.parse(cc);
+    applyPerGameLocks(isoDate);
     setSt('st-odds', `Odds: ${oddsList.length} games (cached)`, 'ok');
     return;
   }
@@ -1593,18 +1636,13 @@ async function loadOdds(isoDate) {
     oddsList = Array.isArray(data) ? data : [];
     sessionStorage.setItem('odds_cache', JSON.stringify(oddsList));
     sessionStorage.setItem('odds_ts', Date.now().toString());
-    // On the first successful API fetch of the day, lock the lines permanently.
-    // This prevents lines from updating mid-day regardless of when the app is opened.
-    // Also saves the opening snapshot used for line-movement comparison.
+    // Save opening snapshot (used for line-movement comparison)
     if (oddsList.length > 0) {
       const snapKey = `odds_opening_${isoDate}`;
       if (!localStorage.getItem(snapKey)) localStorage.setItem(snapKey, JSON.stringify(oddsList));
-      const isPastLockHour = new Date().getHours() >= cfg.lockHour;
-      if (isPastLockHour && localStorage.getItem('odds_lock_date') !== isoDate) {
-        localStorage.setItem('odds_lock_date', isoDate);
-        localStorage.setItem('odds_locked', JSON.stringify(oddsList));
-      }
     }
+    // Per-game lock: freeze each game's odds at tip-off time
+    applyPerGameLocks(isoDate);
     setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
   } catch(e) {
     setSt('st-odds', 'Odds: fetch error', 'err');
