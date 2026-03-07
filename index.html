@@ -3953,7 +3953,8 @@ function onDateChange() {
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeTeamModal(); }
   });
-  TeamResolver.init().then(() => refresh());
+  TeamResolver.init(); // fire-and-forget — resolver used opportunistically for display names
+  refresh();
 })();
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers
