@@ -3277,6 +3277,40 @@
     ]
   },
   {
+    "id": 320,
+    "canonical": "Cal St. Fullerton",
+    "display": "CSU Fullerton Titans",
+    "aliases": [
+      "Cal St. Fullerton",
+      "CSU Fullerton",
+      "CSU Fullerton Titans",
+      "CSUF",
+      "Titans CSUF"
+    ]
+  },
+  {
+    "id": 321,
+    "canonical": "Cal St. Northridge",
+    "display": "CSU Northridge Matadors",
+    "aliases": [
+      "Cal St. Northridge",
+      "CSU Northridge",
+      "CSU Northridge Matadors",
+      "CSUN",
+      "Matadors"
+    ]
+  },
+  {
+    "id": 322,
+    "canonical": "Mid-Atlantic Christian",
+    "display": "Mid-Atlantic Christian Mustangs",
+    "aliases": [
+      "Mid-Atlantic Christian",
+      "Mid-Atlantic Christian Mustangs",
+      "MAC Mustangs"
+    ]
+  },
+  {
     "id": 318,
     "canonical": "Cal St. Bakersfield",
     "display": "CSU Bakersfield Roadrunners",
