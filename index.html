@@ -3840,9 +3840,10 @@ function onDateChange() {
   injuryMap = {};
   pregameLines = {};
   prePredictions = {};
-  // Clear persisted per-game and per-date caches (stale from previous date)
-  try { Object.keys(localStorage).filter(k => k.startsWith('pgl_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
-  try { Object.keys(localStorage).filter(k => k.startsWith('ppd_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
+  // pgl_* and ppd_* are intentionally NOT cleared on date change.
+  // ESPN game IDs are globally unique — yesterday's game IDs never collide with today's.
+  // Keeping them lets historical dates show their frozen odds and predictions.
+  // Only per-date form/stats caches are cleared since they are date-keyed by design.
   try { Object.keys(localStorage).filter(k => k.startsWith('torvik_recent_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
   try { Object.keys(localStorage).filter(k => k.startsWith('team_stats_')).forEach(k => localStorage.removeItem(k)); } catch(e) {}
   refresh();
