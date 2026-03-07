@@ -1270,7 +1270,22 @@ const ALIAS = {
   'ut martin':'tennessee martin','utep miners':'utep','utsa roadrunners':'utsa',
   'fiu':'florida international','florida international panthers':'florida international',
   'fau':'florida atlantic','florida atlantic owls':'florida atlantic',
-  'uab blazers':'uab','uic flames':'uic','uta mavericks':'ut arlington',
+  'uab blazers':'uab','uta mavericks':'ut arlington',
+  // UIC — Torvik key is "illinois chicago", not "uic"
+  'uic':'illinois chicago','uic flames':'illinois chicago','illinois chicago flames':'illinois chicago',
+  // Cal State schools (ESPN: "Cal State X", Torvik: "Cal St. X")
+  'cal state bakersfield':'cal st. bakersfield','cal state fullerton':'cal st. fullerton',
+  'cal state northridge':'cal st. northridge','cal state long beach':'long beach state',
+  // IU Indy (formerly IUPUI)
+  'iupui':'iu indy','iupui jaguars':'iu indy','iu indianapolis':'iu indy',
+  // Houston Christian (formerly Houston Baptist / HBU)
+  'hbu':'houston christian','houston baptist':'houston christian','hbu huskies':'houston christian',
+  // Incarnate Word (UIW)
+  'uiw':'incarnate word','uiw cardinals':'incarnate word',
+  // Hyphen variants
+  'nebraska-omaha':'nebraska omaha','bethune-cookman':'bethune cookman',
+  // Texas A&M Corpus Christi (Torvik truncated)
+  'texas a&m corpus christi':'texas a&m corpus chris',
   'ut arlington':'ut arlington','texas arlington':'ut arlington',
   'umkc':'kansas city','kansas city roos':'kansas city',
   'siu edwardsville':'siue','siue cougars':'siue',
@@ -1329,6 +1344,16 @@ function matchTeam(fullName) {
     if (score > best && score >= 0.5) { best = score; bestKey = key; }
   }
   if (bestKey) return bestKey;
+
+  // Last-resort: try just the first word.
+  // Handles "Duke Blue Devils"→"duke", "Michigan Wolverines"→"michigan",
+  // "Gonzaga Bulldogs"→"gonzaga", "VCU Rams"→"vcu", etc.
+  // Multi-word Torvik keys (e.g. "michigan state") are always found by the
+  // strip loop above (which goes down to 2 words), so they never reach here.
+  if (words.length >= 2) {
+    const firstResolved = ALIAS[words[0]] || words[0];
+    if (ratings[firstResolved]) return firstResolved;
+  }
 
   // Log failures so we can identify missing ALIAS entries via browser DevTools console
   if (fullName) console.warn(`[TrueLine] matchTeam MISS: "${fullName}" → norm="${norm}"`);
