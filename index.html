@@ -1267,6 +1267,9 @@ const ALIAS = {
   'nebraska-omaha':'nebraska omaha','bethune-cookman':'bethune cookman',
   // Texas A&M Corpus Christi (Torvik truncated)
   'texas a&m corpus christi':'texas a&m corpus chris',
+  // Fuzzy collision guard: San Jose State vs San Diego State share "san"+"state"
+  'san jose state spartans':'san jose state','sjsu spartans':'san jose state',
+  'san diego state aztecs':'san diego state','sdsu aztecs':'san diego state',
   'ut arlington':'ut arlington','texas arlington':'ut arlington',
   'umkc':'kansas city','kansas city roos':'kansas city',
   'siu edwardsville':'siue','siue cougars':'siue',
@@ -1548,13 +1551,32 @@ async function loadESPN(dateStr) {
 // Per-game lock: once a game's commence_time passes, freeze its odds so top
 // plays don't reshuffle mid-day as games go live or disappear from the API.
 function applyPerGameLocks(isoDate) {
-  if (!oddsList.length && !localStorage.getItem(`odds_pgmap_${isoDate}`)) return;
+  const mapKey  = `odds_pgmap_${isoDate}`;
+  const snapKey = `odds_opening_${isoDate}`;
+  if (!oddsList.length && !localStorage.getItem(mapKey) && !localStorage.getItem(snapKey)) return;
+
   const nowMs = Date.now();
-  const mapKey = `odds_pgmap_${isoDate}`;
   let pgMap = {};
   try { pgMap = JSON.parse(localStorage.getItem(mapKey) || '{}'); } catch {}
 
+  // Seed pgMap from the opening snapshot for any started games not yet locked.
+  // This covers the common case: user opens app after a game has already finished
+  // and the Odds API has removed it from its live response — so it never entered
+  // pgMap via the live loop below. Opening snapshot preserves pre-game lines.
   let dirty = false;
+  try {
+    const snap = localStorage.getItem(snapKey);
+    if (snap) {
+      for (const og of JSON.parse(snap)) {
+        if (!og.id || !og.commence_time) continue;
+        if (nowMs >= new Date(og.commence_time).getTime() && !pgMap[og.id]) {
+          pgMap[og.id] = og;
+          dirty = true;
+        }
+      }
+    }
+  } catch {}
+
   const liveIds = new Set(oddsList.map(g => g.id).filter(Boolean));
 
   for (const og of oddsList) {
