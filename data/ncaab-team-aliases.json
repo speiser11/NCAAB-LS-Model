@@ -1519,12 +1519,15 @@
   {
     "id": 143,
     "canonical": "George Washington",
-    "display": "GW Colonials",
+    "display": "GW Revolutionaries",
     "aliases": [
       "George Washington",
       "GWU",
       "GW",
-      "Colonials"
+      "GW Revolutionaries",
+      "GW Colonials",
+      "Colonials",
+      "Revolutionaries"
     ]
   },
   {
@@ -3043,6 +3046,9 @@
     "display": "UT Arlington Mavericks",
     "aliases": [
       "UT Arlington",
+      "UT-Arlington",
+      "UT-Arlington Mavericks",
+      "UT Arlington Mavericks",
       "UTA",
       "Mavericks UTA"
     ]
@@ -3268,6 +3274,31 @@
       "Eastern Washington",
       "EWU",
       "Eagles EW"
+    ]
+  },
+  {
+    "id": 318,
+    "canonical": "Cal St. Bakersfield",
+    "display": "CSU Bakersfield Roadrunners",
+    "aliases": [
+      "Cal St. Bakersfield",
+      "CSU Bakersfield",
+      "CSU Bakersfield Roadrunners",
+      "CSUB",
+      "Roadrunners Bakersfield"
+    ]
+  },
+  {
+    "id": 319,
+    "canonical": "Mount St. Mary's",
+    "display": "Mt. St. Mary's Mountaineers",
+    "aliases": [
+      "Mount St. Mary's",
+      "Mt. St. Mary's",
+      "Mt. St. Mary's Mountaineers",
+      "Mount St. Mary's Mountaineers",
+      "MSM",
+      "Mountaineers MSM"
     ]
   },
   {
