@@ -2493,6 +2493,8 @@
     "display": "St. Thomas Tommies",
     "aliases": [
       "St. Thomas",
+      "St. Thomas-Minnesota",
+      "St. Thomas-Minnesota Tommies",
       "UST",
       "Tommies"
     ]
@@ -3051,6 +3053,7 @@
     "display": "UTRGV Vaqueros",
     "aliases": [
       "UT Rio Grande Valley",
+      "UT Rio Grande Valley Vaqueros",
       "UTRGV",
       "Vaqueros"
     ]
@@ -3265,6 +3268,18 @@
       "Eastern Washington",
       "EWU",
       "Eagles EW"
+    ]
+  },
+  {
+    "id": 317,
+    "canonical": "IU Indy",
+    "display": "IU Indianapolis Jaguars",
+    "aliases": [
+      "IU Indy",
+      "IU Indianapolis",
+      "IU Indianapolis Jaguars",
+      "IUPUI",
+      "Jaguars IU"
     ]
   }
 ]
