@@ -1177,12 +1177,15 @@
   },
   {
     "id": 108,
-    "canonical": "Florida International",
+    "canonical": "FIU",
     "display": "FIU Panthers",
     "aliases": [
-      "Florida International",
       "FIU",
-      "FIU Panthers"
+      "FIU Panthers",
+      "Florida International",
+      "Florida International Golden Panthers",
+      "Florida Int'l",
+      "Florida Int'l Golden Panthers"
     ]
   },
   {
@@ -1726,6 +1729,19 @@
       "Gonzaga",
       "Gonzaga Bulldogs",
       "Gonz."
+    ]
+  },
+  {
+    "id": 323,
+    "canonical": "Loyola Chicago",
+    "display": "Loyola Chicago Ramblers",
+    "aliases": [
+      "Loyola Chicago",
+      "Loyola Chicago Ramblers",
+      "Loyola (Chi)",
+      "Loyola (Chi) Ramblers",
+      "Loyola-Chicago",
+      "Ramblers Loyola"
     ]
   },
   {
