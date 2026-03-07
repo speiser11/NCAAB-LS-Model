@@ -2059,11 +2059,27 @@ function getLine(bookmakers, market, homeTeamKey) {
   if (!Object.keys(allPts).length) return null;
 
   if (market === 'spreads') {
-    // Return home team's average spread point
-    const homePts = allPts[homeTeamKey];
-    if (!homePts?.length) return null;
-    const avg = homePts.reduce((s, p) => s + p, 0) / homePts.length;
-    return { point: Math.round(avg * 2) / 2 }; // round to nearest 0.5
+    // Normalize to home-team perspective per bookmaker.
+    // For each bookmaker: if the home team's name resolves to homeTeamKey, use
+    // its point directly. Otherwise negate the away team's point (spreads are
+    // symmetric). This prevents wrong-sign edges when a name collision causes
+    // the away team's outcome to land under homeTeamKey in allPts.
+    const pts = [];
+    for (const bm of bookmakers) {
+      const mkt = bm.markets?.find(m => m.key === 'spreads');
+      if (!mkt) continue;
+      let homePoint = null, awayPoint = null;
+      for (const o of mkt.outcomes || []) {
+        const k = matchTeam(o.name) || normTeam(o.name);
+        if (k === homeTeamKey) homePoint = o.point;
+        else awayPoint = o.point;
+      }
+      if (homePoint != null) pts.push(homePoint);
+      else if (awayPoint != null) pts.push(-awayPoint);
+    }
+    if (!pts.length) return null;
+    const avg = pts.reduce((s, p) => s + p, 0) / pts.length;
+    return { point: Math.round(avg * 2) / 2 };
   }
   if (market === 'totals') {
     const overPts = (allPts['over'] || allPts[Object.keys(allPts).find(k => k.includes('over'))] || []);
