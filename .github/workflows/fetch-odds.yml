@@ -23,8 +23,8 @@ jobs:
             || echo "[]")
           FILENAME="odds-${DATE}.json"
           ESCAPED=$(python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" <<< "$CONTENT")
-          curl -sf -X PATCH \
+          curl -sfv -X PATCH \
             -H "Authorization: token ${GIST_PAT}" \
             -H "Content-Type: application/json" \
             -d "{\"files\":{\"${FILENAME}\":{\"content\":${ESCAPED}}}}" \
-            "https://api.github.com/gists/${GIST_ID}"
+            "https://api.github.com/gists/${GIST_ID}" || true
