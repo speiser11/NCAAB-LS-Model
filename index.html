@@ -1644,7 +1644,7 @@ async function loadOdds(isoDate) {
 
   // Centralized odds: GitHub Actions updates this Gist every 30 min
   if (cfg.oddsGistId && isoDate === todayIso) {
-    const gistUrl = `https://gist.githubusercontent.com/speiser11/${cfg.oddsGistId}/raw/odds-${isoDate}.json`;
+    const gistUrl = `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/odds-${isoDate}.json`;
     try {
       const r = await fetch(gistUrl, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
       if (r.ok) {
