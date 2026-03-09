@@ -1353,8 +1353,8 @@ async function loadModelConfig() {
 }
 
 async function loadTorvik() {
-  // 6-hour localStorage cache (v2 = conf bug fixed)
-  const CACHE_VER = '2';
+  // 6-hour localStorage cache (v3 = TAMU-CC alias fix, forces re-parse with new ALIAS)
+  const CACHE_VER = '3';
   if (localStorage.getItem('torvik_ver') !== CACHE_VER) {
     localStorage.removeItem('torvik_ratings');
     localStorage.removeItem('torvik_ts');
