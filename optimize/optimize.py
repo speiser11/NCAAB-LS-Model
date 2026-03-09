@@ -115,6 +115,9 @@ ALIAS = {
     'mount st. marys mountaineers': 'mount st. marys',
     "saint peter's": "saint peter's",
     "saint peter's peacocks": "saint peter's",
+    # Texas A&M Corpus Christi (Torvik truncated); Odds API sends hyphenated form
+    'texas a&m corpus christi': 'texas a&m corpus chris',
+    'texas a&m-corpus christi': 'texas a&m corpus chris',
 }
 
 def norm_team(raw):

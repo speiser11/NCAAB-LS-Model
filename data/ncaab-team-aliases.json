@@ -3375,5 +3375,17 @@
       "IUPUI",
       "Jaguars IU"
     ]
+  },
+  {
+    "id": 324,
+    "canonical": "Texas A&M Corpus Christi",
+    "display": "Texas A&M-Corpus Christi Islanders",
+    "aliases": [
+      "Texas A&M Corpus Christi",
+      "Texas A&M-Corpus Christi",
+      "TAMU-CC",
+      "A&M-Corpus Christi",
+      "Islanders TAMUCC"
+    ]
   }
 ]
