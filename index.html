@@ -2840,26 +2840,12 @@ function renderTopPicks(games) {
 // ── Historical accuracy scorecard ─────────────────────────
 // Season start: Nov 1 of current academic year
 // (before July → prior year's Nov; July+ → current year's Nov)
-const ACC_START_DATE = (() => {
-  const now = new Date();
-  const yr = now.getMonth() < 6 ? now.getFullYear() - 1 : now.getFullYear();
-  return `${yr}1101`;
-})();
+const ACC_START_DATE = '20260309'; // Reset: count picks-record from this date forward
 
 let _accCache = null, _accCacheTs = 0;
 
 async function loadAccuracyStats() {
   const now = Date.now();
-
-  // If locked for today, serve from localStorage immediately
-  const accLockDate = localStorage.getItem('acc_lock_date');
-  const accLockData = localStorage.getItem('acc_locked');
-  if (accLockDate === currentIsoDate && accLockData) {
-    _accCache = JSON.parse(accLockData);
-    _accCacheTs = now;
-    renderAccuracyBadges(_accCache);
-    return;
-  }
 
   if (_accCache && (now - _accCacheTs) < 30 * 60 * 1000) {
     renderAccuracyBadges(_accCache);
@@ -2884,17 +2870,37 @@ async function loadAccuracyStats() {
 
   async function scoreRange(dates) {
     let w = 0, l = 0;
-    // Only score dates on/after ACC_START_DATE
     for (const dateStr of dates.filter(d => d >= ACC_START_DATE)) {
+      const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
       try {
-        const games = await fetchESPNFinal(dateStr);
+        const [games, storedOdds] = await Promise.all([
+          fetchESPNFinal(dateStr),
+          fetchOddsForDate(isoDate),
+        ]);
         for (const g of games) {
           const hKey = matchTeam(g.home), aKey = matchTeam(g.away);
           const pred = predict(hKey, aKey, g.neutral);
           if (!pred) continue;
           const actual = g.homeScore - g.awayScore;
           if (actual === 0) continue;
-          (pred.margin > 0) === (actual > 0) ? w++ : l++;
+          // Only count games where a pick was flagged (edge ≥ 4 on spread or total)
+          const odds = matchStoredOdds(storedOdds, hKey, aKey);
+          if (!odds) continue;
+          const spreadEdge = odds.spread != null ? Math.abs(pred.margin + odds.spread) : 0;
+          const totalEdge  = odds.total  != null ? Math.abs(pred.total  - odds.total)  : 0;
+          const useSpread  = spreadEdge >= totalEdge && spreadEdge >= 4;
+          const useTotal   = totalEdge  >  spreadEdge && totalEdge  >= 4;
+          if (!useSpread && !useTotal) continue;
+          // Score the highest-edge pick: ATS for spread picks, O/U for total picks
+          if (useSpread) {
+            const cover = actual + odds.spread; // > 0 = home covered
+            if (cover === 0) continue; // push
+            (pred.margin >= 0) === (cover > 0) ? w++ : l++;
+          } else {
+            const tot = g.homeScore + g.awayScore;
+            if (tot === odds.total) continue; // push
+            (pred.total > odds.total) === (tot > odds.total) ? w++ : l++;
+          }
         }
       } catch(e) { /* skip */ }
     }
@@ -2909,12 +2915,6 @@ async function loadAccuracyStats() {
     ]);
     _accCache = { yd, wk, mo };
     _accCacheTs = now;
-    // Lock accuracy once the daily cutoff has passed
-    const isPastLockHour = new Date().getHours() >= cfg.lockHour;
-    if (isPastLockHour) {
-      localStorage.setItem('acc_lock_date', currentIsoDate);
-      localStorage.setItem('acc_locked', JSON.stringify(_accCache));
-    }
     renderAccuracyBadges(_accCache);
   } catch(e) {
     const row = document.getElementById('picks-accuracy-row');
@@ -3682,6 +3682,33 @@ async function fetchStoredOdds(isoDate) {
   } catch(e) { return []; }
 }
 
+// Convert full Odds API format → compact {home, away, spread, total} used by matchStoredOdds
+function oddsApiToCompact(arr) {
+  return arr.map(og => {
+    const hKey = matchTeam(og.home_team);
+    const sp   = getLine(og.bookmakers, 'spreads', hKey);
+    const tot  = getLine(og.bookmakers, 'totals',  hKey);
+    return { home: og.home_team, away: og.away_team, spread: sp?.point ?? null, total: tot?.point ?? null };
+  });
+}
+
+// Try locked-odds Gist (centralized pregame lines) first; fall back to historical Gist
+async function fetchOddsForDate(isoDate) {
+  if (cfg.oddsGistId) {
+    try {
+      const r = await fetch(
+        `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/locked-odds-${isoDate}.json`,
+        { cache: 'no-store', signal: AbortSignal.timeout(6000) }
+      );
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length) return oddsApiToCompact(data);
+      }
+    } catch {}
+  }
+  return fetchStoredOdds(isoDate);
+}
+
 // Convert compact Gist format {home,away,spread,total} → minimal Odds API format
 // so it works with getLine() and the rest of assembleGames()
 function gistToOddsFormat(gistArr) {
@@ -3905,8 +3932,6 @@ function onDateChange() {
   lockedOddsList = [];
   localStorage.removeItem('picks_locked');
   localStorage.removeItem('picks_lock_date');
-  localStorage.removeItem('acc_locked');
-  localStorage.removeItem('acc_lock_date');
   // Clear per-date contextual caches
   teamsPlayedYesterday = new Set();
   injuryMap = {};
