@@ -1589,19 +1589,33 @@ async function loadOdds(isoDate) {
         const lockedMap = new Map(lockedOddsList.filter(g => g.id).map(g => [g.id, g]));
         const liveIds   = new Set(live.map(g => g.id).filter(Boolean));
         const nowMs     = Date.now();
+        const nowIso    = new Date(nowMs).toISOString();
+        console.log(`[TrueLine] loadOdds — now=${nowIso}, live=${live.length} games, locked=${lockedOddsList.length} games`);
         oddsList = [
           // Live games: use locked (pre-game) entry for started games
           ...live.map(og => {
             if (!og.id || !og.commence_time) return og;
-            const started = nowMs >= new Date(og.commence_time).getTime();
-            return (started && lockedMap.has(og.id)) ? lockedMap.get(og.id) : og;
+            const ctMs    = new Date(og.commence_time).getTime();
+            const started = nowMs >= ctMs;
+            const inLock  = lockedMap.has(og.id);
+            const source  = (started && inLock) ? 'LOCKED' : 'LIVE';
+            console.log(
+              `[TrueLine] ${og.home_team} vs ${og.away_team}` +
+              ` | commence=${og.commence_time}` +
+              ` | started=${started} (now-ct=${Math.round((nowMs-ctMs)/60000)}m)` +
+              ` | inLock=${inLock} | source=${source}`
+            );
+            return (started && inLock) ? lockedMap.get(og.id) : og;
           }),
           // Re-add started games that have since dropped from the live API
-          ...lockedOddsList.filter(og =>
-            !liveIds.has(og.id) &&
-            og.commence_time &&
-            nowMs >= new Date(og.commence_time).getTime()
-          ),
+          ...lockedOddsList.filter(og => {
+            if (liveIds.has(og.id)) return false;
+            if (!og.commence_time) return false;
+            const ctMs    = new Date(og.commence_time).getTime();
+            const started = nowMs >= ctMs;
+            if (started) console.log(`[TrueLine] ${og.home_team} vs ${og.away_team} | source=LOCKED(dropped-from-live)`);
+            return started;
+          }),
         ];
         setSt('st-odds', `Odds: ${oddsList.length} games (centralized)`, 'ok');
         return;
