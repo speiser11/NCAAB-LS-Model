@@ -2934,10 +2934,10 @@ function renderAccuracyBadges({ yd, wk, mo }) {
   if (!row) return;
   const badge = (lbl, { w, l }) => {
     const tot = w + l;
-    if (!tot) return `<span class="acc-badge">${lbl}: <span class="acc-pct">—</span></span>`;
+    if (!tot) return `<span class="acc-badge" title="Takes &amp; leans (edge ≥ 4): no graded picks yet">${lbl}: <span class="acc-pct">—</span></span>`;
     const pct = Math.round(w / tot * 100);
     const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
-    return `<span class="acc-badge ${cls}">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></span>`;
+    return `<span class="acc-badge ${cls}" title="Takes &amp; leans (edge ≥ 4 pt) — ATS for spreads, O/U for totals">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">picks ${pct}%</span></span>`;
   };
   row.innerHTML = badge('Yday', yd) + badge('Week', wk) + badge('Month', mo);
 }
