@@ -23,6 +23,18 @@
     ]
   },
   {
+    "id": 325,
+    "canonical": "Boston University",
+    "display": "Boston University Terriers",
+    "aliases": [
+      "Boston University",
+      "Boston Univ.",
+      "Boston Univ. Terriers",
+      "BU Terriers",
+      "Terriers BU"
+    ]
+  },
+  {
     "id": 2,
     "canonical": "California",
     "display": "Cal Bears",

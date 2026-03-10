@@ -1172,6 +1172,7 @@ let refData      = {};  // ref name (lower) → { games, foulRate, ftRate } from
 let kenpomTeams  = {};  // normalized team key → { name, rank, adjEM, adjO, adjD, adjT, luck }
 let bettingMap   = {};  // `${hKey}|${aKey}` → { homeSpreadPct, awaySpreadPct, homeMoneyPct, awayMoneyPct }
 let oddsLeft     = null;
+const lockedOdds404Cache = new Set(); // dates (isoDate) known to 404 on locked-odds Gist
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
 
@@ -1589,33 +1590,19 @@ async function loadOdds(isoDate) {
         const lockedMap = new Map(lockedOddsList.filter(g => g.id).map(g => [g.id, g]));
         const liveIds   = new Set(live.map(g => g.id).filter(Boolean));
         const nowMs     = Date.now();
-        const nowIso    = new Date(nowMs).toISOString();
-        console.log(`[TrueLine] loadOdds — now=${nowIso}, live=${live.length} games, locked=${lockedOddsList.length} games`);
         oddsList = [
           // Live games: use locked (pre-game) entry for started games
           ...live.map(og => {
             if (!og.id || !og.commence_time) return og;
-            const ctMs    = new Date(og.commence_time).getTime();
-            const started = nowMs >= ctMs;
-            const inLock  = lockedMap.has(og.id);
-            const source  = (started && inLock) ? 'LOCKED' : 'LIVE';
-            console.log(
-              `[TrueLine] ${og.home_team} vs ${og.away_team}` +
-              ` | commence=${og.commence_time}` +
-              ` | started=${started} (now-ct=${Math.round((nowMs-ctMs)/60000)}m)` +
-              ` | inLock=${inLock} | source=${source}`
-            );
-            return (started && inLock) ? lockedMap.get(og.id) : og;
+            const started = nowMs >= new Date(og.commence_time).getTime();
+            return (started && lockedMap.has(og.id)) ? lockedMap.get(og.id) : og;
           }),
           // Re-add started games that have since dropped from the live API
-          ...lockedOddsList.filter(og => {
-            if (liveIds.has(og.id)) return false;
-            if (!og.commence_time) return false;
-            const ctMs    = new Date(og.commence_time).getTime();
-            const started = nowMs >= ctMs;
-            if (started) console.log(`[TrueLine] ${og.home_team} vs ${og.away_team} | source=LOCKED(dropped-from-live)`);
-            return started;
-          }),
+          ...lockedOddsList.filter(og =>
+            !liveIds.has(og.id) &&
+            og.commence_time &&
+            nowMs >= new Date(og.commence_time).getTime()
+          ),
         ];
         setSt('st-odds', `Odds: ${oddsList.length} games (centralized)`, 'ok');
         return;
@@ -3714,7 +3701,7 @@ function oddsApiToCompact(arr) {
 
 // Try locked-odds Gist (centralized pregame lines) first; fall back to historical Gist
 async function fetchOddsForDate(isoDate) {
-  if (cfg.oddsGistId) {
+  if (cfg.oddsGistId && !lockedOdds404Cache.has(isoDate)) {
     try {
       const r = await fetch(
         `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/locked-odds-${isoDate}.json`,
@@ -3723,6 +3710,8 @@ async function fetchOddsForDate(isoDate) {
       if (r.ok) {
         const data = await r.json();
         if (Array.isArray(data) && data.length) return oddsApiToCompact(data);
+      } else if (r.status === 404) {
+        lockedOdds404Cache.add(isoDate);
       }
     } catch {}
   }
