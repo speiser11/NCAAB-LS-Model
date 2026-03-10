@@ -1197,7 +1197,7 @@ let cfg = {
   homeCourt:   3.5,
   scoreScale:  1.04,
   totalOffset: -5,
-  lockHour:    parseInt(localStorage.getItem('ncaab_lock_hour') || '10'),
+  lockHour:    10,
   oddsGistId:  '',
 };
 
@@ -1348,8 +1348,15 @@ async function loadModelConfig() {
     cfg.scoreScale  = c.scoreScale  ?? cfg.scoreScale;
     cfg.totalOffset = c.totalOffset ?? cfg.totalOffset;
     cfg.oddsGistId  = c.oddsGistId  ?? '';
+    cfg.lockHour    = c.lockHour    ?? cfg.lockHour;
   } catch(e) {
     console.warn('[TrueLine] model-config fetch failed, using defaults:', e.message);
+    setSt('st-odds', 'Config load failed — centralized odds unavailable', 'warn');
+    return;
+  }
+  if (!cfg.oddsGistId) {
+    console.warn('[TrueLine] oddsGistId not set in model-config.json — centralized odds will not load');
+    setSt('st-odds', 'Odds: Gist ID not configured', 'warn');
   }
 }
 
@@ -2806,9 +2813,9 @@ function renderTopPicks(games) {
   const top5 = picks.slice(0, 5);
   if (!top5.length) { bar.style.display = 'none'; return; }
 
-  // Save snapshot once the daily lock hour has passed
+  // Save snapshot once the daily lock hour has passed (never overwrite an existing lock)
   const isPastLockHour = new Date().getHours() >= cfg.lockHour;
-  if (isPastLockHour && top5.length) {
+  if (isPastLockHour && top5.length && lockedDate !== currentIsoDate) {
     const snapshot = top5.map(p => ({
       gameId: p.g.id,
       aShort: displayName(p.g.aKey, p.g.away).split(' ').slice(-1)[0],
@@ -3622,7 +3629,6 @@ function openSettings() {
 function closeSettings() { document.getElementById('settings-overlay').classList.remove('open'); }
 function saveSettings() {
   cfg.lockHour = parseInt(document.getElementById('inp-lock-hour').value) || 10;
-  localStorage.setItem('ncaab_lock_hour', cfg.lockHour);
   closeSettings();
   refresh();
 }
@@ -3657,7 +3663,7 @@ function btDateRange(from, to) {
 }
 
 async function fetchESPNFinal(dateStr) {
-  const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dateStr}`);
+  const r = await fetch(`${ESPN_URL}?groups=50&limit=300&dates=${dateStr}`, { cache: 'no-store' });
   const d = await r.json();
   return (d.events || []).map(ev => {
     const comp = ev.competitions?.[0];
@@ -3734,7 +3740,7 @@ function gistToOddsFormat(gistArr) {
 function matchStoredOdds(oddsArr, hKey, aKey) {
   return oddsArr.find(o => {
     const oh = matchTeam(o.home), oa = matchTeam(o.away);
-    return (oh === hKey) || (oa === aKey);
+    return (oh === hKey && oa === aKey) || (oh === aKey && oa === hKey);
   }) || null;
 }
 

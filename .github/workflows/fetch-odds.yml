@@ -68,7 +68,11 @@ jobs:
               with urllib.request.urlopen(req, timeout=15) as r:
                   return r.status
 
-          live        = gist_fetch(f'odds-{date_str}.json') or []
+          live_raw    = gist_fetch(f'odds-{date_str}.json')
+          if live_raw is None:
+              print(f'ERROR: could not fetch odds-{date_str}.json — aborting lock step', file=sys.stderr)
+              sys.exit(1)
+          live        = live_raw
           locked_list = gist_fetch(f'locked-odds-{date_str}.json') or []
           locked_ids  = {g['id'] for g in locked_list if 'id' in g}
           now_ts      = datetime.now(timezone.utc).timestamp()
@@ -95,6 +99,10 @@ jobs:
 
           out = f'locked-odds-{date_str}.json'
           print(f'Writing {out} with {len(locked_list)} games ({added} new)...')
-          status = gist_patch(out, locked_list)
-          print(f'Gist PATCH status: {status}')
+          try:
+              status = gist_patch(out, locked_list)
+              print(f'Gist PATCH status: {status}')
+          except Exception as e:
+              print(f'ERROR: Gist PATCH failed: {e}', file=sys.stderr)
+              sys.exit(1)
           PYEOF

@@ -2,5 +2,6 @@
   "homeCourt": 3.5,
   "scoreScale": 1.04,
   "totalOffset": -5,
-  "oddsGistId": "6bb753ed0b2dfefc120929d6a65cf082"
+  "oddsGistId": "6bb753ed0b2dfefc120929d6a65cf082",
+  "lockHour": 10
 }
