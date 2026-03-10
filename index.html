@@ -2299,9 +2299,6 @@ function renderFactors(g) {
 
 function getAdvice(g) {
   const { pred, vegasSpread, vegasTotal } = g;
-  // Derive display scores from regression-adjusted total + margin so they match
-  const dispHScore = pred ? (pred.total + pred.margin) / 2 : 0;
-  const dispAScore = pred ? (pred.total - pred.margin) / 2 : 0;
   if (!pred) return { text: 'No data', cls: 'cm-act-none' };
 
   const hShort = displayName(g.hKey, g.home);
@@ -3303,12 +3300,12 @@ function showGameModal(gameId) {
       <div class="gd-scores">
         <div class="gd-score-team">
           <div class="gd-score-name">${esc(aName)}</div>
-          <div class="gd-score-pts${aWins ? ' gd-winner' : ''}">${dispAScore.toFixed(0)}</div>
+          <div class="gd-score-pts${aWins ? ' gd-winner' : ''}">${((pred.total - pred.margin) / 2).toFixed(0)}</div>
         </div>
         <div class="gd-score-sep">—</div>
         <div class="gd-score-team">
           <div class="gd-score-name">${esc(hName)}</div>
-          <div class="gd-score-pts${hWins ? ' gd-winner' : ''}">${dispHScore.toFixed(0)}</div>
+          <div class="gd-score-pts${hWins ? ' gd-winner' : ''}">${((pred.total + pred.margin) / 2).toFixed(0)}</div>
         </div>
       </div>
       <div class="gd-summary-row">
