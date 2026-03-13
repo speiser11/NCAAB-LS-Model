@@ -1623,7 +1623,7 @@ async function loadOdds(isoDate) {
   const nextDay = new Date(isoDate + 'T00:00:00Z');
   nextDay.setUTCDate(nextDay.getUTCDate() + 1);
   const nextIso = nextDay.toISOString().slice(0, 10);
-  const FALLBACK_KEY = '944ed4dd5ae32d7edc979330325c9c0b';
+  const FALLBACK_KEY = '4a78a7c6ae2eb0594f8ca57059dd14e4';
   const url = `${ODDS_BASE}/odds/?apiKey=${FALLBACK_KEY}`
     + `&regions=us&markets=spreads,totals&oddsFormat=american`
     + `&commenceTimeFrom=${isoDate}T12:00:00Z&commenceTimeTo=${nextIso}T12:00:00Z`;
