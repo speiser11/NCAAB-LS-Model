@@ -38,23 +38,17 @@ if live_raw is None:
 live        = live_raw
 locked_list = gist_fetch(f'locked-odds-{date_str}.json') or []
 locked_ids  = {g['id'] for g in locked_list if 'id' in g}
-now_ts      = datetime.now(timezone.utc).timestamp()
 added       = 0
 
 for game in live:
     gid = game.get('id')
-    ct  = game.get('commence_time')
-    if not gid or not ct:
+    if not gid:
         continue
-    try:
-        ct_ts = datetime.fromisoformat(ct.replace('Z', '+00:00')).timestamp()
-    except Exception:
-        continue
-    if ct_ts <= now_ts and gid not in locked_ids:
+    if gid not in locked_ids:
         locked_list.append(game)
         locked_ids.add(gid)
         added += 1
-        print(f'Locking: {game.get("home_team")} vs {game.get("away_team")} ({ct})')
+        print(f'Saving: {game.get("home_team")} vs {game.get("away_team")} ({game.get("commence_time")})')
 
 if added == 0:
     print('No new games to lock.')
