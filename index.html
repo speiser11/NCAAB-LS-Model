@@ -957,6 +957,19 @@ input[type=date] {
 .line-move{font-family:'Inter',sans-serif;font-size:.58rem;font-weight:700;margin-left:.18rem;flex-shrink:0;}
 .lm-up{color:var(--green);}
 .lm-dn{color:var(--red);}
+
+/* ── Sport Switcher ── */
+.sport-nav{display:flex;align-items:center;gap:.25rem;background:var(--surface);border-bottom:1px solid var(--border);padding:.3rem .9rem;}
+.sp-tab{background:none;border:1px solid transparent;cursor:pointer;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;padding:.35rem .75rem;border-radius:5px;transition:color .15s,background .15s;}
+.sp-tab:hover{color:var(--text);background:var(--surface2);}
+.sp-tab.active{color:var(--blue);background:var(--surface-blue);border-color:var(--border-blue);}
+
+/* ── MLB placeholder ── */
+.mlb-cs-banner{padding:.85rem 1.15rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem;}
+.mlb-cs-tag{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);background:var(--surface-blue);border:1px solid var(--border-blue);border-radius:4px;padding:.15rem .4rem;flex-shrink:0;}
+.mlb-cs-text{font-family:'Inter',sans-serif;font-size:.8rem;color:var(--muted);}
+.mnum-placeholder{color:var(--muted);opacity:.4;}
+.card-ft-cs{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);font-style:italic;}
 </style>
 </head>
 <body>
@@ -981,6 +994,12 @@ input[type=date] {
   </div>
 </div>
 
+<div class="sport-nav" id="sport-nav">
+  <button class="sp-tab active" data-sport="ncaab" onclick="setSport('ncaab')">NCAAB</button>
+  <button class="sp-tab" data-sport="mlb" onclick="setSport('mlb')">MLB</button>
+</div>
+
+<div id="ncaab-view">
 <div id="top-picks-bar" class="top-picks-bar" style="display:none"></div>
 
 <div class="sub-nav" id="sub-nav">
@@ -1044,6 +1063,58 @@ input[type=date] {
   <div id="err-area"></div>
   <div id="game-list" class="loading">Loading…</div>
 </div>
+</div><!-- /#ncaab-view -->
+
+<div id="mlb-view" style="display:none">
+  <div class="status-bar">
+    <span class="sc" id="st-mlb-teams">Teams: —</span>
+    <span class="sc" id="st-mlb-odds">Odds: —</span>
+  </div>
+  <div class="container">
+    <div class="mlb-cs-banner">
+      <span class="mlb-cs-tag">Coming Soon</span>
+      <span class="mlb-cs-text">MLB model is in development. Framework is live — predictions will appear here when ready.</span>
+    </div>
+    <div class="game-list">
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-hd-teams">
+            <span class="team-away">Cubs</span>
+            <span class="card-vs">@</span>
+            <span class="team-home">Cardinals</span>
+          </div>
+          <div><span class="status-badge badge-upcoming">7:05 PM</span></div>
+        </div>
+        <div class="card-bd">
+          <div class="mblock">
+            <div class="mblock-label">Run Line (Away)</div>
+            <div class="mnum-row">
+              <span class="mnum-lbl">Model</span>
+              <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+            <div class="mnum-row">
+              <span class="mnum-lbl">Vegas</span>
+              <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+          </div>
+          <div class="mblock-div"></div>
+          <div class="mblock">
+            <div class="mblock-label">Total</div>
+            <div class="mnum-row">
+              <span class="mnum-lbl">Model</span>
+              <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+            <div class="mnum-row">
+              <span class="mnum-lbl">Vegas</span>
+              <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-ft card-ft-cs">Sample game · Model predictions will appear here</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /#mlb-view -->
 
 <!-- Team stats panel -->
 <div class="tm-overlay" id="tm-overlay" onclick="if(event.target===this)closeTeamModal()">
@@ -3961,6 +4032,20 @@ function onDateChange() {
   TeamResolver.init(); // fire-and-forget — resolver used opportunistically for display names
   refresh();
 })();
+
+// ── Sport switcher ──────────────────────────────────────────────────────────
+function setSport(sport) {
+  document.querySelectorAll('.sp-tab').forEach(el =>
+    el.classList.toggle('active', el.dataset.sport === sport)
+  );
+  document.getElementById('ncaab-view').style.display = sport === 'ncaab' ? '' : 'none';
+  document.getElementById('mlb-view').style.display   = sport === 'mlb'   ? '' : 'none';
+}
+
+// ── MLB pipeline stubs (framework only — no model logic yet) ─────────────────
+async function loadMLBOdds()  { /* TODO: fetch MLB odds */ }
+async function loadMLBTeams() { /* TODO: fetch MLB team ratings */ }
+function renderMLB()          { /* TODO: render MLB game cards */ }
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers
 (function() {
