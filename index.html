@@ -2933,13 +2933,14 @@ async function loadAccuracyStats() {
     while (d <= end) { dates.push(toDateStr(new Date(d))); d.setDate(d.getDate()+1); }
     return dates;
   };
-  const yest = shiftDay(-1);
-  const weekAgo = shiftDay(-7);
-  const monthAgo = shiftDay(-30);
+  const yest        = shiftDay(-1);
+  const weekAgo     = shiftDay(-7);
+  const monthAgo    = shiftDay(-30);
+  const floorDate   = toDateStr(shiftDay(-3)); // rolling 3-day floor — no takes counted before this
 
   async function scoreRange(dates) {
     let w = 0, l = 0;
-    for (const dateStr of dates.filter(d => d >= ACC_START_DATE)) {
+    for (const dateStr of dates.filter(d => d >= floorDate)) {
       const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
       try {
         const [games, storedOdds] = await Promise.all([
@@ -2952,17 +2953,17 @@ async function loadAccuracyStats() {
           if (!pred) continue;
           const actual = g.homeScore - g.awayScore;
           if (actual === 0) continue;
-          // Only count games where a pick was flagged (edge ≥ 4 on spread or total)
+          // Takes only: edge ≥ 7 on spread or total vs locked pre-game line
           const odds = matchStoredOdds(storedOdds, hKey, aKey);
           if (!odds) continue;
           const spreadEdge = odds.spread != null ? Math.abs(pred.margin + odds.spread) : 0;
           const totalEdge  = odds.total  != null ? Math.abs(pred.total  - odds.total)  : 0;
-          const useSpread  = spreadEdge >= totalEdge && spreadEdge >= 4;
-          const useTotal   = totalEdge  >  spreadEdge && totalEdge  >= 4;
+          const useSpread  = spreadEdge >= totalEdge && spreadEdge >= 7;
+          const useTotal   = totalEdge  >  spreadEdge && totalEdge  >= 7;
           if (!useSpread && !useTotal) continue;
-          // Score the highest-edge pick: ATS for spread picks, O/U for total picks
+          // Score ATS for spread takes, O/U for total takes
           if (useSpread) {
-            const cover = actual + odds.spread; // > 0 = home covered
+            const cover = actual + odds.spread;
             if (cover === 0) continue; // push
             (pred.margin >= 0) === (cover > 0) ? w++ : l++;
           } else {
@@ -2996,10 +2997,10 @@ function renderAccuracyBadges({ yd, wk, mo }) {
   if (!row) return;
   const badge = (lbl, { w, l }) => {
     const tot = w + l;
-    if (!tot) return `<span class="acc-badge" title="Takes &amp; leans (edge ≥ 4): no graded picks yet">${lbl}: <span class="acc-pct">—</span></span>`;
+    if (!tot) return `<span class="acc-badge" title="Takes only (edge ≥ 7) — ATS for spreads, O/U for totals">${lbl}: <span class="acc-pct">—</span></span>`;
     const pct = Math.round(w / tot * 100);
     const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
-    return `<span class="acc-badge ${cls}" title="Takes &amp; leans (edge ≥ 4 pt) — ATS for spreads, O/U for totals">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">picks ${pct}%</span></span>`;
+    return `<span class="acc-badge ${cls}" title="Takes only (edge ≥ 7) — ATS for spreads, O/U for totals">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">takes ${pct}%</span></span>`;
   };
   row.innerHTML = badge('Yday', yd) + badge('Week', wk) + badge('Month', mo);
 }
