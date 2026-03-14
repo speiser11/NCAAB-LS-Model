@@ -970,6 +970,10 @@ input[type=date] {
 .mlb-cs-text{font-family:'Inter',sans-serif;font-size:.8rem;color:var(--muted);}
 .mnum-placeholder{color:var(--muted);opacity:.4;}
 .card-ft-cs{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);font-style:italic;}
+.mlb-sub-nav{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);padding:.25rem .9rem;gap:.75rem;}
+.mlb-sub-nav-left{display:flex;align-items:center;gap:.5rem;}
+.mlb-sub-nav-right{display:flex;align-items:center;gap:.4rem;}
+.mlb-season-tag{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.2rem .5rem;border:1px solid var(--border);border-radius:4px;}
 .mlb-pitchers{display:flex;gap:.75rem;padding:.65rem 1.15rem;border-top:1px solid var(--border);background:var(--surface2);}
 .mlb-pitcher{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem;}
 .mlb-pitcher-side{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
@@ -1076,90 +1080,25 @@ input[type=date] {
 </div><!-- /#ncaab-view -->
 
 <div id="mlb-view" style="display:none">
+  <div class="mlb-sub-nav">
+    <div class="mlb-sub-nav-left">
+      <span class="mlb-season-tag">Spring Training</span>
+    </div>
+    <div class="mlb-sub-nav-right">
+      <input type="date" id="mlb-date-pick" onchange="mlbOnDateChange()">
+      <button class="icon-btn" onclick="mlbRefresh()" title="Refresh MLB data">↻</button>
+    </div>
+  </div>
   <div class="status-bar">
-    <span class="sc" id="st-mlb-teams">Teams: —</span>
+    <span class="sc" id="st-mlb-games">Games: —</span>
     <span class="sc" id="st-mlb-odds">Odds: —</span>
   </div>
   <div class="container">
     <div class="mlb-cs-banner">
       <span class="mlb-cs-tag">Coming Soon</span>
-      <span class="mlb-cs-text">MLB model is in development. Framework is live — predictions will appear here when ready.</span>
+      <span class="mlb-cs-text">Schedule is live. Run line · total · F5 · pitcher model data coming soon.</span>
     </div>
-    <div class="game-list">
-      <div class="card">
-        <div class="card-hd">
-          <div class="card-hd-teams">
-            <span class="team-away">Cubs</span>
-            <span class="card-vs">@</span>
-            <span class="team-home">Cardinals</span>
-          </div>
-          <div><span class="status-badge badge-upcoming">7:05 PM</span></div>
-        </div>
-        <div class="card-bd">
-          <div class="mblock">
-            <div class="mblock-label">Run Line (Away)</div>
-            <div class="mnum-row">
-              <span class="mnum-lbl">Model</span>
-              <span class="mnum-val mnum-placeholder">—</span>
-            </div>
-            <div class="mnum-row">
-              <span class="mnum-lbl">Vegas</span>
-              <span class="mnum-val mnum-placeholder">—</span>
-            </div>
-          </div>
-          <div class="mblock-div"></div>
-          <div class="mblock">
-            <div class="mblock-label">Total (Full Game)</div>
-            <div class="mnum-row">
-              <span class="mnum-lbl">Model</span>
-              <span class="mnum-val mnum-placeholder">—</span>
-            </div>
-            <div class="mnum-row">
-              <span class="mnum-lbl">Vegas</span>
-              <span class="mnum-val mnum-placeholder">—</span>
-            </div>
-          </div>
-          <div class="mblock-div"></div>
-          <div class="mblock">
-            <div class="mblock-label">F5 Innings</div>
-            <div class="mnum-row">
-              <span class="mnum-lbl">Model</span>
-              <span class="mnum-val mnum-placeholder">—</span>
-            </div>
-            <div class="mnum-row">
-              <span class="mnum-lbl">Vegas</span>
-              <span class="mnum-val mnum-placeholder">—</span>
-            </div>
-          </div>
-        </div>
-        <div class="mlb-pitchers">
-          <div class="mlb-pitcher">
-            <div class="mlb-pitcher-side">Away SP</div>
-            <div class="mlb-pitcher-name">T. Pitcher</div>
-            <div class="mlb-pitcher-stats">
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-            </div>
-          </div>
-          <div class="mlb-pitcher-div"></div>
-          <div class="mlb-pitcher">
-            <div class="mlb-pitcher-side">Home SP</div>
-            <div class="mlb-pitcher-name">T. Pitcher</div>
-            <div class="mlb-pitcher-stats">
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="card-ft card-ft-cs">Sample game · Model predictions will appear here</div>
-      </div>
-    </div>
+    <div id="mlb-game-list" class="game-list"></div>
   </div>
 </div><!-- /#mlb-view -->
 
@@ -4071,8 +4010,9 @@ function onDateChange() {
   // Use local date (not UTC) — toISOString() flips to next day at midnight UTC,
   // which is ~7–8pm ET and breaks the default while games are still in progress
   const _now = new Date();
-  document.getElementById('date-pick').value =
-    `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
+  const _todayVal = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
+  document.getElementById('date-pick').value     = _todayVal;
+  document.getElementById('mlb-date-pick').value = _todayVal;
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeTeamModal(); }
   });
@@ -4081,18 +4021,177 @@ function onDateChange() {
 })();
 
 // ── Sport switcher ──────────────────────────────────────────────────────────
+let mlbLoaded = false;
+
 function setSport(sport) {
   document.querySelectorAll('.sp-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.sport === sport)
   );
   document.getElementById('ncaab-view').style.display = sport === 'ncaab' ? '' : 'none';
   document.getElementById('mlb-view').style.display   = sport === 'mlb'   ? '' : 'none';
+  if (sport === 'mlb' && !mlbLoaded) mlbRefresh();
 }
 
-// ── MLB pipeline stubs (framework only — no model logic yet) ─────────────────
+// ── MLB data ─────────────────────────────────────────────────────────────────
+const MLB_ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard';
+let mlbGameList = [];
+
+function mlbGetDateStr() {
+  const v = document.getElementById('mlb-date-pick').value;
+  return v ? v.replace(/-/g, '') : todayStr();
+}
+
+function mlbOnDateChange() { mlbRefresh(); }
+
+async function mlbRefresh() {
+  const el = document.getElementById('mlb-game-list');
+  if (el) el.innerHTML = '<div class="loading">Loading…</div>';
+  const dateStr = mlbGetDateStr();
+  try {
+    await loadMLBESPN(dateStr);
+  } catch(e) {
+    setSt('st-mlb-games', 'Games: error', 'err');
+  }
+  renderMLB();
+  mlbLoaded = true;
+}
+
+async function loadMLBESPN(dateStr) {
+  try {
+    // seasontype=3 is Spring Training; switch to 2 for Regular Season
+    const r = await fetch(
+      `${MLB_ESPN_URL}?seasontype=3&dates=${dateStr}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!r.ok) throw new Error(`ESPN MLB ${r.status}`);
+    const d = await r.json();
+    mlbGameList = (d.events || []).map(ev => {
+      const comp = ev.competitions?.[0];
+      const cs   = comp?.competitors || [];
+      const home = cs.find(c => c.homeAway === 'home');
+      const away = cs.find(c => c.homeAway === 'away');
+      return {
+        id:          ev.id,
+        home:        home?.team?.displayName || '',
+        away:        away?.team?.displayName || '',
+        homeAbbr:    home?.team?.abbreviation || '',
+        awayAbbr:    away?.team?.abbreviation || '',
+        homeScore:   home?.score ?? '',
+        awayScore:   away?.score ?? '',
+        time:        ev.date,
+        statusName:  comp?.status?.type?.name || '',
+        shortDetail: comp?.status?.type?.shortDetail || '',
+        inning:      comp?.status?.period || 0,
+        venue:       comp?.venue?.fullName || '',
+      };
+    });
+    setSt('st-mlb-games', `Games: ${mlbGameList.length}`, mlbGameList.length ? 'ok' : 'warn');
+  } catch(e) {
+    setSt('st-mlb-games', 'Games: fetch error', 'err');
+    console.warn('loadMLBESPN failed:', e.message);
+  }
+}
+
+function renderMLB() {
+  const el = document.getElementById('mlb-game-list');
+  if (!el) return;
+  if (!mlbGameList.length) {
+    el.innerHTML = '<div class="loading">No games found for this date.</div>';
+    return;
+  }
+  el.innerHTML = mlbGameList.map(g => {
+    const live  = g.statusName === 'STATUS_IN_PROGRESS';
+    const final = g.statusName === 'STATUS_FINAL';
+    const gameTime = g.time
+      ? new Date(g.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      : '';
+
+    let statusBadge;
+    if (live) {
+      statusBadge = `<span class="status-badge badge-live">● LIVE · ${g.shortDetail}</span>`;
+    } else if (final) {
+      statusBadge = `<span class="status-badge badge-final">Final · ${g.awayScore}–${g.homeScore}</span>`;
+    } else {
+      statusBadge = `<span class="status-badge badge-upcoming">${gameTime}</span>`;
+    }
+
+    let scoreHtml = '';
+    if (live || final) {
+      const hs = parseInt(g.homeScore) || 0;
+      const as = parseInt(g.awayScore) || 0;
+      const homeUp = hs > as, awayUp = as > hs;
+      scoreHtml = `
+        <div class="live-score-widget">
+          <div class="live-score-row">
+            <div class="live-score-team">
+              <span class="live-score-name">${esc(g.away)}</span>
+              <span class="live-score-pts${awayUp ? ' winning' : homeUp ? ' losing' : ''}">${as}</span>
+            </div>
+            <span class="live-score-sep">—</span>
+            <div class="live-score-team live-score-team-home">
+              <span class="live-score-name">${esc(g.home)}</span>
+              <span class="live-score-pts${homeUp ? ' winning' : awayUp ? ' losing' : ''}">${hs}</span>
+            </div>
+          </div>
+          ${live ? `<div class="live-score-clock">${g.shortDetail}</div>` : ''}
+        </div>`;
+    }
+
+    const pitcherSlot = side => `
+      <div class="mlb-pitcher">
+        <div class="mlb-pitcher-side">${side} SP</div>
+        <div class="mlb-pitcher-name mnum-placeholder">—</div>
+        <div class="mlb-pitcher-stats">
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+        </div>
+      </div>`;
+
+    return `
+      <div class="card" id="mlb-game-${g.id}">
+        <div class="card-hd">
+          <div class="card-hd-teams">
+            <span class="team-away">${esc(g.away)}</span>
+            <span class="card-vs">@</span>
+            <span class="team-home">${esc(g.home)}</span>
+          </div>
+          <div>${statusBadge}</div>
+        </div>
+        ${scoreHtml}
+        <div class="card-bd">
+          <div class="mblock">
+            <div class="mblock-label">Run Line (Away)</div>
+            <div class="mnum-row"><span class="mnum-lbl">Model</span><span class="mnum-val mnum-placeholder">—</span></div>
+            <div class="mnum-row"><span class="mnum-lbl">Vegas</span><span class="mnum-val mnum-placeholder">—</span></div>
+          </div>
+          <div class="mblock-div"></div>
+          <div class="mblock">
+            <div class="mblock-label">Total (Full Game)</div>
+            <div class="mnum-row"><span class="mnum-lbl">Model</span><span class="mnum-val mnum-placeholder">—</span></div>
+            <div class="mnum-row"><span class="mnum-lbl">Vegas</span><span class="mnum-val mnum-placeholder">—</span></div>
+          </div>
+          <div class="mblock-div"></div>
+          <div class="mblock">
+            <div class="mblock-label">F5 Innings</div>
+            <div class="mnum-row"><span class="mnum-lbl">Model</span><span class="mnum-val mnum-placeholder">—</span></div>
+            <div class="mnum-row"><span class="mnum-lbl">Vegas</span><span class="mnum-val mnum-placeholder">—</span></div>
+          </div>
+        </div>
+        <div class="mlb-pitchers">
+          ${pitcherSlot('Away')}
+          <div class="mlb-pitcher-div"></div>
+          ${pitcherSlot('Home')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── MLB pipeline stubs (future expansion) ────────────────────────────────────
 async function loadMLBOdds()  { /* TODO: fetch MLB odds */ }
 async function loadMLBTeams() { /* TODO: fetch MLB team ratings */ }
-function renderMLB()          { /* TODO: render MLB game cards */ }
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers
 (function() {
