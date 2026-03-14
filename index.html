@@ -970,6 +970,16 @@ input[type=date] {
 .mlb-cs-text{font-family:'Inter',sans-serif;font-size:.8rem;color:var(--muted);}
 .mnum-placeholder{color:var(--muted);opacity:.4;}
 .card-ft-cs{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);font-style:italic;}
+.mlb-pitchers{display:flex;gap:.75rem;padding:.65rem 1.15rem;border-top:1px solid var(--border);background:var(--surface2);}
+.mlb-pitcher{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem;}
+.mlb-pitcher-side{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+.mlb-pitcher-name{font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;color:var(--text);}
+.mlb-pitcher-stats{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);display:flex;gap:.5rem;flex-wrap:wrap;}
+.mlb-pitcher-stat{display:flex;flex-direction:column;gap:.05rem;align-items:center;}
+.mlb-pitcher-stat-lbl{font-size:.52rem;text-transform:uppercase;letter-spacing:.05em;opacity:.6;}
+.mlb-pitcher-stat-val{color:var(--text);font-weight:500;}
+.mlb-pitcher-stat-val.ph{opacity:.35;}
+.mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
 </style>
 </head>
 <body>
@@ -1099,7 +1109,7 @@ input[type=date] {
           </div>
           <div class="mblock-div"></div>
           <div class="mblock">
-            <div class="mblock-label">Total</div>
+            <div class="mblock-label">Total (Full Game)</div>
             <div class="mnum-row">
               <span class="mnum-lbl">Model</span>
               <span class="mnum-val mnum-placeholder">—</span>
@@ -1107,6 +1117,43 @@ input[type=date] {
             <div class="mnum-row">
               <span class="mnum-lbl">Vegas</span>
               <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+          </div>
+          <div class="mblock-div"></div>
+          <div class="mblock">
+            <div class="mblock-label">F5 Innings</div>
+            <div class="mnum-row">
+              <span class="mnum-lbl">Model</span>
+              <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+            <div class="mnum-row">
+              <span class="mnum-lbl">Vegas</span>
+              <span class="mnum-val mnum-placeholder">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="mlb-pitchers">
+          <div class="mlb-pitcher">
+            <div class="mlb-pitcher-side">Away SP</div>
+            <div class="mlb-pitcher-name">T. Pitcher</div>
+            <div class="mlb-pitcher-stats">
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+            </div>
+          </div>
+          <div class="mlb-pitcher-div"></div>
+          <div class="mlb-pitcher">
+            <div class="mlb-pitcher-side">Home SP</div>
+            <div class="mlb-pitcher-name">T. Pitcher</div>
+            <div class="mlb-pitcher-stats">
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+              <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
             </div>
           </div>
         </div>
