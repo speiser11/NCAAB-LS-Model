@@ -974,6 +974,10 @@ input[type=date] {
 .mlb-sub-nav-left{display:flex;align-items:center;gap:.5rem;}
 .mlb-sub-nav-right{display:flex;align-items:center;gap:.4rem;}
 .mlb-season-tag{font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:.2rem .5rem;border:1px solid var(--border);border-radius:4px;}
+.mlb-lines{display:grid;grid-template-columns:3rem 1fr 1fr 1fr;align-items:center;gap:.1rem 0;padding:.55rem 1.15rem;border-top:1px solid var(--border);}
+.mlb-lines-hd{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:center;padding-bottom:.25rem;}
+.mlb-lines-lbl{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);}
+.mlb-lines-val{font-family:'DM Mono',monospace;font-size:.78rem;font-weight:500;text-align:center;color:var(--muted);opacity:.4;}
 .mlb-pitchers{display:flex;gap:.75rem;padding:.65rem 1.15rem;border-top:1px solid var(--border);background:var(--surface2);}
 .mlb-pitcher{flex:1;min-width:0;display:flex;flex-direction:column;gap:.2rem;}
 .mlb-pitcher-side{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
@@ -4161,24 +4165,19 @@ function renderMLB() {
           <div>${statusBadge}</div>
         </div>
         ${scoreHtml}
-        <div class="card-bd">
-          <div class="mblock">
-            <div class="mblock-label">Run Line (Away)</div>
-            <div class="mnum-row"><span class="mnum-lbl">Model</span><span class="mnum-val mnum-placeholder">—</span></div>
-            <div class="mnum-row"><span class="mnum-lbl">Vegas</span><span class="mnum-val mnum-placeholder">—</span></div>
-          </div>
-          <div class="mblock-div"></div>
-          <div class="mblock">
-            <div class="mblock-label">Total (Full Game)</div>
-            <div class="mnum-row"><span class="mnum-lbl">Model</span><span class="mnum-val mnum-placeholder">—</span></div>
-            <div class="mnum-row"><span class="mnum-lbl">Vegas</span><span class="mnum-val mnum-placeholder">—</span></div>
-          </div>
-          <div class="mblock-div"></div>
-          <div class="mblock">
-            <div class="mblock-label">F5 Innings</div>
-            <div class="mnum-row"><span class="mnum-lbl">Model</span><span class="mnum-val mnum-placeholder">—</span></div>
-            <div class="mnum-row"><span class="mnum-lbl">Vegas</span><span class="mnum-val mnum-placeholder">—</span></div>
-          </div>
+        <div class="mlb-lines">
+          <div></div>
+          <div class="mlb-lines-hd">Run Line</div>
+          <div class="mlb-lines-hd">F5 Line</div>
+          <div class="mlb-lines-hd">Total</div>
+          <div class="mlb-lines-lbl">Model</div>
+          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-lbl">Vegas</div>
+          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val">—</div>
         </div>
         <div class="mlb-pitchers">
           ${pitcherSlot('Away')}
