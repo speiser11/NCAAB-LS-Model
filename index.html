@@ -4052,6 +4052,7 @@ async function mlbRefresh() {
   const dateStr = mlbGetDateStr();
   try {
     await loadMLBESPN(dateStr);
+    await loadMLBPitchers(dateStr);
   } catch(e) {
     setSt('st-mlb-games', 'Games: error', 'err');
   }
@@ -4140,18 +4141,25 @@ function renderMLB() {
         </div>`;
     }
 
-    const pitcherSlot = side => `
+    const pitchKey  = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
+    const pitchers  = mlbPitcherMap.get(pitchKey) || {};
+
+    const pitcherSlot = (side, p) => {
+      const sv = (v) => v != null ? v : '—';
+      const ph = (v) => v != null ? '' : ' ph';
+      return `
       <div class="mlb-pitcher">
         <div class="mlb-pitcher-side">${side} SP</div>
-        <div class="mlb-pitcher-name mnum-placeholder">—</div>
+        <div class="mlb-pitcher-name${p ? '' : ' mnum-placeholder'}">${esc(p?.name ?? 'TBD')}</div>
         <div class="mlb-pitcher-stats">
-          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val ph">—</span></div>
-          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val ph">—</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val${ph(p?.era)}">${sv(p?.era)}</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val${ph(p?.whip)}">${sv(p?.whip)}</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val${ph(p?.k9)}">${sv(p?.k9)}</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val${ph(p?.bb9)}">${sv(p?.bb9)}</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val${ph(p?.ip)}">${sv(p?.ip)}</span></div>
         </div>
       </div>`;
+    };
 
     return `
       <div class="card" id="mlb-game-${g.id}">
@@ -4179,12 +4187,63 @@ function renderMLB() {
           <div class="mlb-lines-val">—</div>
         </div>
         <div class="mlb-pitchers">
-          ${pitcherSlot('Away')}
+          ${pitcherSlot('Away', pitchers.away)}
           <div class="mlb-pitcher-div"></div>
-          ${pitcherSlot('Home')}
+          ${pitcherSlot('Home', pitchers.home)}
         </div>
       </div>`;
   }).join('');
+}
+
+// ── MLB probable pitchers (MLB Stats API — free, no auth) ────────────────────
+let mlbPitcherMap = new Map(); // normalized "away|home" → { away, home }
+
+function normMLBTeam(name) {
+  return name.toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function parsePitcher(p) {
+  if (!p) return null;
+  const full  = p.fullName || '';
+  const parts = full.trim().split(' ');
+  const short = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
+  const season = (p.stats || []).find(s => s.type?.displayName === 'season')?.stats || {};
+  const ip  = parseFloat(season.inningsPitched) || 0;
+  return {
+    name: short || 'TBD',
+    era:  season.era  != null ? parseFloat(season.era).toFixed(2)  : null,
+    whip: season.whip != null ? parseFloat(season.whip).toFixed(2) : null,
+    k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
+    bb9:  ip > 0 && season.baseOnBalls != null ? (season.baseOnBalls / ip * 9).toFixed(1) : null,
+    ip:   season.inningsPitched ?? null,
+  };
+}
+
+async function loadMLBPitchers(dateStr) {
+  const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+  try {
+    const r = await fetch(
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&gameType=S` +
+      `&hydrate=probablePitcher,stats(type=season,sportId=1)`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!r.ok) throw new Error(`MLB Stats API ${r.status}`);
+    const d = await r.json();
+    mlbPitcherMap = new Map();
+    for (const dateEntry of (d.dates || [])) {
+      for (const game of (dateEntry.games || [])) {
+        const awayName = game.teams?.away?.team?.name || '';
+        const homeName = game.teams?.home?.team?.name || '';
+        const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
+        mlbPitcherMap.set(key, {
+          away: parsePitcher(game.teams?.away?.probablePitcher),
+          home: parsePitcher(game.teams?.home?.probablePitcher),
+        });
+      }
+    }
+  } catch(e) {
+    console.warn('loadMLBPitchers failed:', e.message);
+  }
 }
 
 // ── MLB pipeline stubs (future expansion) ────────────────────────────────────
