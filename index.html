@@ -4125,7 +4125,10 @@ function renderMLB() {
     return;
   }
   el.innerHTML = mlbGameList.map(g => {
-    g.parkFactor = getParkFactor(g.home); // stored for use in Details modal
+    g.parkFactor = getParkFactor(g.home);
+    const pitchKey = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
+    const pitchers = mlbPitcherMap.get(pitchKey) || {};
+    g.proj = calcMLBTotal(g, pitchers); // stored for card display + Details modal
     const live  = g.statusName === 'STATUS_IN_PROGRESS';
     const final = g.statusName === 'STATUS_FINAL';
     const gameTime = g.time
@@ -4162,9 +4165,6 @@ function renderMLB() {
           ${live ? `<div class="live-score-clock">${g.shortDetail}</div>` : ''}
         </div>`;
     }
-
-    const pitchKey  = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
-    const pitchers  = mlbPitcherMap.get(pitchKey) || {};
 
     const pitcherSlot = (side, p, oppTeam) => {
       const sv = (v) => v != null ? v : '—';
@@ -4213,7 +4213,7 @@ function renderMLB() {
           <div class="mlb-lines-lbl">Model</div>
           <div class="mlb-lines-val">—</div>
           <div class="mlb-lines-val">—</div>
-          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val" style="color:var(--blue);font-weight:600">${g.proj.total.toFixed(1)}</div>
           <div class="mlb-lines-lbl">Vegas</div>
           <div class="mlb-lines-val">—</div>
           <div class="mlb-lines-val">—</div>
@@ -4404,6 +4404,24 @@ function rateOffense(teamName, pitcherHand) {
   return { wrc: Math.round(wrc), score: Math.round((wrc - 100) / 20 * 100) / 100 };
 }
 
+// ── MLB run total projection (Sprint 4) ──────────────────────────────────────
+// Returns { total, hp, ap, ho, ao, pf } — stored on g for card display + modal breakdown.
+// Missing data (no pitcher stats in Spring Training) defaults to 0 (league average).
+function calcMLBTotal(g, pitchers) {
+  const hp = ratePitcher(pitchers.home) ?? 0; // home starter quality (null → avg)
+  const ap = ratePitcher(pitchers.away) ?? 0; // away starter quality
+  const ho = rateOffense(g.home, pitchers.away?.hand)?.score ?? 0; // home offense vs away SP
+  const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0; // away offense vs home SP
+  const pf = (g.parkFactor || getParkFactor(g.home)).factor;
+
+  let total = 9.0;
+  total -= hp + ap;           // subtract pitcher quality (better pitchers → fewer runs)
+  total += (ho + ao) * 2.0;  // add offense adjustments (each score unit ≈ 0.2 wRC+ pts)
+  total *= pf;                // scale by park run factor
+  total = Math.max(5.5, Math.min(14.0, total)); // realistic MLB total range
+  return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf };
+}
+
 // ── MLB game details modal ────────────────────────────────────────────────────
 function showMLBGameModal(gameId) {
   const g = mlbGameList.find(x => x.id === gameId);
@@ -4485,19 +4503,25 @@ function showMLBGameModal(gameId) {
     <div class="gd-move" style="margin-top:.4rem;font-size:.7rem;color:var(--muted)">wRC+ 100 = league average. &gt;100 = above average offense vs that pitcher handedness.</div>
   </div>`;
 
-  // ── Model Inputs Summary ──
-  const inputRows = [];
-  if (aScore != null) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.away)} pitcher quality</span><span class="gd-summary-val">${fmtScore(aScore)}</span></div>`);
-  if (hScore != null) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.home)} pitcher quality</span><span class="gd-summary-val">${fmtScore(hScore)}</span></div>`);
-  if (awayOff) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.away)} offense vs ${hp?.hand || '?'}HP</span><span class="gd-summary-val">${fmtScore(awayOff.score)}</span></div>`);
-  if (homeOff) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.home)} offense vs ${ap?.hand || '?'}HP</span><span class="gd-summary-val">${fmtScore(homeOff.score)}</span></div>`);
-
-  if (inputRows.length) {
-    html += `<div class="gd-section">
-      <div class="gd-section-title">Model Inputs</div>
-      ${inputRows.join('')}
-    </div>`;
-  }
+  // ── Model Total Projection ──
+  const proj = g.proj || calcMLBTotal(g, pitchers);
+  const fmtAdj = v => (v > 0 ? '+' : '') + v.toFixed(2);
+  html += `<div class="gd-section">
+    <div class="gd-section-title">Projected Total</div>
+    <table class="gd-table">
+      <tr><td>Baseline</td><td style="color:var(--muted)">9.0 (league avg)</td></tr>
+      <tr><td>${esc(g.away)} starter</td><td>${fmtScore(-proj.ap)}</td></tr>
+      <tr><td>${esc(g.home)} starter</td><td>${fmtScore(-proj.hp)}</td></tr>
+      <tr><td>${esc(g.away)} offense</td><td>${fmtScore(proj.ao * 2)}</td></tr>
+      <tr><td>${esc(g.home)} offense</td><td>${fmtScore(proj.ho * 2)}</td></tr>
+      <tr><td>Park factor</td><td style="color:var(--muted)">${proj.pf.toFixed(2)}×</td></tr>
+    </table>
+    <div class="gd-summary-row" style="margin-top:.6rem;font-size:.85rem;border-top:1px solid var(--border);padding-top:.5rem">
+      <span style="font-weight:600">Projected Total</span>
+      <span style="color:var(--blue);font-weight:700;font-size:1rem">${proj.total.toFixed(1)}</span>
+    </div>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">Formula: (9.0 − pitcher scores + offense adj) × park factor, clamped 5.5–14.0</div>
+  </div>`;
 
   // ── Park Factor ──
   const pf    = g.parkFactor || getParkFactor(g.home);
