@@ -3,11 +3,12 @@ import json, urllib.request, os, sys
 gist_id  = os.environ['GIST_ID']
 gist_pat = os.environ['GIST_PAT']
 date_str = os.environ['DATE']
+prefix   = os.environ.get('FILENAME_PREFIX', 'odds')
 
 with open('/tmp/odds-raw.json') as f:
     content = f.read()
 
-filename = f'odds-{date_str}.json'
+filename = f'{prefix}-{date_str}.json'
 body = json.dumps({'files': {filename: {'content': content}}}).encode()
 
 req = urllib.request.Request(

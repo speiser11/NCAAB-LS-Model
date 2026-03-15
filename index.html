@@ -995,6 +995,17 @@ input[type=date] {
 .mlb-opp-pos{color:var(--red);}   /* strong offense vs this pitcher — bad for pitcher */
 .mlb-opp-neg{color:var(--green);} /* weak offense vs this pitcher — good for pitcher */
 .mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
+.mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
+.mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
+.mlb-wp-pct{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;color:var(--text);}
+.mlb-wp-pct.wp-fav{color:var(--blue);}
+.mlb-wp-name{font-family:'Inter',sans-serif;font-size:.6rem;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:7rem;}
+.mlb-wp-sep{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);}
+.mlb-edge-row{display:flex;justify-content:flex-end;padding:.15rem 1.15rem .35rem;border-bottom:1px solid var(--border);}
+.mlb-edge-badge{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:600;padding:.1rem .4rem;border-radius:4px;}
+.mlb-edge-pos{color:var(--green);background:rgba(46,204,113,.1);}
+.mlb-edge-neg{color:var(--red);background:rgba(224,82,82,.1);}
+.mlb-edge-neu{color:var(--muted);background:var(--surface2);}
 </style>
 </head>
 <body>
@@ -4072,7 +4083,7 @@ async function mlbRefresh() {
   if (el) el.innerHTML = '<div class="loading">Loading…</div>';
   const dateStr = mlbGetDateStr();
   try {
-    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense()]);
+    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds()]);
     await loadMLBPitchers(dateStr);
   } catch(e) {
     setSt('st-mlb-games', 'Games: error', 'err');
@@ -4128,7 +4139,15 @@ function renderMLB() {
     g.parkFactor = getParkFactor(g.home);
     const pitchKey = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
     const pitchers = mlbPitcherMap.get(pitchKey) || {};
-    g.proj = calcMLBTotal(g, pitchers); // stored for card display + Details modal
+    g.proj = calcMLBTotal(g, pitchers);
+    const wp = predictMLBWinProb(g, pitchers);
+    g.homeWinProb = wp.homeWinProb;
+    g.awayWinProb = wp.awayWinProb;
+    const oddsKey = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
+    g.mlbOdds = mlbOddsMap.get(oddsKey) || null;
+    g.homeEdge = g.mlbOdds?.homeML != null
+      ? Math.round((g.homeWinProb / 100 - mlAmericanToProb(g.mlbOdds.homeML)) * 100)
+      : null;
     const live  = g.statusName === 'STATUS_IN_PROGRESS';
     const final = g.statusName === 'STATUS_FINAL';
     const gameTime = g.time
@@ -4205,6 +4224,18 @@ function renderMLB() {
           <div>${statusBadge}</div>
         </div>
         ${scoreHtml}
+        <div class="mlb-wp-row">
+          <div class="mlb-wp-team">
+            <span class="mlb-wp-pct${g.awayWinProb > g.homeWinProb ? ' wp-fav' : ''}">${g.awayWinProb}%</span>
+            <span class="mlb-wp-name">${esc(g.away)}</span>
+          </div>
+          <span class="mlb-wp-sep">Win%</span>
+          <div class="mlb-wp-team">
+            <span class="mlb-wp-pct${g.homeWinProb > g.awayWinProb ? ' wp-fav' : ''}">${g.homeWinProb}%</span>
+            <span class="mlb-wp-name">${esc(g.home)}</span>
+          </div>
+        </div>
+        ${g.homeEdge != null ? `<div class="mlb-edge-row"><span class="mlb-edge-badge ${g.homeEdge > 3 ? 'mlb-edge-pos' : g.homeEdge < -3 ? 'mlb-edge-neg' : 'mlb-edge-neu'}">${g.homeEdge > 0 ? '+' : ''}${g.homeEdge}% edge on ${esc(g.homeEdge >= 0 ? g.home : g.away)}</span></div>` : ''}
         <div class="mlb-lines">
           <div></div>
           <div class="mlb-lines-hd">Run Line</div>
@@ -4422,6 +4453,65 @@ function calcMLBTotal(g, pitchers) {
   return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf };
 }
 
+// ── MLB moneyline win probability (Sprint 5) ─────────────────────────────────
+function predictMLBWinProb(g, pitchers) {
+  const hp = ratePitcher(pitchers.home) ?? 0;
+  const ap = ratePitcher(pitchers.away) ?? 0;
+  const ho = rateOffense(g.home, pitchers.away?.hand)?.score ?? 0;
+  const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0;
+  const pf = (g.parkFactor || getParkFactor(g.home)).factor;
+
+  let homeRuns = (9.0 / 2) - hp + ho * 2.0;
+  let awayRuns = (9.0 / 2) - ap + ao * 2.0;
+  homeRuns *= pf;
+  awayRuns *= pf * 0.95; // away team road penalty
+
+  const runDiff = homeRuns - awayRuns;
+  let homeWinProb = 1 / (1 + Math.exp(-runDiff * 0.35));
+  homeWinProb += 0.025; // home field advantage
+  homeWinProb = Math.max(0.30, Math.min(0.75, homeWinProb));
+  return {
+    homeWinProb: Math.round(homeWinProb * 100),
+    awayWinProb: Math.round((1 - homeWinProb) * 100),
+  };
+}
+
+// Convert American moneyline to implied probability (vig-inclusive)
+function mlAmericanToProb(ml) {
+  if (ml == null) return null;
+  return ml > 0 ? 100 / (ml + 100) : (-ml) / (-ml + 100);
+}
+
+// ── MLB odds (h2h moneylines from centralized Gist) ──────────────────────────
+let mlbOddsMap = new Map(); // "normHome|normAway" → { homeML, awayML }
+
+async function loadMLBOdds() {
+  if (!cfg.oddsGistId) return;
+  const dateStr = mlbGetDateStr();
+  const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/mlb-odds-${isoDate}.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return;
+    const data = await r.json();
+    mlbOddsMap = new Map();
+    for (const game of (Array.isArray(data) ? data : [])) {
+      const h2h = game.bookmakers?.[0]?.markets?.find(m => m.key === 'h2h');
+      if (!h2h) continue;
+      const homeOut = h2h.outcomes.find(o => o.name === game.home_team);
+      const awayOut = h2h.outcomes.find(o => o.name === game.away_team);
+      const key = `${normMLBTeam(game.home_team)}|${normMLBTeam(game.away_team)}`;
+      mlbOddsMap.set(key, { homeML: homeOut?.price ?? null, awayML: awayOut?.price ?? null });
+    }
+    setSt('st-mlb-odds', `Odds: ${mlbOddsMap.size} games`, mlbOddsMap.size ? 'ok' : 'warn');
+  } catch(e) {
+    console.warn('loadMLBOdds failed:', e.message);
+    setSt('st-mlb-odds', 'Odds: fetch error', 'err');
+  }
+}
+
 // ── MLB game details modal ────────────────────────────────────────────────────
 function showMLBGameModal(gameId) {
   const g = mlbGameList.find(x => x.id === gameId);
@@ -4542,10 +4632,40 @@ function showMLBGameModal(gameId) {
     </table>
   </div>`;
 
+  // ── Win Probability ──
+  const vegasHomeProb = g.mlbOdds?.homeML != null ? mlAmericanToProb(g.mlbOdds.homeML) : null;
+  const vegasAwayProb = g.mlbOdds?.awayML != null ? mlAmericanToProb(g.mlbOdds.awayML) : null;
+  const wpFmtEdge = e => {
+    if (e == null) return '';
+    const cls = e > 3 ? 'gd-edge-pos' : e < -3 ? 'gd-edge-neg' : 'gd-edge-neu';
+    return ` <span class="${cls}">(${e > 0 ? '+' : ''}${e}% edge)</span>`;
+  };
+  html += `<div class="gd-section">
+    <div class="gd-section-title">Win Probability</div>
+    <table class="gd-table">
+      <tr><th>Team</th><th>Model</th><th>Vegas</th></tr>
+      <tr>
+        <td>${esc(g.away)}</td>
+        <td>${g.awayWinProb}%</td>
+        <td>${vegasAwayProb != null ? Math.round(vegasAwayProb * 100) + '%' : '—'}</td>
+      </tr>
+      <tr>
+        <td>${esc(g.home)}</td>
+        <td>${g.homeWinProb}%</td>
+        <td>${vegasHomeProb != null ? Math.round(vegasHomeProb * 100) + '%' : '—'}</td>
+      </tr>
+    </table>
+    ${g.homeEdge != null ? `<div class="gd-summary-row" style="margin-top:.5rem">
+      <span>Model edge</span>
+      <span class="gd-summary-val">${g.homeEdge > 0 ? '+' : ''}${g.homeEdge}% on ${esc(g.homeEdge >= 0 ? g.home : g.away)}${wpFmtEdge(g.homeEdge)}</span>
+    </div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas ML available for edge calculation.</div>'}
+    ${g.mlbOdds ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas ML: ${esc(g.away)} ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML} · ${esc(g.home)} ${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML}</div>` : ''}
+  </div>`;
+
   // ── Bullpen ──
   html += `<div class="gd-section">
     <div class="gd-section-title">Bullpen</div>
-    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Coming Soon</div>
+    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Bullpen data planned for a future sprint.</div>
   </div>`;
 
   document.getElementById('gd-body').innerHTML = html;

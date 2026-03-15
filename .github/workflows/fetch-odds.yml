@@ -29,6 +29,22 @@ jobs:
 
           DATE=$DATE python3 .github/scripts/fetch_odds.py
 
+      - name: Fetch MLB moneylines and push to Gist
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          NEXT=$(date -u -d '+1 day' +%Y-%m-%d 2>/dev/null || date -u -v+1d +%Y-%m-%d)
+
+          curl -sf \
+            "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h&oddsFormat=american&commenceTimeFrom=${DATE}T12:00:00Z&commenceTimeTo=${NEXT}T12:00:00Z" \
+            -o /tmp/odds-raw.json \
+            || { echo "MLB Odds API fetch failed, skipping"; exit 0; }
+
+          DATE=$DATE FILENAME_PREFIX=mlb-odds python3 .github/scripts/fetch_odds.py
+
       - name: Lock commenced games
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
