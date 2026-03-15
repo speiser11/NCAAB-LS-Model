@@ -4042,7 +4042,6 @@ function onDateChange() {
 let mlbLoaded = false;
 
 function setSport(sport) {
-  console.log(`[setSport] called with sport="${sport}", mlbLoaded=${mlbLoaded}`);
   document.querySelectorAll('.sp-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.sport === sport)
   );
@@ -4069,7 +4068,6 @@ function mlbGetDateStr() {
 function mlbOnDateChange() { mlbRefresh(); }
 
 async function mlbRefresh() {
-  console.log('MLB tab loaded');
   const el = document.getElementById('mlb-game-list');
   if (el) el.innerHTML = '<div class="loading">Loading…</div>';
   const dateStr = mlbGetDateStr();
@@ -4120,7 +4118,6 @@ async function loadMLBESPN(dateStr) {
 }
 
 function renderMLB() {
-  console.log(`[MLB] renderMLB: ${mlbGameList.length} games, offenseMap size=${mlbOffenseMap.size}, pitcherMap size=${mlbPitcherMap.size}`);
   const el = document.getElementById('mlb-game-list');
   if (!el) return;
   if (!mlbGameList.length) {
@@ -4343,19 +4340,24 @@ async function loadMLBOffense() {
   mlbOffenseMap = new Map(
     Object.entries(MLB_WRC_STATIC).map(([k, v]) => [k, { wrcVsL: v.vsL, wrcVsR: v.vsR }])
   );
-  console.log('[MLB] mlbOffenseMap keys:', [...mlbOffenseMap.keys()]);
 }
 
 // Offensive rating vs pitcher handedness
 // Returns (wRC+ − 100) / 20: avg = 0, +20 pts above avg = +1.0, −20 pts = −1.0
 // Also returns raw wRC+ for display
 function rateOffense(teamName, pitcherHand) {
-  const key = teamName ? normMLBTeam(teamName) : null;
-  const entry = key ? mlbOffenseMap.get(key) : null;
-  console.log(`[MLB] rateOffense: team="${teamName}" key="${key}" hand=${pitcherHand} mapSize=${mlbOffenseMap.size} → ${!teamName ? 'NO_TEAM' : !pitcherHand ? 'NO_HAND' : entry ? 'HIT' : 'MISS'}`);
-  if (!teamName || !pitcherHand) return null;
+  if (!teamName) return null;
+  const entry = mlbOffenseMap.get(normMLBTeam(teamName));
   if (!entry) return null;
-  const wrc = pitcherHand === 'L' ? entry.wrcVsL : entry.wrcVsR;
+  let wrc;
+  if (pitcherHand === 'L') {
+    wrc = entry.wrcVsL;
+  } else if (pitcherHand === 'R') {
+    wrc = entry.wrcVsR;
+  } else {
+    // Hand unknown (common in Spring Training) — use average of splits
+    wrc = (entry.wrcVsL + entry.wrcVsR) / 2;
+  }
   if (wrc == null) return null;
   return { wrc: Math.round(wrc), score: Math.round((wrc - 100) / 20 * 100) / 100 };
 }
