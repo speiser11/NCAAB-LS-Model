@@ -987,6 +987,11 @@ input[type=date] {
 .mlb-pitcher-stat-lbl{font-size:.52rem;text-transform:uppercase;letter-spacing:.05em;opacity:.6;}
 .mlb-pitcher-stat-val{color:var(--text);font-weight:500;}
 .mlb-pitcher-stat-val.ph{opacity:.35;}
+.mlb-hand{font-family:'DM Mono',monospace;font-size:.58rem;font-weight:600;color:var(--muted);margin-left:.25rem;opacity:.7;}
+.mlb-quality{font-family:'DM Mono',monospace;font-size:.6rem;font-weight:700;margin-left:.3rem;padding:.05rem .28rem;border-radius:3px;}
+.mlb-quality-pos{color:var(--green);background:rgba(46,204,113,.1);}
+.mlb-quality-neg{color:var(--red);background:rgba(224,82,82,.1);}
+.mlb-quality-neu{color:var(--muted);background:var(--surface2);}
 .mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
 </style>
 </head>
@@ -4147,12 +4152,19 @@ function renderMLB() {
     const pitcherSlot = (side, p) => {
       const sv = (v) => v != null ? v : '—';
       const ph = (v) => v != null ? '' : ' ph';
+      const score = ratePitcher(p);
+      const scoreBadge = score == null ? '' : (() => {
+        const cls = score > 0.1 ? 'mlb-quality-pos' : score < -0.1 ? 'mlb-quality-neg' : 'mlb-quality-neu';
+        return `<span class="mlb-quality ${cls}">${score > 0 ? '+' : ''}${score.toFixed(2)}</span>`;
+      })();
+      const handBadge = p?.hand ? `<span class="mlb-hand">(${p.hand})</span>` : '';
       return `
       <div class="mlb-pitcher">
         <div class="mlb-pitcher-side">${side} SP</div>
-        <div class="mlb-pitcher-name${p ? '' : ' mnum-placeholder'}">${esc(p?.name ?? 'TBD')}</div>
+        <div class="mlb-pitcher-name${p ? '' : ' mnum-placeholder'}">${esc(p?.name ?? 'TBD')}${handBadge}${scoreBadge}</div>
         <div class="mlb-pitcher-stats">
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val${ph(p?.era)}">${sv(p?.era)}</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">FIP</span><span class="mlb-pitcher-stat-val${ph(p?.fip)}">${sv(p?.fip)}</span></div>
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">WHIP</span><span class="mlb-pitcher-stat-val${ph(p?.whip)}">${sv(p?.whip)}</span></div>
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val${ph(p?.k9)}">${sv(p?.k9)}</span></div>
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val${ph(p?.bb9)}">${sv(p?.bb9)}</span></div>
@@ -4204,19 +4216,35 @@ function normMLBTeam(name) {
 
 function parsePitcher(p) {
   if (!p) return null;
-  const full  = p.fullName || '';
-  const parts = full.trim().split(' ');
-  const short = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
+  const full   = p.fullName || '';
+  const parts  = full.trim().split(' ');
+  const short  = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
   const season = (p.stats || []).find(s => s.type?.displayName === 'season')?.stats || {};
-  const ip  = parseFloat(season.inningsPitched) || 0;
+  const ip     = parseFloat(season.inningsPitched) || 0;
+  const eraRaw = season.era  != null ? parseFloat(season.era)  : null;
+  const fipRaw = season.fip  != null ? parseFloat(season.fip)  : null;
   return {
     name: short || 'TBD',
-    era:  season.era  != null ? parseFloat(season.era).toFixed(2)  : null,
+    hand: p.pitchHand?.code || null,          // 'R' or 'L'
+    era:  eraRaw != null ? eraRaw.toFixed(2) : null,
+    fip:  fipRaw != null ? fipRaw.toFixed(2) : null,
+    fipRaw,
+    eraRaw,
     whip: season.whip != null ? parseFloat(season.whip).toFixed(2) : null,
     k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
     bb9:  ip > 0 && season.baseOnBalls != null ? (season.baseOnBalls / ip * 9).toFixed(1) : null,
     ip:   season.inningsPitched ?? null,
   };
+}
+
+// Pitcher quality score: positive = better than average, negative = worse
+// Uses FIP as primary signal; falls back to ERA if FIP unavailable
+// Baseline 4.50 ≈ league-average FIP over recent MLB seasons
+function ratePitcher(p) {
+  if (!p) return null;
+  const base = p.fipRaw ?? p.eraRaw;
+  if (base == null) return null;
+  return Math.round((4.50 - base) * 100) / 100;
 }
 
 async function loadMLBPitchers(dateStr) {
