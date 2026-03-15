@@ -1240,7 +1240,8 @@ let refData      = {};  // ref name (lower) → { games, foulRate, ftRate } from
 let kenpomTeams  = {};  // normalized team key → { name, rank, adjEM, adjO, adjD, adjT, luck }
 let bettingMap   = {};  // `${hKey}|${aKey}` → { homeSpreadPct, awaySpreadPct, homeMoneyPct, awayMoneyPct }
 let oddsLeft     = null;
-const _odds404Dates = new Set(); // dates (isoDate) that returned 404 on locked-odds Gist
+const _odds404Dates    = new Set(); // dates known to 404 on locked-odds Gist
+const _oddsPendingDates = new Set(); // dates with a fetch currently in-flight
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
 
@@ -3768,8 +3769,12 @@ function oddsApiToCompact(arr) {
 
 // Try locked-odds Gist (centralized pregame lines) first; fall back to historical Gist
 async function fetchOddsForDate(isoDate) {
-  if (_odds404Dates.has(isoDate)) return fetchStoredOdds(isoDate);
+  // Skip immediately if already known-404 or already in-flight (race condition guard)
+  if (_odds404Dates.has(isoDate) || _oddsPendingDates.has(isoDate)) {
+    return fetchStoredOdds(isoDate);
+  }
   if (cfg.oddsGistId) {
+    _oddsPendingDates.add(isoDate); // synchronous — must happen before any await
     try {
       const r = await fetch(
         `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/locked-odds-${isoDate}.json`,
@@ -3777,11 +3782,13 @@ async function fetchOddsForDate(isoDate) {
       );
       if (r.ok) {
         const data = await r.json();
+        _oddsPendingDates.delete(isoDate);
         if (Array.isArray(data) && data.length) return oddsApiToCompact(data);
       } else if (r.status === 404) {
         _odds404Dates.add(isoDate);
       }
     } catch {}
+    _oddsPendingDates.delete(isoDate);
   }
   return fetchStoredOdds(isoDate);
 }
@@ -4035,11 +4042,13 @@ function onDateChange() {
 let mlbLoaded = false;
 
 function setSport(sport) {
+  console.log(`[setSport] called with sport="${sport}", mlbLoaded=${mlbLoaded}`);
   document.querySelectorAll('.sp-tab').forEach(el =>
     el.classList.toggle('active', el.dataset.sport === sport)
   );
   document.getElementById('ncaab-view').style.display = sport === 'ncaab' ? '' : 'none';
   document.getElementById('mlb-view').style.display   = sport === 'mlb'   ? '' : 'none';
+  console.log(`[setSport] about to check mlbRefresh: sport=${sport} mlbLoaded=${mlbLoaded}`);
   if (sport === 'mlb' && !mlbLoaded) mlbRefresh();
 }
 
