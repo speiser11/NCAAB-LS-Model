@@ -4120,6 +4120,7 @@ async function loadMLBESPN(dateStr) {
 }
 
 function renderMLB() {
+  console.log(`[MLB] renderMLB: ${mlbGameList.length} games, offenseMap size=${mlbOffenseMap.size}, pitcherMap size=${mlbPitcherMap.size}`);
   const el = document.getElementById('mlb-game-list');
   if (!el) return;
   if (!mlbGameList.length) {
@@ -4349,10 +4350,10 @@ async function loadMLBOffense() {
 // Returns (wRC+ − 100) / 20: avg = 0, +20 pts above avg = +1.0, −20 pts = −1.0
 // Also returns raw wRC+ for display
 function rateOffense(teamName, pitcherHand) {
+  const key = teamName ? normMLBTeam(teamName) : null;
+  const entry = key ? mlbOffenseMap.get(key) : null;
+  console.log(`[MLB] rateOffense: team="${teamName}" key="${key}" hand=${pitcherHand} mapSize=${mlbOffenseMap.size} → ${!teamName ? 'NO_TEAM' : !pitcherHand ? 'NO_HAND' : entry ? 'HIT' : 'MISS'}`);
   if (!teamName || !pitcherHand) return null;
-  const key = normMLBTeam(teamName);
-  const entry = mlbOffenseMap.get(key);
-  console.log(`[MLB] rateOffense lookup: "${teamName}" → key="${key}" → ${entry ? 'HIT' : 'MISS'} (hand=${pitcherHand})`);
   if (!entry) return null;
   const wrc = pitcherHand === 'L' ? entry.wrcVsL : entry.wrcVsR;
   if (wrc == null) return null;
