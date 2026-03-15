@@ -992,6 +992,8 @@ input[type=date] {
 .mlb-quality-pos{color:var(--green);background:rgba(46,204,113,.1);}
 .mlb-quality-neg{color:var(--red);background:rgba(224,82,82,.1);}
 .mlb-quality-neu{color:var(--muted);background:var(--surface2);}
+.mlb-opp-pos{color:var(--red);}   /* strong offense vs this pitcher — bad for pitcher */
+.mlb-opp-neg{color:var(--green);} /* weak offense vs this pitcher — good for pitcher */
 .mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
 </style>
 </head>
@@ -4056,7 +4058,7 @@ async function mlbRefresh() {
   if (el) el.innerHTML = '<div class="loading">Loading…</div>';
   const dateStr = mlbGetDateStr();
   try {
-    await loadMLBESPN(dateStr);
+    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense()]);
     await loadMLBPitchers(dateStr);
   } catch(e) {
     setSt('st-mlb-games', 'Games: error', 'err');
@@ -4149,7 +4151,7 @@ function renderMLB() {
     const pitchKey  = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
     const pitchers  = mlbPitcherMap.get(pitchKey) || {};
 
-    const pitcherSlot = (side, p) => {
+    const pitcherSlot = (side, p, oppTeam) => {
       const sv = (v) => v != null ? v : '—';
       const ph = (v) => v != null ? '' : ' ph';
       const score = ratePitcher(p);
@@ -4158,6 +4160,9 @@ function renderMLB() {
         return `<span class="mlb-quality ${cls}">${score > 0 ? '+' : ''}${score.toFixed(2)}</span>`;
       })();
       const handBadge = p?.hand ? `<span class="mlb-hand">(${p.hand})</span>` : '';
+      // Opposing offense vs this pitcher's hand
+      const off = rateOffense(oppTeam, p?.hand);
+      const oppCls = off ? (off.wrc > 105 ? ' mlb-opp-pos' : off.wrc < 95 ? ' mlb-opp-neg' : '') : '';
       return `
       <div class="mlb-pitcher">
         <div class="mlb-pitcher-side">${side} SP</div>
@@ -4169,6 +4174,7 @@ function renderMLB() {
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">K/9</span><span class="mlb-pitcher-stat-val${ph(p?.k9)}">${sv(p?.k9)}</span></div>
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">BB/9</span><span class="mlb-pitcher-stat-val${ph(p?.bb9)}">${sv(p?.bb9)}</span></div>
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val${ph(p?.ip)}">${sv(p?.ip)}</span></div>
+          <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">OPP</span><span class="mlb-pitcher-stat-val${off ? oppCls : ' ph'}">${off ? `${off.wrc} wRC+` : '—'}</span></div>
         </div>
       </div>`;
     };
@@ -4199,9 +4205,9 @@ function renderMLB() {
           <div class="mlb-lines-val">—</div>
         </div>
         <div class="mlb-pitchers">
-          ${pitcherSlot('Away', pitchers.away)}
+          ${pitcherSlot('Away', pitchers.away, g.home)}
           <div class="mlb-pitcher-div"></div>
-          ${pitcherSlot('Home', pitchers.home)}
+          ${pitcherSlot('Home', pitchers.home, g.away)}
         </div>
       </div>`;
   }).join('');
@@ -4272,6 +4278,52 @@ async function loadMLBPitchers(dateStr) {
   } catch(e) {
     console.warn('loadMLBPitchers failed:', e.message);
   }
+}
+
+// ── MLB team offense splits vs handedness (FanGraphs) ────────────────────────
+let mlbOffenseMap = new Map(); // normalized team name → { wrcVsL, wrcVsR }
+
+async function loadMLBOffense() {
+  try {
+    const r = await fetch(
+      'https://www.fangraphs.com/api/leaders/splits/splits-leaders' +
+      '?strPlayerId=&statGroup=hitting&startDate=2025-03-01&endDate=2025-09-30' +
+      '&players=&metric=season&split=vh&season=2025&splitTeams=true&statType=team' +
+      '&sortDir=default&sortStat=WAR&playerCount=250&_=1',
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!r.ok) throw new Error(`FanGraphs ${r.status}`);
+    const d = await r.json();
+    mlbOffenseMap = new Map();
+    const rows = Array.isArray(d) ? d : (d.data || d.Data || []);
+    for (const row of rows) {
+      const teamName  = row.TeamName || row.Team || row.team || row.Tm || '';
+      const splitType = String(row.split_type || row.splitType || row.Split || row.split || '').toLowerCase();
+      // wRC+ field name varies across FanGraphs API versions
+      const wrc = row['wRC+'] ?? row.wRCPlus ?? row['WRC+'] ?? row.wrc_plus ?? null;
+      if (!teamName || wrc == null) continue;
+      const key   = normMLBTeam(teamName);
+      const entry = mlbOffenseMap.get(key) || {};
+      // split=vh returns "vs L" (vs LHP) and "vs R" (vs RHP) rows
+      if (splitType.includes('l'))      entry.wrcVsL = parseFloat(wrc);
+      else if (splitType.includes('r')) entry.wrcVsR = parseFloat(wrc);
+      mlbOffenseMap.set(key, entry);
+    }
+  } catch(e) {
+    console.warn('loadMLBOffense failed:', e.message);
+  }
+}
+
+// Offensive rating vs pitcher handedness
+// Returns (wRC+ − 100) / 20: avg = 0, +20 pts above avg = +1.0, −20 pts = −1.0
+// Also returns raw wRC+ for display
+function rateOffense(teamName, pitcherHand) {
+  if (!teamName || !pitcherHand) return null;
+  const entry = mlbOffenseMap.get(normMLBTeam(teamName));
+  if (!entry) return null;
+  const wrc = pitcherHand === 'L' ? entry.wrcVsL : entry.wrcVsR;
+  if (wrc == null) return null;
+  return { wrc: Math.round(wrc), score: Math.round((wrc - 100) / 20 * 100) / 100 };
 }
 
 // ── MLB pipeline stubs (future expansion) ────────────────────────────────────
