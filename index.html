@@ -1020,8 +1020,8 @@ input[type=date] {
 </div>
 
 <div class="sport-nav" id="sport-nav">
-  <button class="sp-tab active" data-sport="ncaab" onclick="setSport('ncaab')">NCAAB</button>
-  <button class="sp-tab" data-sport="mlb" onclick="setSport('mlb')">MLB</button>
+  <button class="sp-tab active" data-sport="ncaab">NCAAB</button>
+  <button class="sp-tab" data-sport="mlb">MLB</button>
 </div>
 
 <div id="ncaab-view">
@@ -4048,9 +4048,14 @@ function setSport(sport) {
   );
   document.getElementById('ncaab-view').style.display = sport === 'ncaab' ? '' : 'none';
   document.getElementById('mlb-view').style.display   = sport === 'mlb'   ? '' : 'none';
-  console.log(`[setSport] about to check mlbRefresh: sport=${sport} mlbLoaded=${mlbLoaded}`);
   if (sport === 'mlb' && !mlbLoaded) mlbRefresh();
 }
+window.setSport = setSport; // explicit global in case inline onclick has scope issues
+
+// Attach sport tab clicks via addEventListener (reliable regardless of onclick scope)
+document.querySelectorAll('.sp-tab').forEach(btn => {
+  btn.addEventListener('click', () => setSport(btn.dataset.sport));
+});
 
 // ── MLB data ─────────────────────────────────────────────────────────────────
 const MLB_ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard';
