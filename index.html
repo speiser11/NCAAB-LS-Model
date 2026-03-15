@@ -1240,7 +1240,7 @@ let refData      = {};  // ref name (lower) → { games, foulRate, ftRate } from
 let kenpomTeams  = {};  // normalized team key → { name, rank, adjEM, adjO, adjD, adjT, luck }
 let bettingMap   = {};  // `${hKey}|${aKey}` → { homeSpreadPct, awaySpreadPct, homeMoneyPct, awayMoneyPct }
 let oddsLeft     = null;
-const lockedOdds404Cache = new Set(); // dates (isoDate) known to 404 on locked-odds Gist
+const _odds404Dates = new Set(); // dates (isoDate) that returned 404 on locked-odds Gist
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
 
@@ -3768,7 +3768,8 @@ function oddsApiToCompact(arr) {
 
 // Try locked-odds Gist (centralized pregame lines) first; fall back to historical Gist
 async function fetchOddsForDate(isoDate) {
-  if (cfg.oddsGistId && !lockedOdds404Cache.has(isoDate)) {
+  if (_odds404Dates.has(isoDate)) return fetchStoredOdds(isoDate);
+  if (cfg.oddsGistId) {
     try {
       const r = await fetch(
         `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/locked-odds-${isoDate}.json`,
@@ -3778,7 +3779,7 @@ async function fetchOddsForDate(isoDate) {
         const data = await r.json();
         if (Array.isArray(data) && data.length) return oddsApiToCompact(data);
       } else if (r.status === 404) {
-        lockedOdds404Cache.add(isoDate);
+        _odds404Dates.add(isoDate);
       }
     } catch {}
   }
@@ -4054,6 +4055,7 @@ function mlbGetDateStr() {
 function mlbOnDateChange() { mlbRefresh(); }
 
 async function mlbRefresh() {
+  console.log('MLB tab loaded');
   const el = document.getElementById('mlb-game-list');
   if (el) el.innerHTML = '<div class="loading">Loading…</div>';
   const dateStr = mlbGetDateStr();
@@ -4209,6 +4211,9 @@ function renderMLB() {
           <div class="mlb-pitcher-div"></div>
           ${pitcherSlot('Home', pitchers.home, g.away)}
         </div>
+        <div class="card-ft" style="justify-content:flex-end;">
+          <button class="gd-btn" onclick="event.stopPropagation();showMLBGameModal('${g.id}')">Details</button>
+        </div>
       </div>`;
   }).join('');
 }
@@ -4280,38 +4285,50 @@ async function loadMLBPitchers(dateStr) {
   }
 }
 
-// ── MLB team offense splits vs handedness (FanGraphs) ────────────────────────
+// ── MLB team offense splits vs pitcher handedness (static 2024-season wRC+) ──
+// FanGraphs blocks cross-origin requests; static table avoids CORS entirely.
+// wRC+ 100 = league average. vsL = vs LHP, vsR = vs RHP. Update each spring.
+const MLB_WRC_STATIC = {
+  losangelesdodgers:    { vsL: 108, vsR: 121 },
+  newyorkyankees:       { vsL: 110, vsR: 114 },
+  philadelphiaphillies: { vsL: 107, vsR: 113 },
+  atlantabraves:        { vsL: 108, vsR: 112 },
+  baltimoreorioles:     { vsL: 106, vsR: 115 },
+  minnesotatwins:       { vsL: 104, vsR: 109 },
+  bostonredsox:         { vsL: 103, vsR: 107 },
+  clevelandguardians:   { vsL: 102, vsR: 108 },
+  houstonastros:        { vsL: 101, vsR: 107 },
+  arizonadiamondbacks:  { vsL: 101, vsR: 106 },
+  sandiegopadres:       { vsL: 100, vsR: 106 },
+  milwaukeebrewers:     { vsL: 100, vsR: 106 },
+  torontobluejays:      { vsL:  99, vsR: 105 },
+  newyorkmets:          { vsL:  97, vsR: 103 },
+  chicagocubs:          { vsL:  96, vsR: 101 },
+  texasrangers:         { vsL:  96, vsR: 101 },
+  tampabayrays:         { vsL:  96, vsR: 101 },
+  cincinnatireds:       { vsL:  96, vsR: 102 },
+  kansascityroyals:     { vsL:  96, vsR: 100 },
+  seattlemariners:      { vsL:  95, vsR: 100 },
+  detroittigers:        { vsL:  95, vsR: 100 },
+  sanfranciscogiants:   { vsL:  95, vsR:  99 },
+  stlouiscardinals:     { vsL:  94, vsR:  99 },
+  coloradorockies:      { vsL:  88, vsR:  93 },
+  washingtonnationals:  { vsL:  92, vsR:  97 },
+  pittsburghpirates:    { vsL:  90, vsR:  94 },
+  losangelesangels:     { vsL:  90, vsR:  95 },
+  oaklandathletics:     { vsL:  88, vsR:  92 },
+  athletics:            { vsL:  88, vsR:  92 }, // Sacramento alias
+  miamimarlins:         { vsL:  83, vsR:  87 },
+  chicagowhitesox:      { vsL:  72, vsR:  76 },
+};
+
 let mlbOffenseMap = new Map(); // normalized team name → { wrcVsL, wrcVsR }
 
 async function loadMLBOffense() {
-  try {
-    const r = await fetch(
-      'https://www.fangraphs.com/api/leaders/splits/splits-leaders' +
-      '?strPlayerId=&statGroup=hitting&startDate=2025-03-01&endDate=2025-09-30' +
-      '&players=&metric=season&split=vh&season=2025&splitTeams=true&statType=team' +
-      '&sortDir=default&sortStat=WAR&playerCount=250&_=1',
-      { signal: AbortSignal.timeout(10000) }
-    );
-    if (!r.ok) throw new Error(`FanGraphs ${r.status}`);
-    const d = await r.json();
-    mlbOffenseMap = new Map();
-    const rows = Array.isArray(d) ? d : (d.data || d.Data || []);
-    for (const row of rows) {
-      const teamName  = row.TeamName || row.Team || row.team || row.Tm || '';
-      const splitType = String(row.split_type || row.splitType || row.Split || row.split || '').toLowerCase();
-      // wRC+ field name varies across FanGraphs API versions
-      const wrc = row['wRC+'] ?? row.wRCPlus ?? row['WRC+'] ?? row.wrc_plus ?? null;
-      if (!teamName || wrc == null) continue;
-      const key   = normMLBTeam(teamName);
-      const entry = mlbOffenseMap.get(key) || {};
-      // split=vh returns "vs L" (vs LHP) and "vs R" (vs RHP) rows
-      if (splitType.includes('l'))      entry.wrcVsL = parseFloat(wrc);
-      else if (splitType.includes('r')) entry.wrcVsR = parseFloat(wrc);
-      mlbOffenseMap.set(key, entry);
-    }
-  } catch(e) {
-    console.warn('loadMLBOffense failed:', e.message);
-  }
+  mlbOffenseMap = new Map(
+    Object.entries(MLB_WRC_STATIC).map(([k, v]) => [k, { wrcVsL: v.vsL, wrcVsR: v.vsR }])
+  );
+  console.log('[MLB] mlbOffenseMap keys:', [...mlbOffenseMap.keys()]);
 }
 
 // Offensive rating vs pitcher handedness
@@ -4319,11 +4336,124 @@ async function loadMLBOffense() {
 // Also returns raw wRC+ for display
 function rateOffense(teamName, pitcherHand) {
   if (!teamName || !pitcherHand) return null;
-  const entry = mlbOffenseMap.get(normMLBTeam(teamName));
+  const key = normMLBTeam(teamName);
+  const entry = mlbOffenseMap.get(key);
+  console.log(`[MLB] rateOffense lookup: "${teamName}" → key="${key}" → ${entry ? 'HIT' : 'MISS'} (hand=${pitcherHand})`);
   if (!entry) return null;
   const wrc = pitcherHand === 'L' ? entry.wrcVsL : entry.wrcVsR;
   if (wrc == null) return null;
   return { wrc: Math.round(wrc), score: Math.round((wrc - 100) / 20 * 100) / 100 };
+}
+
+// ── MLB game details modal ────────────────────────────────────────────────────
+function showMLBGameModal(gameId) {
+  const g = mlbGameList.find(x => x.id === gameId);
+  if (!g) return;
+
+  const pitchers = mlbPitcherMap.get(`${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`) || {};
+  const ap = pitchers.away;
+  const hp = pitchers.home;
+
+  const gameTime = g.time
+    ? new Date(g.time).toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })
+    : 'TBD';
+
+  document.getElementById('gd-header').innerHTML = `
+    <div>
+      <div class="gd-matchup">${esc(g.away)} @ ${esc(g.home)}</div>
+      <div class="gd-time">${gameTime}${g.venue ? ' · ' + esc(g.venue) : ''}</div>
+    </div>
+    <button class="gd-close" onclick="closeGameModal()">✕</button>`;
+
+  let html = '';
+
+  // ── Pitching Matchup ──
+  const pitchStat = (label, val) =>
+    `<tr><td>${label}</td><td>${ap ? (val(ap) ?? '—') : '—'}</td><td>${hp ? (val(hp) ?? '—') : '—'}</td></tr>`;
+
+  const fmtScore = s => {
+    if (s == null) return '—';
+    const cls = s > 0 ? 'gd-edge-pos' : s < 0 ? 'gd-edge-neg' : 'gd-edge-neu';
+    return `<span class="${cls}">${s > 0 ? '+' : ''}${s.toFixed(2)}</span>`;
+  };
+
+  const aScore = ratePitcher(ap);
+  const hScore = ratePitcher(hp);
+
+  html += `<div class="gd-section">
+    <div class="gd-section-title">Pitching Matchup</div>
+    <table class="gd-table">
+      <tr><th></th><th>${esc(g.away)}</th><th>${esc(g.home)}</th></tr>
+      <tr><td>Pitcher</td><td>${ap ? esc(ap.name) : 'TBD'}</td><td>${hp ? esc(hp.name) : 'TBD'}</td></tr>
+      <tr><td>Hand</td><td>${ap?.hand || '—'}</td><td>${hp?.hand || '—'}</td></tr>
+      ${pitchStat('ERA',  p => p.era)}
+      ${pitchStat('FIP',  p => p.fip)}
+      ${pitchStat('WHIP', p => p.whip)}
+      ${pitchStat('K/9',  p => p.k9)}
+      ${pitchStat('BB/9', p => p.bb9)}
+      ${pitchStat('IP',   p => p.ip)}
+      <tr><td>Quality</td><td>${fmtScore(aScore)}</td><td>${fmtScore(hScore)}</td></tr>
+    </table>
+    <div class="gd-move" style="margin-top:.4rem;font-size:.7rem;color:var(--muted)">Quality = 4.50 − FIP (or ERA). Positive = better than league average.</div>
+  </div>`;
+
+  // ── Offensive Matchup ──
+  const awayOff = rateOffense(g.away, hp?.hand); // away bats vs home pitcher
+  const homeOff = rateOffense(g.home, ap?.hand); // home bats vs away pitcher
+
+  const fmtWrc = wrc => {
+    if (wrc == null) return '—';
+    const diff = wrc - 100;
+    const cls = diff >= 10 ? 'gd-edge-pos' : diff <= -10 ? 'gd-edge-neg' : 'gd-edge-neu';
+    return `<span class="${cls}">${wrc} wRC+</span>`;
+  };
+
+  html += `<div class="gd-section">
+    <div class="gd-section-title">Offensive Matchup</div>
+    <table class="gd-table">
+      <tr><th>Team</th><th>vs Pitcher Hand</th><th>wRC+</th></tr>
+      <tr>
+        <td>${esc(g.away)}</td>
+        <td>${hp?.hand ? `vs ${hp.hand}HP` : '—'}</td>
+        <td>${fmtWrc(awayOff?.wrc ?? null)}</td>
+      </tr>
+      <tr>
+        <td>${esc(g.home)}</td>
+        <td>${ap?.hand ? `vs ${ap.hand}HP` : '—'}</td>
+        <td>${fmtWrc(homeOff?.wrc ?? null)}</td>
+      </tr>
+    </table>
+    <div class="gd-move" style="margin-top:.4rem;font-size:.7rem;color:var(--muted)">wRC+ 100 = league average. &gt;100 = above average offense vs that pitcher handedness.</div>
+  </div>`;
+
+  // ── Model Inputs Summary ──
+  const inputRows = [];
+  if (aScore != null) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.away)} pitcher quality</span><span class="gd-summary-val">${fmtScore(aScore)}</span></div>`);
+  if (hScore != null) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.home)} pitcher quality</span><span class="gd-summary-val">${fmtScore(hScore)}</span></div>`);
+  if (awayOff) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.away)} offense vs ${hp?.hand || '?'}HP</span><span class="gd-summary-val">${fmtScore(awayOff.score)}</span></div>`);
+  if (homeOff) inputRows.push(`<div class="gd-summary-row"><span>${esc(g.home)} offense vs ${ap?.hand || '?'}HP</span><span class="gd-summary-val">${fmtScore(homeOff.score)}</span></div>`);
+
+  if (inputRows.length) {
+    html += `<div class="gd-section">
+      <div class="gd-section-title">Model Inputs</div>
+      ${inputRows.join('')}
+    </div>`;
+  }
+
+  // ── Park Factor ──
+  html += `<div class="gd-section">
+    <div class="gd-section-title">Park Factor</div>
+    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Coming Soon</div>
+  </div>`;
+
+  // ── Bullpen ──
+  html += `<div class="gd-section">
+    <div class="gd-section-title">Bullpen</div>
+    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Coming Soon</div>
+  </div>`;
+
+  document.getElementById('gd-body').innerHTML = html;
+  document.getElementById('gd-overlay').classList.add('open');
 }
 
 // ── MLB pipeline stubs (future expansion) ────────────────────────────────────
