@@ -4125,6 +4125,7 @@ function renderMLB() {
     return;
   }
   el.innerHTML = mlbGameList.map(g => {
+    g.parkFactor = getParkFactor(g.home); // stored for use in Details modal
     const live  = g.statusName === 'STATUS_IN_PROGRESS';
     const final = g.statusName === 'STATUS_FINAL';
     const gameTime = g.time
@@ -4297,6 +4298,47 @@ async function loadMLBPitchers(dateStr) {
   }
 }
 
+// ── MLB park factors (Baseball Reference 2024) ───────────────────────────────
+// factor: run index relative to league average (1.00 = avg, 1.10 = +10% runs)
+// handAdj: LHB bonus relative to RHB (positive = more LHB-friendly). Update each spring.
+const MLB_PARK_FACTORS = {
+  coloradorockies:      { name: 'Coors Field',                 factor: 1.18, handAdj:  0.00 },
+  cincinnatireds:       { name: 'Great American Ball Park',    factor: 1.08, handAdj:  0.00 },
+  newyorkyankees:       { name: 'Yankee Stadium',              factor: 1.07, handAdj:  0.04 },
+  bostonredsox:         { name: 'Fenway Park',                 factor: 1.06, handAdj:  0.02 },
+  baltimoreorioles:     { name: 'Oriole Park at Camden Yards', factor: 1.05, handAdj:  0.00 },
+  texasrangers:         { name: 'Globe Life Field',            factor: 1.05, handAdj:  0.00 },
+  chicagocubs:          { name: 'Wrigley Field',               factor: 1.04, handAdj:  0.00 },
+  philadelphiaphillies: { name: 'Citizens Bank Park',          factor: 1.04, handAdj:  0.00 },
+  atlantabraves:        { name: 'Truist Park',                 factor: 1.03, handAdj:  0.00 },
+  arizonadiamondbacks:  { name: 'Chase Field',                 factor: 1.02, handAdj:  0.00 },
+  kansascityroyals:     { name: 'Kauffman Stadium',            factor: 1.02, handAdj:  0.00 },
+  clevelandguardians:   { name: 'Progressive Field',           factor: 1.01, handAdj:  0.00 },
+  milwaukeebrewers:     { name: 'American Family Field',       factor: 1.01, handAdj:  0.00 },
+  detroittigers:        { name: 'Comerica Park',               factor: 1.01, handAdj:  0.00 },
+  chicagowhitesox:      { name: 'Guaranteed Rate Field',       factor: 1.01, handAdj:  0.00 },
+  minnesotatwins:       { name: 'Target Field',                factor: 1.00, handAdj:  0.00 },
+  torontobluejays:      { name: 'Rogers Centre',               factor: 1.00, handAdj:  0.00 },
+  houstonastros:        { name: 'Minute Maid Park',            factor: 1.00, handAdj:  0.00 },
+  losangelesangels:     { name: 'Angel Stadium',               factor: 1.00, handAdj:  0.00 },
+  stlouiscardinals:     { name: 'Busch Stadium',               factor: 0.99, handAdj:  0.00 },
+  newyorkmets:          { name: 'Citi Field',                  factor: 0.98, handAdj:  0.00 },
+  washingtonnationals:  { name: 'Nationals Park',              factor: 0.98, handAdj:  0.00 },
+  losangelesdodgers:    { name: 'Dodger Stadium',              factor: 0.97, handAdj:  0.00 },
+  pittsburghpirates:    { name: 'PNC Park',                    factor: 0.97, handAdj:  0.00 },
+  miamimarlins:         { name: 'loanDepot Park',              factor: 0.97, handAdj:  0.00 },
+  oaklandathletics:     { name: 'Sutter Health Park',          factor: 0.97, handAdj:  0.00 },
+  athletics:            { name: 'Sutter Health Park',          factor: 0.97, handAdj:  0.00 },
+  seattlemariners:      { name: 'T-Mobile Park',               factor: 0.96, handAdj:  0.00 },
+  tampabayrays:         { name: 'Tropicana Field',             factor: 0.94, handAdj:  0.00 },
+  sandiegopadres:       { name: 'Petco Park',                  factor: 0.94, handAdj:  0.00 },
+  sanfranciscogiants:   { name: 'Oracle Park',                 factor: 0.93, handAdj: -0.02 },
+};
+
+function getParkFactor(homeTeam) {
+  return (homeTeam && MLB_PARK_FACTORS[normMLBTeam(homeTeam)]) || { name: 'Unknown', factor: 1.00, handAdj: 0 };
+}
+
 // ── MLB team offense splits vs pitcher handedness (static 2024-season wRC+) ──
 // FanGraphs blocks cross-origin requests; static table avoids CORS entirely.
 // wRC+ 100 = league average. vsL = vs LHP, vsR = vs RHP. Update each spring.
@@ -4458,9 +4500,22 @@ function showMLBGameModal(gameId) {
   }
 
   // ── Park Factor ──
+  const pf    = g.parkFactor || getParkFactor(g.home);
+  const pfPct = Math.round((pf.factor - 1) * 100);
+  const pfLabel = pfPct >  3 ? `Hitter-friendly (+${pfPct}%)`
+                : pfPct < -3 ? `Pitcher-friendly (${pfPct}%)`
+                :               `Neutral (${pfPct >= 0 ? '+' : ''}${pfPct}%)`;
+  const pfColor = pfPct >  3 ? 'var(--red)'
+                : pfPct < -3 ? 'var(--green)'
+                :               'var(--muted)';
   html += `<div class="gd-section">
     <div class="gd-section-title">Park Factor</div>
-    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Coming Soon</div>
+    <table class="gd-table">
+      <tr><td>Ballpark</td><td>${esc(pf.name)}</td></tr>
+      <tr><td>Run Factor</td><td>${pf.factor.toFixed(2)}</td></tr>
+      <tr><td>Environment</td><td><span style="color:${pfColor};font-weight:600">${pfLabel}</span></td></tr>
+      ${Math.abs(pf.handAdj) > 0.01 ? `<tr><td>Handedness</td><td style="color:var(--muted)">${pf.handAdj > 0 ? 'Favors lefties' : 'Favors righties'} (${pf.handAdj > 0 ? '+' : ''}${Math.round(pf.handAdj * 100)}%)</td></tr>` : ''}
+    </table>
   </div>`;
 
   // ── Bullpen ──
