@@ -4143,10 +4143,19 @@ function renderMLB() {
     const wp = predictMLBWinProb(g, pitchers);
     g.homeWinProb = wp.homeWinProb;
     g.awayWinProb = wp.awayWinProb;
+    g.runDiff     = wp.runDiff;
     const oddsKey = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
     g.mlbOdds = mlbOddsMap.get(oddsKey) || null;
     g.homeEdge = g.mlbOdds?.homeML != null
       ? Math.round((g.homeWinProb / 100 - mlAmericanToProb(g.mlbOdds.homeML)) * 100)
+      : null;
+    // Run line edge
+    const homeFavored  = g.homeWinProb >= g.awayWinProb;
+    const modelCover   = calcRunLineCoverProb(g.runDiff, homeFavored);
+    g.rlFavTeam        = homeFavored ? g.home : g.away;
+    g.rlModelCoverPct  = Math.round(modelCover * 100);
+    g.runLineEdge      = g.mlbOdds?.rlFavML != null
+      ? Math.round((modelCover - mlAmericanToProb(g.mlbOdds.rlFavML)) * 100)
       : null;
     const live  = g.statusName === 'STATUS_IN_PROGRESS';
     const final = g.statusName === 'STATUS_FINAL';
@@ -4242,11 +4251,15 @@ function renderMLB() {
           <div class="mlb-lines-hd">F5 Line</div>
           <div class="mlb-lines-hd">Total</div>
           <div class="mlb-lines-lbl">Model</div>
-          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val">${g.runLineEdge != null
+            ? `<span class="mlb-edge-badge ${g.runLineEdge > 3 ? 'mlb-edge-pos' : g.runLineEdge < -3 ? 'mlb-edge-neg' : 'mlb-edge-neu'}">${g.runLineEdge > 0 ? '+' : ''}${g.runLineEdge}%</span>`
+            : `<span style="color:var(--muted);font-size:.68rem">${g.rlModelCoverPct}%</span>`}</div>
           <div class="mlb-lines-val">—</div>
           <div class="mlb-lines-val" style="color:var(--blue);font-weight:600">${g.proj.total.toFixed(1)}</div>
           <div class="mlb-lines-lbl">Vegas</div>
-          <div class="mlb-lines-val">—</div>
+          <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.mlbOdds?.rlFavTeam
+            ? `${esc(g.mlbOdds.rlFavTeam.split(' ').pop())} -1.5`
+            : '—'}</div>
           <div class="mlb-lines-val">—</div>
           <div class="mlb-lines-val">—</div>
         </div>
@@ -4473,7 +4486,16 @@ function predictMLBWinProb(g, pitchers) {
   return {
     homeWinProb: Math.round(homeWinProb * 100),
     awayWinProb: Math.round((1 - homeWinProb) * 100),
+    runDiff, // raw run differential — used for run line cover probability
   };
+}
+
+// Probability the favored team covers -1.5 run line
+// homeFavored=true  → P(home wins by 2+) using home runDiff
+// homeFavored=false → P(away wins by 2+) using away runDiff
+function calcRunLineCoverProb(runDiff, homeFavored) {
+  const favoredDiff = homeFavored ? runDiff : -runDiff;
+  return 1 / (1 + Math.exp(-(favoredDiff - 1.5) * 0.45));
 }
 
 // Convert American moneyline to implied probability (vig-inclusive)
@@ -4498,12 +4520,23 @@ async function loadMLBOdds() {
     const data = await r.json();
     mlbOddsMap = new Map();
     for (const game of (Array.isArray(data) ? data : [])) {
-      const h2h = game.bookmakers?.[0]?.markets?.find(m => m.key === 'h2h');
+      const markets = game.bookmakers?.[0]?.markets ?? [];
+      const h2h     = markets.find(m => m.key === 'h2h');
+      const spreads = markets.find(m => m.key === 'spreads');
       if (!h2h) continue;
-      const homeOut = h2h.outcomes.find(o => o.name === game.home_team);
-      const awayOut = h2h.outcomes.find(o => o.name === game.away_team);
+      const homeOut   = h2h.outcomes.find(o => o.name === game.home_team);
+      const awayOut   = h2h.outcomes.find(o => o.name === game.away_team);
+      // Run line: find the -1.5 side (the favored team) and +1.5 side
+      const rlFavOut  = spreads?.outcomes?.find(o => o.point === -1.5);
+      const rlDogOut  = spreads?.outcomes?.find(o => o.point ===  1.5);
       const key = `${normMLBTeam(game.home_team)}|${normMLBTeam(game.away_team)}`;
-      mlbOddsMap.set(key, { homeML: homeOut?.price ?? null, awayML: awayOut?.price ?? null });
+      mlbOddsMap.set(key, {
+        homeML:    homeOut?.price  ?? null,
+        awayML:    awayOut?.price  ?? null,
+        rlFavTeam: rlFavOut?.name  ?? null, // team name on the -1.5 side
+        rlFavML:   rlFavOut?.price ?? null, // odds on favorite covering -1.5
+        rlDogML:   rlDogOut?.price ?? null, // odds on dog covering +1.5
+      });
     }
     setSt('st-mlb-odds', `Odds: ${mlbOddsMap.size} games`, mlbOddsMap.size ? 'ok' : 'warn');
   } catch(e) {
@@ -4640,10 +4673,11 @@ function showMLBGameModal(gameId) {
     const cls = e > 3 ? 'gd-edge-pos' : e < -3 ? 'gd-edge-neg' : 'gd-edge-neu';
     return ` <span class="${cls}">(${e > 0 ? '+' : ''}${e}% edge)</span>`;
   };
+  const rlVegasCoverProb = g.mlbOdds?.rlFavML != null ? mlAmericanToProb(g.mlbOdds.rlFavML) : null;
   html += `<div class="gd-section">
     <div class="gd-section-title">Win Probability</div>
     <table class="gd-table">
-      <tr><th>Team</th><th>Model</th><th>Vegas</th></tr>
+      <tr><th>Team</th><th>Model</th><th>Vegas ML</th></tr>
       <tr>
         <td>${esc(g.away)}</td>
         <td>${g.awayWinProb}%</td>
@@ -4656,10 +4690,27 @@ function showMLBGameModal(gameId) {
       </tr>
     </table>
     ${g.homeEdge != null ? `<div class="gd-summary-row" style="margin-top:.5rem">
-      <span>Model edge</span>
+      <span>ML edge</span>
       <span class="gd-summary-val">${g.homeEdge > 0 ? '+' : ''}${g.homeEdge}% on ${esc(g.homeEdge >= 0 ? g.home : g.away)}${wpFmtEdge(g.homeEdge)}</span>
-    </div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas ML available for edge calculation.</div>'}
-    ${g.mlbOdds ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas ML: ${esc(g.away)} ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML} · ${esc(g.home)} ${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML}</div>` : ''}
+    </div>` : ''}
+    ${g.mlbOdds ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas ML: ${esc(g.away)} ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML ?? '—'} · ${esc(g.home)} ${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML ?? '—'}</div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas odds available.</div>'}
+  </div>
+
+  <div class="gd-section">
+    <div class="gd-section-title">Run Line (-1.5)</div>
+    <table class="gd-table">
+      <tr><th></th><th>Model cover%</th><th>Vegas implied%</th></tr>
+      <tr>
+        <td>${esc(g.rlFavTeam)} -1.5</td>
+        <td>${g.rlModelCoverPct}%</td>
+        <td>${rlVegasCoverProb != null ? Math.round(rlVegasCoverProb * 100) + '%' : '—'}</td>
+      </tr>
+    </table>
+    ${g.runLineEdge != null ? `<div class="gd-summary-row" style="margin-top:.5rem">
+      <span>Run line edge</span>
+      <span class="gd-summary-val"><span class="${g.runLineEdge > 3 ? 'gd-edge-pos' : g.runLineEdge < -3 ? 'gd-edge-neg' : 'gd-edge-neu'}">${g.runLineEdge > 0 ? '+' : ''}${g.runLineEdge}%</span> on ${esc(g.rlFavTeam)} -1.5</span>
+    </div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas run line available.</div>'}
+    ${g.mlbOdds?.rlFavML != null ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas: ${esc(g.rlFavTeam)} -1.5 (${g.mlbOdds.rlFavML > 0 ? '+' : ''}${g.mlbOdds.rlFavML}) · dog +1.5 (${g.mlbOdds.rlDogML > 0 ? '+' : ''}${g.mlbOdds.rlDogML ?? '—'})</div>` : ''}
   </div>`;
 
   // ── Bullpen ──
