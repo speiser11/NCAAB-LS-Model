@@ -1001,6 +1001,7 @@ input[type=date] {
 .mlb-wp-pct.wp-fav{color:var(--blue);}
 .mlb-wp-name{font-family:'Inter',sans-serif;font-size:.6rem;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:7rem;}
 .mlb-wp-sep{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);}
+.mlb-wp-ml{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:500;color:var(--muted);opacity:.8;}
 .mlb-edge-row{display:flex;justify-content:flex-end;padding:.15rem 1.15rem .35rem;border-bottom:1px solid var(--border);}
 .mlb-edge-badge{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:600;padding:.1rem .4rem;border-radius:4px;}
 .mlb-edge-pos{color:var(--green);background:rgba(46,204,113,.1);}
@@ -4141,9 +4142,11 @@ function renderMLB() {
     const pitchers = mlbPitcherMap.get(pitchKey) || {};
     g.proj = calcMLBTotal(g, pitchers);
     const wp = predictMLBWinProb(g, pitchers);
-    g.homeWinProb = wp.homeWinProb;
-    g.awayWinProb = wp.awayWinProb;
-    g.runDiff     = wp.runDiff;
+    g.homeWinProb  = wp.homeWinProb;
+    g.awayWinProb  = wp.awayWinProb;
+    g.runDiff      = wp.runDiff;
+    g.homeModelML  = probToML(wp.homeWinProb / 100);
+    g.awayModelML  = probToML(wp.awayWinProb / 100);
     const oddsKey = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
     g.mlbOdds = mlbOddsMap.get(oddsKey) || null;
     g.homeEdge = g.mlbOdds?.homeML != null
@@ -4235,12 +4238,12 @@ function renderMLB() {
         ${scoreHtml}
         <div class="mlb-wp-row">
           <div class="mlb-wp-team">
-            <span class="mlb-wp-pct${g.awayWinProb > g.homeWinProb ? ' wp-fav' : ''}">${g.awayWinProb}%</span>
+            <span class="mlb-wp-pct${g.awayWinProb > g.homeWinProb ? ' wp-fav' : ''}">${g.awayWinProb}% <span class="mlb-wp-ml">${g.awayModelML}</span></span>
             <span class="mlb-wp-name">${esc(g.away)}</span>
           </div>
-          <span class="mlb-wp-sep">Win%</span>
+          <span class="mlb-wp-sep">Model</span>
           <div class="mlb-wp-team">
-            <span class="mlb-wp-pct${g.homeWinProb > g.awayWinProb ? ' wp-fav' : ''}">${g.homeWinProb}%</span>
+            <span class="mlb-wp-pct${g.homeWinProb > g.awayWinProb ? ' wp-fav' : ''}">${g.homeWinProb}% <span class="mlb-wp-ml">${g.homeModelML}</span></span>
             <span class="mlb-wp-name">${esc(g.home)}</span>
           </div>
         </div>
@@ -4504,6 +4507,13 @@ function mlAmericanToProb(ml) {
   return ml > 0 ? 100 / (ml + 100) : (-ml) / (-ml + 100);
 }
 
+// Convert win probability to American moneyline
+function probToML(prob) {
+  if (prob == null) return null;
+  if (prob >= 0.5) return Math.round(-(prob / (1 - prob)) * 100);
+  return '+' + Math.round(((1 - prob) / prob) * 100);
+}
+
 // ── MLB odds (h2h moneylines from centralized Gist) ──────────────────────────
 let mlbOddsMap = new Map(); // "normHome|normAway" → { homeML, awayML }
 
@@ -4674,26 +4684,33 @@ function showMLBGameModal(gameId) {
     return ` <span class="${cls}">(${e > 0 ? '+' : ''}${e}% edge)</span>`;
   };
   const rlVegasCoverProb = g.mlbOdds?.rlFavML != null ? mlAmericanToProb(g.mlbOdds.rlFavML) : null;
+  const fmtML   = ml => ml != null ? (ml > 0 ? '+' + ml : '' + ml) : '—';
+  const edgePct = (modelP, vegasP) => {
+    if (modelP == null || vegasP == null) return '—';
+    const e = Math.round((modelP - vegasP) * 100);
+    const cls = e > 3 ? 'gd-edge-pos' : e < -3 ? 'gd-edge-neg' : 'gd-edge-neu';
+    return `<span class="${cls}">${e > 0 ? '+' : ''}${e}%</span>`;
+  };
   html += `<div class="gd-section">
     <div class="gd-section-title">Win Probability</div>
     <table class="gd-table">
-      <tr><th>Team</th><th>Model</th><th>Vegas ML</th></tr>
+      <tr><th>Team</th><th>Model %</th><th>Model ML</th><th>Vegas ML</th><th>Edge</th></tr>
       <tr>
         <td>${esc(g.away)}</td>
         <td>${g.awayWinProb}%</td>
-        <td>${vegasAwayProb != null ? Math.round(vegasAwayProb * 100) + '%' : '—'}</td>
+        <td>${fmtML(g.awayModelML)}</td>
+        <td>${fmtML(g.mlbOdds?.awayML ?? null)}</td>
+        <td>${edgePct(g.awayWinProb / 100, vegasAwayProb)}</td>
       </tr>
       <tr>
         <td>${esc(g.home)}</td>
         <td>${g.homeWinProb}%</td>
-        <td>${vegasHomeProb != null ? Math.round(vegasHomeProb * 100) + '%' : '—'}</td>
+        <td>${fmtML(g.homeModelML)}</td>
+        <td>${fmtML(g.mlbOdds?.homeML ?? null)}</td>
+        <td>${edgePct(g.homeWinProb / 100, vegasHomeProb)}</td>
       </tr>
     </table>
-    ${g.homeEdge != null ? `<div class="gd-summary-row" style="margin-top:.5rem">
-      <span>ML edge</span>
-      <span class="gd-summary-val">${g.homeEdge > 0 ? '+' : ''}${g.homeEdge}% on ${esc(g.homeEdge >= 0 ? g.home : g.away)}${wpFmtEdge(g.homeEdge)}</span>
-    </div>` : ''}
-    ${g.mlbOdds ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas ML: ${esc(g.away)} ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML ?? '—'} · ${esc(g.home)} ${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML ?? '—'}</div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas odds available.</div>'}
+    ${!g.mlbOdds ? '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas odds available.</div>' : ''}
   </div>
 
   <div class="gd-section">
