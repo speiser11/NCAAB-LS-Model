@@ -4097,7 +4097,7 @@ async function loadMLBESPN(dateStr) {
   try {
     // seasontype=3 is Spring Training; switch to 2 for Regular Season
     const r = await fetch(
-      `${MLB_ESPN_URL}?seasontype=3&dates=${dateStr}`,
+      `${MLB_ESPN_URL}?seasontype=2&dates=${dateStr}`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!r.ok) throw new Error(`ESPN MLB ${r.status}`);
@@ -4740,8 +4740,6 @@ function showMLBGameModal(gameId) {
   document.getElementById('gd-overlay').classList.add('open');
 }
 
-// ── MLB pipeline stubs (future expansion) ────────────────────────────────────
-async function loadMLBOdds()  { /* TODO: fetch MLB odds */ }
 async function loadMLBTeams() { /* TODO: fetch MLB team ratings */ }
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers
