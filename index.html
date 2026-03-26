@@ -4376,6 +4376,7 @@ async function loadMLBPitchers(dateStr) {
       );
       if (sr.ok) {
         const sd = await sr.json();
+        console.log('PEOPLE RESP', JSON.stringify(sd.people?.[0]?.stats?.[0]));
         for (const person of (sd.people || [])) {
           statsById[person.id] = person.stats || [];
         }
