@@ -4307,9 +4307,7 @@ function parsePitcher(p) {
   const parts  = full.trim().split(' ');
   const short  = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
   const season = (p.stats || []).find(s =>
-    s.type?.displayName === 'season' ||
-    s.type?.displayName === 'statSingleSeason' ||
-    s.type?.displayName === 'Single Season'
+    s.group?.displayName === 'pitching' && s.type?.displayName === 'season'
   )?.stats || {};
   const ip     = parseFloat(season.inningsPitched) || 0;
   const eraRaw = season.era  != null ? parseFloat(season.era)  : null;
@@ -4342,27 +4340,58 @@ function ratePitcher(p) {
 async function loadMLBPitchers(dateStr) {
   const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
   try {
+    // Step 1: get schedule + probable pitcher IDs
     const r = await fetch(
-      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&gameType=R` +
-      `&hydrate=probablePitcher,stats(type=statSingleSeason,season=2025,sportId=1)`,
+      `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&gameType=R&hydrate=probablePitcher`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!r.ok) throw new Error(`MLB Stats API ${r.status}`);
     const d = await r.json();
-    mlbPitcherMap = new Map();
+
+    // Collect pitcher IDs and build game stubs
+    const pitcherIds = new Set();
+    const gameStubs = [];
     for (const dateEntry of (d.dates || [])) {
       for (const game of (dateEntry.games || [])) {
-        const awayName = game.teams?.away?.team?.name || '';
-        const homeName = game.teams?.home?.team?.name || '';
-        const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
-        const awayP = game.teams?.away?.probablePitcher;
-        const homeP = game.teams?.home?.probablePitcher;
-        if (awayP) console.log('PITCHER STATS', awayP.fullName, JSON.stringify(awayP.stats?.[0]));
-        mlbPitcherMap.set(key, {
-          away: parsePitcher(awayP),
-          home: parsePitcher(homeP),
+        const awayP = game.teams?.away?.probablePitcher || null;
+        const homeP = game.teams?.home?.probablePitcher || null;
+        if (awayP?.id) pitcherIds.add(awayP.id);
+        if (homeP?.id) pitcherIds.add(homeP.id);
+        gameStubs.push({
+          awayName: game.teams?.away?.team?.name || '',
+          homeName: game.teams?.home?.team?.name || '',
+          awayP, homeP,
         });
       }
+    }
+
+    // Step 2: batch fetch 2025 pitching stats for all pitchers in one request
+    const statsById = {};
+    if (pitcherIds.size > 0) {
+      const ids = [...pitcherIds].join(',');
+      const sr = await fetch(
+        `https://statsapi.mlb.com/api/v1/people?personIds=${ids}` +
+        `&hydrate=stats(group=pitching,type=season,season=2025)`,
+        { signal: AbortSignal.timeout(10000) }
+      );
+      if (sr.ok) {
+        const sd = await sr.json();
+        for (const person of (sd.people || [])) {
+          statsById[person.id] = person.stats || [];
+        }
+      }
+    }
+
+    // Step 3: merge stats into pitcher objects and build map
+    mlbPitcherMap = new Map();
+    for (const { awayName, homeName, awayP, homeP } of gameStubs) {
+      if (awayP?.id) awayP.stats = statsById[awayP.id] || [];
+      if (homeP?.id) homeP.stats = statsById[homeP.id] || [];
+      const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
+      mlbPitcherMap.set(key, {
+        away: parsePitcher(awayP),
+        home: parsePitcher(homeP),
+      });
     }
   } catch(e) {
     console.warn('loadMLBPitchers failed:', e.message);
