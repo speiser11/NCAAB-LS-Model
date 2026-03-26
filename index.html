@@ -4344,7 +4344,7 @@ async function loadMLBPitchers(dateStr) {
   try {
     const r = await fetch(
       `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&gameType=R` +
-      `&hydrate=probablePitcher(stats(type=statSingleSeason,season=2025,group=[pitching]))`,
+      `&hydrate=probablePitcher,stats(type=statSingleSeason,season=2025,sportId=1)`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!r.ok) throw new Error(`MLB Stats API ${r.status}`);
@@ -4357,7 +4357,7 @@ async function loadMLBPitchers(dateStr) {
         const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
         const awayP = game.teams?.away?.probablePitcher;
         const homeP = game.teams?.home?.probablePitcher;
-        if (awayP) console.log('PITCHER STATS', awayP.fullName, awayP.stats);
+        if (awayP) console.log('PITCHER STATS', awayP.fullName, JSON.stringify(awayP.stats?.[0]));
         mlbPitcherMap.set(key, {
           away: parsePitcher(awayP),
           home: parsePitcher(homeP),
