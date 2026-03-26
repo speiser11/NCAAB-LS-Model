@@ -4299,22 +4299,13 @@ function normMLBTeam(name) {
 
 function parsePitcher(p) {
   if (!p) return null;
-  const full  = p.fullName || '';
-  const parts = full.trim().split(' ');
-  const short = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
-
-  // Prefer current season stats; fall back to prior season if current IP = 0
-  const currentSeason = (p.stats || []).find(s => s.type?.displayName === 'season')?.stats || {};
-  const priorSeason   = (p.stats || []).find(s => s.group?.displayName === 'pitching' && s.season === '2025')?.stats
-                     || (p.stats || []).find(s => s.type?.displayName === 'statsSingleSeason')?.stats
-                     || {};
-  const currentIP = parseFloat(currentSeason.inningsPitched) || 0;
-  const season    = currentIP > 0 ? currentSeason : priorSeason;
-  const isFallback = currentIP === 0 && Object.keys(priorSeason).length > 0;
-
+  const full   = p.fullName || '';
+  const parts  = full.trim().split(' ');
+  const short  = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
+  const season = (p.stats || []).find(s => s.type?.displayName === 'season')?.stats || {};
   const ip     = parseFloat(season.inningsPitched) || 0;
-  const eraRaw = season.era != null ? parseFloat(season.era) : null;
-  const fipRaw = season.fip != null ? parseFloat(season.fip) : null;
+  const eraRaw = season.era  != null ? parseFloat(season.era)  : null;
+  const fipRaw = season.fip  != null ? parseFloat(season.fip)  : null;
   return {
     name: short || 'TBD',
     hand: p.pitchHand?.code || null,
@@ -4326,7 +4317,7 @@ function parsePitcher(p) {
     k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
     bb9:  ip > 0 && season.baseOnBalls != null ? (season.baseOnBalls / ip * 9).toFixed(1) : null,
     ip:   season.inningsPitched ?? null,
-    isFallback, // true = showing 2025 stats as proxy
+    isFallback: true,
   };
 }
 
@@ -4345,7 +4336,7 @@ async function loadMLBPitchers(dateStr) {
   try {
     const r = await fetch(
       `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&gameType=R` +
-      `&hydrate=probablePitcher,stats(type=season,sportId=1),stats(type=statsSingleSeason,season=2025,sportId=1)`,
+      `&hydrate=probablePitcher,stats(group=pitching,type=season,season=2025,sportId=1)`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!r.ok) throw new Error(`MLB Stats API ${r.status}`);
