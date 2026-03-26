@@ -4355,9 +4355,12 @@ async function loadMLBPitchers(dateStr) {
         const awayName = game.teams?.away?.team?.name || '';
         const homeName = game.teams?.home?.team?.name || '';
         const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
+        const awayP = game.teams?.away?.probablePitcher;
+        const homeP = game.teams?.home?.probablePitcher;
+        if (awayP) console.log('PITCHER STATS', awayP.fullName, awayP.stats);
         mlbPitcherMap.set(key, {
-          away: parsePitcher(game.teams?.away?.probablePitcher),
-          home: parsePitcher(game.teams?.home?.probablePitcher),
+          away: parsePitcher(awayP),
+          home: parsePitcher(homeP),
         });
       }
     }
