@@ -4378,9 +4378,8 @@ async function loadMLBPitchers(dateStr) {
       );
       if (sr.ok) {
         const sd = await sr.json();
-
         for (const person of (sd.people || [])) {
-          statsById[person.id] = person.stats || [];
+          statsById[person.id] = { stats: person.stats || [], pitchHand: person.pitchHand };
         }
       }
     }
@@ -4388,8 +4387,8 @@ async function loadMLBPitchers(dateStr) {
     // Step 3: merge stats into pitcher objects and build map
     mlbPitcherMap = new Map();
     for (const { awayName, homeName, awayP, homeP } of gameStubs) {
-      if (awayP?.id) awayP.stats = statsById[awayP.id] || [];
-      if (homeP?.id) homeP.stats = statsById[homeP.id] || [];
+      if (awayP?.id) { awayP.stats = statsById[awayP.id]?.stats || []; awayP.pitchHand = awayP.pitchHand || statsById[awayP.id]?.pitchHand; }
+      if (homeP?.id) { homeP.stats = statsById[homeP.id]?.stats || []; homeP.pitchHand = homeP.pitchHand || statsById[homeP.id]?.pitchHand; }
       const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
       mlbPitcherMap.set(key, {
         away: parsePitcher(awayP),
