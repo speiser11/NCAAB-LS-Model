@@ -4152,13 +4152,17 @@ function renderMLB() {
     g.homeEdge = g.mlbOdds?.homeML != null
       ? Math.round((g.homeWinProb / 100 - mlAmericanToProb(g.mlbOdds.homeML)) * 100)
       : null;
-    // Run line edge
-    const homeFavored  = g.homeWinProb >= g.awayWinProb;
-    const modelCover   = calcRunLineCoverProb(g.runDiff, homeFavored);
-    g.rlFavTeam        = homeFavored ? g.home : g.away;
-    g.rlModelCoverPct  = Math.round(modelCover * 100);
-    g.runLineEdge      = g.mlbOdds?.rlFavML != null
-      ? Math.round((modelCover - mlAmericanToProb(g.mlbOdds.rlFavML)) * 100)
+    // Run line edge — use model's favored team's actual run line odds
+    const homeFavored   = g.homeWinProb >= g.awayWinProb;
+    const modelCover    = calcRunLineCoverProb(g.runDiff, homeFavored);
+    g.rlFavTeam         = homeFavored ? g.home : g.away;
+    g.rlModelCoverPct   = Math.round(modelCover * 100);
+    // Find the model's favored team's -1.5 odds (only exists if they have point=-1.5)
+    const modelFavRL    = homeFavored ? g.mlbOdds?.rlHomeML : g.mlbOdds?.rlAwayML;
+    const modelFavPoint = homeFavored ? g.mlbOdds?.rlHomePoint : g.mlbOdds?.rlAwayPoint;
+    g.rlModelFavML      = modelFavPoint === -1.5 ? modelFavRL : null;
+    g.runLineEdge       = g.rlModelFavML != null
+      ? Math.round((modelCover - mlAmericanToProb(g.rlModelFavML)) * 100)
       : null;
     // F5 model
     g.f5 = calcMLBF5(g, pitchers);
@@ -4268,8 +4272,8 @@ function renderMLB() {
           <div class="mlb-lines-val" style="color:var(--blue);font-weight:600">${g.f5.total.toFixed(1)}</div>
           <div class="mlb-lines-val" style="color:var(--blue);font-weight:600">${g.proj.total.toFixed(1)}</div>
           <div class="mlb-lines-lbl">Vegas</div>
-          <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.mlbOdds?.rlFavTeam
-            ? `${esc(g.mlbOdds.rlFavTeam.split(' ').pop())} -1.5`
+          <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.rlModelFavML != null
+            ? `${esc(g.rlFavTeam.split(' ').pop())} -1.5`
             : '—'}</div>
           <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.mlbOdds?.f5RlFavTeam
             ? `${esc(g.mlbOdds.f5RlFavTeam.split(' ').pop())} -0.5`
@@ -4526,7 +4530,7 @@ function mlAmericanToProb(ml) {
 function probToML(prob) {
   if (prob == null) return null;
   if (prob >= 0.5) return Math.round(-(prob / (1 - prob)) * 100);
-  return '+' + Math.round(((1 - prob) / prob) * 100);
+  return Math.round(((1 - prob) / prob) * 100); // positive number, fmtML adds '+'
 }
 
 // ── MLB odds (h2h moneylines from centralized Gist) ──────────────────────────
@@ -4553,11 +4557,14 @@ async function loadMLBOdds() {
       const f5spreads= markets.find(m => m.key === 'spreads_h1');
       const f5totals = markets.find(m => m.key === 'totals_h1');
       if (!h2h) continue;
-      const homeOut   = h2h.outcomes.find(o => o.name === game.home_team);
-      const awayOut   = h2h.outcomes.find(o => o.name === game.away_team);
-      // Run line: find the -1.5 side (the favored team) and +1.5 side
-      const rlFavOut  = spreads?.outcomes?.find(o => o.point === -1.5);
-      const rlDogOut  = spreads?.outcomes?.find(o => o.point ===  1.5);
+      const homeOut    = h2h.outcomes.find(o => o.name === game.home_team);
+      const awayOut    = h2h.outcomes.find(o => o.name === game.away_team);
+      // Run line: store per-team so we can look up model's favored team
+      const rlHomeOut  = spreads?.outcomes?.find(o => o.name === game.home_team);
+      const rlAwayOut  = spreads?.outcomes?.find(o => o.name === game.away_team);
+      // Legacy -1.5 lookup (kept for modal display)
+      const rlFavOut   = spreads?.outcomes?.find(o => o.point === -1.5);
+      const rlDogOut   = spreads?.outcomes?.find(o => o.point ===  1.5);
       // Full game total (over)
       const totalOver = totals?.outcomes?.find(o => o.name === 'Over');
       // F5 markets
@@ -4567,11 +4574,15 @@ async function loadMLBOdds() {
       const f5Over    = f5totals?.outcomes?.find(o => o.name === 'Over');
       const key = `${normMLBTeam(game.home_team)}|${normMLBTeam(game.away_team)}`;
       mlbOddsMap.set(key, {
-        homeML:      homeOut?.price  ?? null,
-        awayML:      awayOut?.price  ?? null,
-        rlFavTeam:   rlFavOut?.name  ?? null,
-        rlFavML:     rlFavOut?.price ?? null,
-        rlDogML:     rlDogOut?.price ?? null,
+        homeML:      homeOut?.price   ?? null,
+        awayML:      awayOut?.price   ?? null,
+        rlHomePoint: rlHomeOut?.point ?? null,
+        rlHomeML:    rlHomeOut?.price ?? null,
+        rlAwayPoint: rlAwayOut?.point ?? null,
+        rlAwayML:    rlAwayOut?.price ?? null,
+        rlFavTeam:   rlFavOut?.name   ?? null, // team with -1.5 in odds
+        rlFavML:     rlFavOut?.price  ?? null,
+        rlDogML:     rlDogOut?.price  ?? null,
         totalLine:   totalOver?.point ?? null,
         totalOverML: totalOver?.price ?? null,
         f5HomeML:    f5HomeOut?.price ?? null,
@@ -4749,7 +4760,7 @@ function showMLBGameModal(gameId) {
     const cls = e > 3 ? 'gd-edge-pos' : e < -3 ? 'gd-edge-neg' : 'gd-edge-neu';
     return ` <span class="${cls}">(${e > 0 ? '+' : ''}${e}% edge)</span>`;
   };
-  const rlVegasCoverProb = g.mlbOdds?.rlFavML != null ? mlAmericanToProb(g.mlbOdds.rlFavML) : null;
+  const rlVegasCoverProb = g.rlModelFavML != null ? mlAmericanToProb(g.rlModelFavML) : null;
   const fmtML   = ml => ml != null ? (ml > 0 ? '+' + ml : '' + ml) : '—';
   const edgePct = (modelP, vegasP) => {
     if (modelP == null || vegasP == null) return '—';
@@ -4793,7 +4804,7 @@ function showMLBGameModal(gameId) {
       <span>Run line edge</span>
       <span class="gd-summary-val"><span class="${g.runLineEdge > 3 ? 'gd-edge-pos' : g.runLineEdge < -3 ? 'gd-edge-neg' : 'gd-edge-neu'}">${g.runLineEdge > 0 ? '+' : ''}${g.runLineEdge}%</span> on ${esc(g.rlFavTeam)} -1.5</span>
     </div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">No Vegas run line available.</div>'}
-    ${g.mlbOdds?.rlFavML != null ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas: ${esc(g.rlFavTeam)} -1.5 (${g.mlbOdds.rlFavML > 0 ? '+' : ''}${g.mlbOdds.rlFavML}) · dog +1.5 (${g.mlbOdds.rlDogML > 0 ? '+' : ''}${g.mlbOdds.rlDogML ?? '—'})</div>` : ''}
+    ${g.rlModelFavML != null ? `<div style="color:var(--muted);font-size:.7rem;margin-top:.3rem">Vegas: ${esc(g.rlFavTeam)} -1.5 (${g.rlModelFavML > 0 ? '+' : ''}${g.rlModelFavML}) · +1.5 (${g.mlbOdds?.rlDogML != null ? (g.mlbOdds.rlDogML > 0 ? '+' : '') + g.mlbOdds.rlDogML : '—'})</div>` : '<div style="color:var(--muted);font-size:.72rem;margin-top:.35rem">Model favored team has +1.5 — run line edge not applicable.</div>'}
   </div>`;
 
   // ── First 5 Innings ──
