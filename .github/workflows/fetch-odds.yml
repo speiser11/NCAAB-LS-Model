@@ -39,7 +39,7 @@ jobs:
           NEXT=$(date -u -d '+1 day' +%Y-%m-%d 2>/dev/null || date -u -v+1d +%Y-%m-%d)
 
           curl -sf \
-            "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h,spreads&oddsFormat=american&commenceTimeFrom=${DATE}T12:00:00Z&commenceTimeTo=${NEXT}T12:00:00Z" \
+            "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h,spreads,totals,h2h_h1,spreads_h1,totals_h1&oddsFormat=american&commenceTimeFrom=${DATE}T12:00:00Z&commenceTimeTo=${NEXT}T12:00:00Z" \
             -o /tmp/odds-raw.json \
             || { echo "MLB Odds API fetch failed, skipping"; exit 0; }
 
