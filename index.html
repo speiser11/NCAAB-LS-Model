@@ -4306,9 +4306,10 @@ function parsePitcher(p) {
   const full   = p.fullName || '';
   const parts  = full.trim().split(' ');
   const short  = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
-  const season = (p.stats || []).find(s =>
+  const seasonEntry = (p.stats || []).find(s =>
     s.group?.displayName === 'pitching' && s.type?.displayName === 'season'
-  )?.stats || {};
+  );
+  const season = seasonEntry?.splits?.[0]?.stat || seasonEntry?.stats || {};
   const ip     = parseFloat(season.inningsPitched) || 0;
   const eraRaw = season.era  != null ? parseFloat(season.era)  : null;
   const fipRaw = season.fip  != null ? parseFloat(season.fip)  : null;
@@ -4357,6 +4358,7 @@ async function loadMLBPitchers(dateStr) {
         const homeP = game.teams?.home?.probablePitcher || null;
         if (awayP?.id) pitcherIds.add(awayP.id);
         if (homeP?.id) pitcherIds.add(homeP.id);
+
         gameStubs.push({
           awayName: game.teams?.away?.team?.name || '',
           homeName: game.teams?.home?.team?.name || '',
@@ -4376,7 +4378,7 @@ async function loadMLBPitchers(dateStr) {
       );
       if (sr.ok) {
         const sd = await sr.json();
-        console.log('PEOPLE RESP', JSON.stringify(sd.people?.[0]?.stats?.[0]));
+
         for (const person of (sd.people || [])) {
           statsById[person.id] = person.stats || [];
         }
