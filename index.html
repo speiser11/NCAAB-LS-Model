@@ -4306,7 +4306,11 @@ function parsePitcher(p) {
   const full   = p.fullName || '';
   const parts  = full.trim().split(' ');
   const short  = parts.length >= 2 ? `${parts[0][0]}. ${parts.slice(1).join(' ')}` : full;
-  const season = (p.stats || []).find(s => s.type?.displayName === 'season')?.stats || {};
+  const season = (p.stats || []).find(s =>
+    s.type?.displayName === 'season' ||
+    s.type?.displayName === 'statSingleSeason' ||
+    s.type?.displayName === 'Single Season'
+  )?.stats || {};
   const ip     = parseFloat(season.inningsPitched) || 0;
   const eraRaw = season.era  != null ? parseFloat(season.era)  : null;
   const fipRaw = season.fip  != null ? parseFloat(season.fip)  : null;
@@ -4340,7 +4344,7 @@ async function loadMLBPitchers(dateStr) {
   try {
     const r = await fetch(
       `https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${isoDate}&gameType=R` +
-      `&hydrate=probablePitcher,stats(group=pitching,type=season,season=2025,sportId=1)`,
+      `&hydrate=probablePitcher(stats(type=statSingleSeason,season=2025,group=[pitching]))`,
       { signal: AbortSignal.timeout(10000) }
     );
     if (!r.ok) throw new Error(`MLB Stats API ${r.status}`);
