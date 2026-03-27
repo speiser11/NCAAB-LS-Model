@@ -4563,8 +4563,8 @@ function predictMLBWinProb(g, pitchers) {
   const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0;
   const pf = (g.parkFactor || getParkFactor(g.home)).factor;
 
-  let homeRuns = (9.0 / 2) - hp + ho * 2.0;
-  let awayRuns = (9.0 / 2) - ap + ao * 2.0;
+  let homeRuns = (9.0 / 2) - ap + ho * 2.0; // home runs suppressed by away pitcher
+  let awayRuns = (9.0 / 2) - hp + ao * 2.0; // away runs suppressed by home pitcher
   homeRuns *= pf;
   awayRuns *= pf * 0.95; // away team road penalty
 
