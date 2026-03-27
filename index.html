@@ -995,18 +995,17 @@ input[type=date] {
 .mlb-opp-pos{color:var(--red);}   /* strong offense vs this pitcher — bad for pitcher */
 .mlb-opp-neg{color:var(--green);} /* weak offense vs this pitcher — good for pitcher */
 .mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
-.mlb-proj-score{display:flex;align-items:center;justify-content:space-between;padding:.5rem 1.15rem .2rem;border-top:1px solid var(--border);}
-.mlb-proj-label{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
-.mlb-proj-teams{display:flex;align-items:baseline;gap:.35rem;}
-.mlb-proj-team-name{font-family:'Inter',sans-serif;font-size:.7rem;color:var(--muted);}
-.mlb-proj-team-score{font-family:'DM Mono',monospace;font-size:1.05rem;font-weight:700;color:var(--blue);}
-.mlb-proj-sep{font-family:'DM Mono',monospace;font-size:.75rem;color:var(--muted);}
-.mlb-cmp-rows{display:flex;flex-direction:column;gap:.2rem;padding:.25rem 1.15rem .4rem;}
-.mlb-cmp-row{display:flex;align-items:center;gap:.35rem;font-family:'DM Mono',monospace;font-size:.63rem;flex-wrap:wrap;}
-.mlb-cmp-lbl{color:var(--muted);width:4rem;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;font-size:.57rem;}
-.mlb-cmp-model{color:var(--text);font-weight:500;}
-.mlb-cmp-sep{color:var(--muted);opacity:.45;}
-.mlb-cmp-vegas{color:var(--muted);}
+.mlb-proj-score{display:flex;align-items:center;justify-content:center;padding:.6rem 1.15rem .3rem;border-top:1px solid var(--border);}
+.mlb-proj-line{display:flex;align-items:baseline;gap:.4rem;font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--text);}
+.mlb-proj-team-score{color:var(--blue);}
+.mlb-proj-sep{color:var(--muted);font-size:.85rem;font-weight:400;}
+.mlb-cmp-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;margin:.1rem 0 .25rem;}
+.mlb-cmp-table th{font-size:.57rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:400;padding:.15rem .5rem .15rem 0;opacity:.6;}
+.mlb-cmp-table th:first-child{padding-left:1.15rem;width:5rem;}
+.mlb-cmp-table td{font-size:.65rem;padding:.18rem .5rem .18rem 0;vertical-align:middle;}
+.mlb-cmp-table td:first-child{color:var(--muted);font-size:.58rem;text-transform:uppercase;letter-spacing:.04em;padding-left:1.15rem;}
+.mlb-cmp-table td:nth-child(2){color:var(--text);font-weight:500;}
+.mlb-cmp-table td:nth-child(3){color:var(--muted);padding-right:1.15rem;}
 .mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
 .mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
 .mlb-wp-pct{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;color:var(--text);}
@@ -4263,31 +4262,32 @@ function renderMLB() {
         </div>
         ${scoreHtml}
         <div class="mlb-proj-score">
-          <span class="mlb-proj-label">Projected Score</span>
-          <div class="mlb-proj-teams">
-            <span class="mlb-proj-team-name">${esc(g.away)}</span>
+          <div class="mlb-proj-line">
+            <span>${esc(g.away.split(' ').pop())}</span>
             <span class="mlb-proj-team-score">${g.awayRuns.toFixed(1)}</span>
-            <span class="mlb-proj-sep">–</span>
+            <span class="mlb-proj-sep">—</span>
             <span class="mlb-proj-team-score">${g.homeRuns.toFixed(1)}</span>
-            <span class="mlb-proj-team-name">${esc(g.home)}</span>
+            <span>${esc(g.home.split(' ').pop())}</span>
           </div>
         </div>
-        <div class="mlb-cmp-rows">
-          <div class="mlb-cmp-row">
-            <span class="mlb-cmp-lbl">ML</span>
-            <span class="mlb-cmp-model">Model favors ${esc(g.homeWinProb >= g.awayWinProb ? g.home : g.away)} (${g.homeWinProb >= g.awayWinProb ? g.homeModelML : g.awayModelML})</span>
-            ${g.mlbOdds?.homeML != null ? `<span class="mlb-cmp-sep">·</span><span class="mlb-cmp-vegas">Vegas ${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML} / ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML}</span>` : ''}
-          </div>
-          <div class="mlb-cmp-row">
-            <span class="mlb-cmp-lbl">Run Line</span>
-            <span class="mlb-cmp-model">Model projects ${Math.abs(g.runDiff).toFixed(1)} run margin (${esc(g.runDiff >= 0 ? g.home : g.away)} favored)</span>
-            ${g.mlbOdds?.rlFavTeam ? `<span class="mlb-cmp-sep">·</span><span class="mlb-cmp-vegas">Vegas -1.5 ${esc(g.mlbOdds.rlFavTeam.split(' ').pop())}</span>` : ''}
-          </div>
-          <div class="mlb-cmp-row">
-            <span class="mlb-cmp-lbl">Total</span>
-            <span class="mlb-cmp-model">Model projects ${g.proj.total.toFixed(1)} runs</span>
-          </div>
-        </div>
+        <table class="mlb-cmp-table">
+          <tr><th></th><th>Model</th><th>Vegas</th></tr>
+          <tr>
+            <td>ML</td>
+            <td>${g.homeModelML}</td>
+            <td>${g.mlbOdds?.homeML != null ? `${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML} / ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML}` : '—'}</td>
+          </tr>
+          <tr>
+            <td>Run Line</td>
+            <td>${g.runDiff >= 0 ? '+' : ''}${g.runDiff.toFixed(1)}</td>
+            <td>${g.mlbOdds?.rlFavTeam ? `-1.5 ${esc(g.mlbOdds.rlFavTeam.split(' ').pop())}` : '—'}</td>
+          </tr>
+          <tr>
+            <td>Total</td>
+            <td>${g.proj.total.toFixed(1)}</td>
+            <td>—</td>
+          </tr>
+        </table>
         ${g.homeEdge != null ? `<div class="mlb-edge-row"><span class="mlb-edge-badge ${g.homeEdge > 3 ? 'mlb-edge-pos' : g.homeEdge < -3 ? 'mlb-edge-neg' : 'mlb-edge-neu'}">${g.homeEdge > 0 ? '+' : ''}${g.homeEdge}% edge on ${esc(g.homeEdge >= 0 ? g.home : g.away)}</span></div>` : ''}
         <div class="mlb-lines">
           <div></div>
