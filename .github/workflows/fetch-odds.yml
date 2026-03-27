@@ -58,3 +58,11 @@ jobs:
         run: |
           DATE=$(date -u +%Y-%m-%d)
           DATE=$DATE python3 .github/scripts/log_mlb_predictions.py
+
+      - name: Fill MLB results
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          DATE=$DATE python3 .github/scripts/fill_mlb_results.py
