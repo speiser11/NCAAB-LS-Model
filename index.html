@@ -4591,9 +4591,9 @@ async function loadMLBOdds() {
       const h2h      = markets.find(m => m.key === 'h2h');
       const spreads  = markets.find(m => m.key === 'spreads');
       const totals   = markets.find(m => m.key === 'totals');
-      const f5h2h    = markets.find(m => m.key === 'h2h_h1');
-      const f5spreads= markets.find(m => m.key === 'spreads_h1');
-      const f5totals = markets.find(m => m.key === 'totals_h1');
+      const f5h2h    = markets.find(m => m.key === 'h2h_1st_5_innings');
+      const f5spreads= markets.find(m => m.key === 'spreads_1st_5_innings');
+      const f5totals = markets.find(m => m.key === 'totals_1st_5_innings');
       if (!h2h) continue;
       const homeOut    = h2h.outcomes.find(o => o.name === game.home_team);
       const awayOut    = h2h.outcomes.find(o => o.name === game.away_team);

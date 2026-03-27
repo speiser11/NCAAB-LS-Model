@@ -1,9 +1,9 @@
 """
 fetch_mlb_odds.py
 Fetches MLB odds from The Odds API and pushes to Gist.
-- Bulk endpoint: h2h, spreads, totals (every run)
-- Per-event endpoint: h2h_h1, spreads_h1, totals_h1 (once per day — skipped if
-  today's Gist file already has F5 data to conserve API credits)
+- Bulk endpoint: tries all 6 markets including F5 (correct MLB key names)
+- Falls back to bulk without F5 + per-event with F5 keys if bulk rejects them
+- F5 correct keys: h2h_1st_5_innings, spreads_1st_5_innings, totals_1st_5_innings
 """
 
 import json, urllib.request, urllib.parse, os, sys
@@ -57,75 +57,86 @@ date_next = datetime.strptime(date_str, '%Y-%m-%d')
 from datetime import timedelta
 next_str = (date_next + timedelta(days=1)).strftime('%Y-%m-%d')
 
-print('Fetching bulk MLB odds...')
+F5_MARKETS = 'h2h_1st_5_innings,spreads_1st_5_innings,totals_1st_5_innings'
+ALL_MARKETS = f'h2h,spreads,totals,{F5_MARKETS}'
+
+print('Fetching bulk MLB odds (including F5)...')
+f5_in_bulk = False
 try:
     games, remaining = odds_get('/v4/sports/baseball_mlb/odds/', {
         'regions':           'us',
-        'markets':           'h2h,spreads,totals',
+        'markets':           ALL_MARKETS,
         'oddsFormat':        'american',
         'commenceTimeFrom':  f'{date_str}T12:00:00Z',
         'commenceTimeTo':    f'{next_str}T12:00:00Z',
     })
-    print(f'Bulk: {len(games)} games — credits remaining: {remaining}')
+    f5_in_bulk = True
+    print(f'Bulk (with F5): {len(games)} games — credits remaining: {remaining}')
 except Exception as e:
-    print(f'ERROR: bulk odds fetch failed: {e}', file=sys.stderr)
-    sys.exit(1)
+    # Bulk with F5 failed — retry with base markets only, then fetch F5 per-event
+    print(f'Bulk with F5 failed ({e}), retrying with base markets only...')
+    f5_in_bulk = False
+    try:
+        games, remaining = odds_get('/v4/sports/baseball_mlb/odds/', {
+            'regions':           'us',
+            'markets':           'h2h,spreads,totals',
+            'oddsFormat':        'american',
+            'commenceTimeFrom':  f'{date_str}T12:00:00Z',
+            'commenceTimeTo':    f'{next_str}T12:00:00Z',
+        })
+        print(f'Bulk (base only): {len(games)} games — credits remaining: {remaining}')
+    except Exception as e2:
+        print(f'ERROR: bulk odds fetch failed: {e2}', file=sys.stderr)
+        sys.exit(1)
 
 if not games:
     print('No games returned — nothing to push.')
     sys.exit(0)
 
-# Build lookup by event ID for easy merging
-games_by_id = {g['id']: g for g in games}
+# ── Step 2: F5 per-event if not already in bulk ───────────────────────────────
+if not f5_in_bulk:
+    existing = gist_fetch(f'mlb-odds-{date_str}.json') or []
+    f5_already_fetched = any(
+        any(m['key'] in ('h2h_1st_5_innings', 'spreads_1st_5_innings', 'totals_1st_5_innings')
+            for m in (eg.get('bookmakers', [{}])[0].get('markets', []) if eg.get('bookmakers') else []))
+        for eg in existing
+    )
 
-# ── Step 2: Check if F5 already fetched today ────────────────────────────────
-existing = gist_fetch(f'mlb-odds-{date_str}.json') or []
-f5_already_fetched = False
-if existing:
-    # Check if any game already has F5 market data
-    for eg in existing:
-        mkts = eg.get('bookmakers', [{}])[0].get('markets', []) if eg.get('bookmakers') else []
-        if any(m['key'] in ('h2h_h1', 'spreads_h1', 'totals_h1') for m in mkts):
-            f5_already_fetched = True
-            break
-
-if f5_already_fetched:
-    print('F5 data already present in Gist — skipping per-event fetch to conserve credits.')
-    # Restore F5 markets from existing data into current games
-    existing_by_id = {eg['id']: eg for eg in existing}
-    for game in games:
-        prev = existing_by_id.get(game['id'])
-        if not prev:
-            continue
-        prev_mkts = prev.get('bookmakers', [{}])[0].get('markets', []) if prev.get('bookmakers') else []
-        f5_mkts = [m for m in prev_mkts if m['key'] in ('h2h_h1', 'spreads_h1', 'totals_h1')]
-        if f5_mkts and game.get('bookmakers'):
-            game['bookmakers'][0]['markets'].extend(f5_mkts)
-else:
-    # ── Step 3: Fetch F5 per-event ────────────────────────────────────────────
-    print(f'Fetching F5 odds for {len(games)} games...')
-    for game in games:
-        event_id = game['id']
-        try:
-            f5_data, remaining = odds_get(
-                f'/v4/sports/baseball_mlb/events/{event_id}/odds/', {
-                    'regions':    'us',
-                    'markets':    'h2h_h1,spreads_h1,totals_h1',
-                    'oddsFormat': 'american',
-                }
-            )
-            # Merge F5 markets into the game's first bookmaker
-            f5_bookmakers = f5_data.get('bookmakers', [])
-            if f5_bookmakers and game.get('bookmakers'):
-                f5_mkts = [m for m in f5_bookmakers[0].get('markets', [])
-                           if m['key'] in ('h2h_h1', 'spreads_h1', 'totals_h1')]
+    if f5_already_fetched:
+        print('F5 data already present in Gist — restoring from cache.')
+        existing_by_id = {eg['id']: eg for eg in existing}
+        for game in games:
+            prev = existing_by_id.get(game['id'])
+            if not prev or not game.get('bookmakers'):
+                continue
+            prev_mkts = prev.get('bookmakers', [{}])[0].get('markets', []) if prev.get('bookmakers') else []
+            f5_mkts = [m for m in prev_mkts
+                       if m['key'] in ('h2h_1st_5_innings', 'spreads_1st_5_innings', 'totals_1st_5_innings')]
+            if f5_mkts:
                 game['bookmakers'][0]['markets'].extend(f5_mkts)
-                print(f'  {game["away_team"]} @ {game["home_team"]}: '
-                      f'{len(f5_mkts)} F5 markets — credits remaining: {remaining}')
-            else:
-                print(f'  {game["away_team"]} @ {game["home_team"]}: no F5 bookmakers')
-        except Exception as e:
-            print(f'  WARNING: F5 fetch failed for {game.get("home_team")}: {e}')
+    else:
+        print(f'Fetching F5 odds per-event for {len(games)} games...')
+        for game in games:
+            event_id = game['id']
+            try:
+                f5_data, remaining = odds_get(
+                    f'/v4/sports/baseball_mlb/events/{event_id}/odds/', {
+                        'regions':    'us',
+                        'markets':    F5_MARKETS,
+                        'oddsFormat': 'american',
+                    }
+                )
+                f5_bookmakers = f5_data.get('bookmakers', [])
+                if f5_bookmakers and game.get('bookmakers'):
+                    f5_mkts = [m for m in f5_bookmakers[0].get('markets', [])
+                               if m['key'] in ('h2h_1st_5_innings', 'spreads_1st_5_innings', 'totals_1st_5_innings')]
+                    game['bookmakers'][0]['markets'].extend(f5_mkts)
+                    print(f'  {game["away_team"]} @ {game["home_team"]}: '
+                          f'{len(f5_mkts)} F5 markets — credits remaining: {remaining}')
+                else:
+                    print(f'  {game["away_team"]} @ {game["home_team"]}: no F5 bookmakers yet')
+            except Exception as e:
+                print(f'  WARNING: F5 fetch failed for {game.get("home_team")}: {e}')
 
 # ── Step 4: Push merged data to Gist ─────────────────────────────────────────
 filename = f'mlb-odds-{date_str}.json'
