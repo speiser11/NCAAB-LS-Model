@@ -5022,9 +5022,21 @@ function predictMLBWinProb(g, pitchers) {
   awayRuns *= pf * 0.95; // road penalty
 
   const runDiff = homeRuns - awayRuns;
-  let homeWinProb = 1 / (1 + Math.exp(-runDiff * 0.35));
-  homeWinProb += 0.025; // home field advantage
-  homeWinProb = Math.max(0.30, Math.min(0.75, homeWinProb));
+  const rawProb = 1 / (1 + Math.exp(-runDiff * 0.35));
+  const rawProbHfa = rawProb + 0.025;
+  let homeWinProb = Math.max(0.30, Math.min(0.75, rawProbHfa));
+
+  // DEBUG — remove once model is calibrated
+  console.log(
+    `[WP] ${g.away} @ ${g.home}` +
+    ` | hp=${hp.toFixed(3)} ap=${ap.toFixed(3)}` +
+    ` | ho=${ho.toFixed(3)} ao=${ao.toFixed(3)}` +
+    ` | homeBp=${homeBp.toFixed(3)} awayBp=${awayBp.toFixed(3)}` +
+    ` | effAP=${effAP.toFixed(3)} effHP=${effHP.toFixed(3)}` +
+    ` | homeRuns=${homeRuns.toFixed(2)} awayRuns=${awayRuns.toFixed(2)} runDiff=${runDiff.toFixed(2)}` +
+    ` | rawProb=${rawProb.toFixed(3)} +hfa=${rawProbHfa.toFixed(3)} clamped=${homeWinProb.toFixed(3)}`
+  );
+
   return {
     homeWinProb: Math.round(homeWinProb * 100),
     awayWinProb: Math.round((1 - homeWinProb) * 100),
