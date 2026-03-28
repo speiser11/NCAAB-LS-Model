@@ -4341,11 +4341,10 @@ function renderMLB() {
       ? (vegasCoverImp >= 0.5 ? -100 / Math.pow(1 - vegasCoverImp, 2) : 100 / Math.pow(vegasCoverImp, 2))
       : null;
     const rlDiffMLEquiv    = rlImpDiff != null ? Math.round(Math.abs(rlImpDiff) * Math.abs(_rlDp)) : null;
-    // Direction: runDiff > 1.5 → fav -1.5; 0.5–1.5 → dog +1.5; < 0.5 → no signal
-    const rlFavCvr         = rlMargin > 1.5;
-    const rlDogCvr         = rlMargin >= 0.5 && rlMargin <= 1.5;
-    const rlTier           = (rlFavCvr || rlDogCvr) && rlDiffMLEquiv != null
-      ? _juiceTier(rlDiffMLEquiv, vegasRLFavML) : null;
+    // Direction: runDiff > 2.5 → take fav -1.5; > 2.0 → lean fav -1.5; < 2.0 → no signal
+    const rlFavCvr         = rlMargin > 2.0;
+    const rlTier           = rlFavCvr && rlImpDiff != null
+      ? (rlMargin > 2.5 ? 'take' : 'lean') : null;
     const rlDiffCls        = rlTier === 'take' ? 'diff-green' : rlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const f5Diff    = g.f5TotalEdge;
@@ -4373,13 +4372,10 @@ function renderMLB() {
           : `Lean ${_dir} — take if you can get ${_ln}${totalDiff < 0 ? ' or higher' : ' or lower'}` });
     }
     if (rlTier && vegasRLFavML != null) {
-      // Direction from model runDiff: > 1.5 → fav -1.5; 0.5–1.5 → dog +1.5
+      // Always fav -1.5 (dog signal removed)
       const _rlVegFavShort = (g.mlbOdds?.rlFavTeam ?? g.rlFavTeam).split(' ').pop();
-      const _rlVegDogShort = ((g.mlbOdds?.rlFavTeam ?? g.rlFavTeam) === g.home ? g.away : g.home).split(' ').pop();
-      const _rlTeam        = rlFavCvr ? _rlVegFavShort : _rlVegDogShort;
-      const _rlLine        = rlFavCvr ? '-1.5' : '+1.5';
       _signals.push({ tier: rlTier, diffSize: rlDiffMLEquiv,
-        text: `${rlTier === 'take' ? 'Bet' : 'Lean'} ${_rlTeam} ${_rlLine}` });
+        text: `${rlTier === 'take' ? 'Bet' : 'Lean'} ${_rlVegFavShort} -1.5` });
     }
     if (f5Tier && f5Diff != null) {
       const _dir = f5Diff < 0 ? 'Under' : 'Over';
@@ -4441,7 +4437,7 @@ function renderMLB() {
             <td>Diff</td>
             <td class="${mlDiffCls}">${mlDiffSignedFav != null ? `${mlDiffSignedFav > 0 ? '+' : ''}${mlDiffSignedFav}` : '—'}</td>
             <td class="${totalDiffCls}">${totalDiff != null ? `${totalDiff > 0 ? '+' : ''}${totalDiff.toFixed(1)}` : '—'}</td>
-            <td class="${rlDiffCls}">${rlImpDiff != null ? `${rlImpDiff > 0 ? '+' : ''}${(rlImpDiff * 100).toFixed(1)}pp` : '—'}</td>
+            <td class="${rlDiffCls}">${rlImpDiff != null ? `${rlImpDiff > 0 ? '+' : ''}${(rlImpDiff * 100).toFixed(1)}%` : '—'}</td>
             <td class="${f5DiffCls}">${f5Diff != null ? `${f5Diff > 0 ? '+' : ''}${f5Diff.toFixed(1)}` : '—'}</td>
           </tr>
         </table>
@@ -4496,10 +4492,9 @@ function renderMLBTopPicks(games) {
       ? (rlVegasCoverImp >= 0.5 ? -100 / Math.pow(1 - rlVegasCoverImp, 2) : 100 / Math.pow(rlVegasCoverImp, 2))
       : null;
     const rlDiffMLEquiv    = rlImpDiff != null ? Math.round(Math.abs(rlImpDiff) * Math.abs(_rlDp)) : null;
-    const rlFavCvr         = rlMargin > 1.5;
-    const rlDogCvr         = rlMargin >= 0.5 && rlMargin <= 1.5;
-    const rlTier           = (rlFavCvr || rlDogCvr) && rlDiffMLEquiv != null
-      ? _juiceTier(rlDiffMLEquiv, rlVegasFavML) : null;
+    const rlFavCvr         = rlMargin > 2.0;
+    const rlTier           = rlFavCvr && rlImpDiff != null
+      ? (rlMargin > 2.5 ? 'take' : 'lean') : null;
 
     // F5 total
     const f5DiffAbs = g.f5TotalEdge != null ? Math.abs(g.f5TotalEdge) : null;
@@ -4525,10 +4520,7 @@ function renderMLBTopPicks(games) {
 
     if (rlTier && rlVegasFavML != null) {
       const rfShort = (g.mlbOdds?.rlFavTeam ?? g.rlFavTeam).split(' ').pop();
-      const rdShort = ((g.mlbOdds?.rlFavTeam ?? g.rlFavTeam) === g.home ? g.away : g.home).split(' ').pop();
-      const rlTeam  = rlFavCvr ? rfShort : rdShort;
-      const rlLine  = rlFavCvr ? '-1.5' : '+1.5';
-      const text    = `${rlTier === 'take' ? 'Bet' : 'Lean'} ${rlTeam} ${rlLine}`;
+      const text    = `${rlTier === 'take' ? 'Bet' : 'Lean'} ${rfShort} -1.5`;
       (rlTier === 'take' ? takes : leans).push({ g, betType: 'Run Line', tier: rlTier, text, diffSize: rlDiffMLEquiv, rlFavCvr });
     }
 
@@ -4564,9 +4556,7 @@ function renderMLBTopPicks(games) {
       if (p.betType === 'Total')    return `${p.g.proj.total > (p.g.mlbOdds?.totalLine ?? 0) ? 'Over' : 'Under'} ${p.g.mlbOdds?.totalLine}`;
       if (p.betType === 'Run Line') {
         const _rlVegFav = p.g.mlbOdds?.rlFavTeam ?? p.g.rlFavTeam;
-        const _rlVegDog = _rlVegFav === p.g.home ? p.g.away : p.g.home;
-        const _rlTeam   = p.rlFavCvr ? _rlVegFav : _rlVegDog;
-        return `${_rlTeam.split(' ').pop()} ${p.rlFavCvr ? '-1.5' : '+1.5'}`;
+        return `${_rlVegFav.split(' ').pop()} -1.5`;
       }
       if (p.betType === 'F5')       return `F5 ${(p.g.f5TotalEdge ?? 0) > 0 ? 'Over' : 'Under'} ${p.g.mlbOdds?.f5TotalLine}`;
       return p.betType;
