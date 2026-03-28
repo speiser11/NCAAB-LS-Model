@@ -4103,6 +4103,7 @@ async function mlbRefresh() {
   const dateStr = mlbGetDateStr();
   const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
   try {
+    await loadModelConfig(); // ensure cfg.oddsGistId is set before odds fetch (mirrors NCAAB refresh())
     await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds()]);
     await loadMLBPitchers(dateStr);
     await loadMLBBullpens(isoDate, _lastTeamIdMap);
