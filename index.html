@@ -306,9 +306,7 @@ input[type=date]{
 .pick-card.warm .pick-edge{color:var(--yellow);}
 .pick-type-tag{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.06rem .3rem;}
 .pick-why{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);line-height:1.4;}
-.mlb-picks-section{margin-bottom:.45rem;}
-.mlb-picks-section:last-child{margin-bottom:0;}
-.mlb-picks-section-label{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.5px;color:var(--muted);margin-bottom:.35rem;}
+.picks-divider{flex-shrink:0;width:1px;background:var(--border);margin:0 .25rem;align-self:stretch;}
 
 /* ── Settings modal ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
@@ -4477,19 +4475,35 @@ function renderMLBTopPicks(games) {
     return;
   }
 
+  // Top 5 combined: Takes first (already strongest), fill remainder with Leans
+  const topTakes = takes.slice(0, 5);
+  const topLeans = leans.slice(0, Math.max(0, 5 - topTakes.length));
+
   const pickCard = p => {
     const aShort = p.g.away.split(' ').pop();
     const hShort = p.g.home.split(' ').pop();
+    // main = short action label; why = full signal text
+    const mainText = (() => {
+      if (p.betType === 'ML')       return `${(p.g.homeWinProb >= p.g.awayWinProb ? p.g.home : p.g.away).split(' ').pop()} ML`;
+      if (p.betType === 'Total')    return `${p.g.proj.total > (p.g.mlbOdds?.totalLine ?? 0) ? 'Over' : 'Under'} ${p.g.mlbOdds?.totalLine}`;
+      if (p.betType === 'Run Line') return `${p.g.rlFavTeam.split(' ').pop()} ${Math.abs(p.g.runDiff) >= 2.0 ? '-1.5' : '+1.5'}`;
+      if (p.betType === 'F5')       return `F5 ${(p.g.f5TotalEdge ?? 0) > 0 ? 'Over' : 'Under'} ${p.g.mlbOdds?.f5TotalLine}`;
+      return p.betType;
+    })();
+    const tierIcon = p.tier === 'take' ? '🔥' : '📊';
     return `<div class="pick-card ${p.tier === 'take' ? 'hot' : 'warm'}" onclick="document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
       <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
-      <div class="pick-main">${esc(p.betType)}</div>
+      <div class="pick-main">${esc(mainText)}</div>
+      <div class="pick-meta">
+        <span class="pick-edge" style="font-size:.85rem;line-height:1.2">${tierIcon}</span>
+        <span class="pick-type-tag">${esc(p.betType)}</span>
+      </div>
       <div class="pick-why">${esc(p.text)}</div>
     </div>`;
   };
 
-  const section = (label, picks) => picks.length
-    ? `<div class="mlb-picks-section"><div class="mlb-picks-section-label">${label}</div><div class="picks-row">${picks.map(pickCard).join('')}</div></div>`
-    : '';
+  const divider = topTakes.length && topLeans.length ? '<div class="picks-divider"></div>' : '';
+  const cards   = [...topTakes.map(pickCard), divider, ...topLeans.map(pickCard)].join('');
 
   bar.style.display = '';
   bar.innerHTML = `
@@ -4499,8 +4513,7 @@ function renderMLBTopPicks(games) {
         <span class="acc-badge" style="opacity:.5">Loading record…</span>
       </div>
     </div>
-    ${section('🔥 Takes', takes)}
-    ${section('📊 Leans', leans)}`;
+    <div class="picks-row">${cards}</div>`;
 
   loadMLBRecord();
 }
