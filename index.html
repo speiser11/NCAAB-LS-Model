@@ -995,17 +995,25 @@ input[type=date] {
 .mlb-opp-pos{color:var(--red);}   /* strong offense vs this pitcher — bad for pitcher */
 .mlb-opp-neg{color:var(--green);} /* weak offense vs this pitcher — good for pitcher */
 .mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
-.mlb-proj-score{display:flex;align-items:center;justify-content:center;padding:.6rem 1.15rem .3rem;border-top:1px solid var(--border);}
-.mlb-proj-line{display:flex;align-items:baseline;gap:.4rem;font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--text);}
+.mlb-proj-score{display:flex;align-items:center;justify-content:center;padding:.5rem 1.15rem .2rem;border-top:1px solid var(--border);}
+.mlb-proj-line{display:flex;align-items:baseline;gap:.4rem;font-family:'DM Mono',monospace;font-size:.95rem;font-weight:600;color:var(--text);}
 .mlb-proj-team-score{color:var(--blue);}
-.mlb-proj-sep{color:var(--muted);font-size:.85rem;font-weight:400;}
-.mlb-cmp-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;margin:.1rem 0 .25rem;}
-.mlb-cmp-table th{font-size:.57rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:400;padding:.15rem .5rem .15rem 0;opacity:.6;}
-.mlb-cmp-table th:first-child{padding-left:1.15rem;width:5rem;}
-.mlb-cmp-table td{font-size:.65rem;padding:.18rem .5rem .18rem 0;vertical-align:middle;}
-.mlb-cmp-table td:first-child{color:var(--muted);font-size:.58rem;text-transform:uppercase;letter-spacing:.04em;padding-left:1.15rem;}
-.mlb-cmp-table td:nth-child(2){color:var(--text);font-weight:500;}
-.mlb-cmp-table td:nth-child(3){color:var(--muted);padding-right:1.15rem;}
+.mlb-proj-sep{color:var(--muted);font-size:.8rem;font-weight:400;}
+.mlb-diff-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:.65rem;margin:.15rem 0 0;}
+.mlb-diff-table th{font-size:.56rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:400;padding:.2rem .35rem;opacity:.6;text-align:center;}
+.mlb-diff-table th:first-child{text-align:left;padding-left:1.15rem;width:4.2rem;}
+.mlb-diff-table td{padding:.18rem .35rem;text-align:center;vertical-align:middle;color:var(--text);}
+.mlb-diff-table td:first-child{text-align:left;padding-left:1.15rem;color:var(--muted);font-size:.57rem;text-transform:uppercase;letter-spacing:.04em;}
+.mlb-diff-table td:last-child,.mlb-diff-table th:last-child{padding-right:1.15rem;}
+.mlb-dt-diff td{font-weight:600;font-size:.67rem;}
+.diff-green{color:var(--green);}
+.diff-yellow{color:var(--yellow);}
+.diff-gray{color:var(--muted);font-weight:400;}
+.mlb-bet-signal{display:flex;align-items:center;gap:.45rem;padding:.35rem 1.15rem .45rem;border-top:1px solid var(--border);}
+.mlb-bet-signal.take .mlb-bet-text{color:var(--green);font-weight:600;}
+.mlb-bet-signal.lean .mlb-bet-text{color:var(--yellow);font-weight:500;}
+.mlb-bet-text{font-family:'Inter',sans-serif;font-size:.72rem;}
+.mlb-bet-icon{font-size:.8rem;line-height:1;}
 .mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
 .mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
 .mlb-wp-pct{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;color:var(--text);}
@@ -4250,6 +4258,60 @@ function renderMLB() {
       </div>`;
     };
 
+    // ── Diff + bet signal pre-computation ──────────────────────────────────
+    const homeModelMLNum = parseInt(String(g.homeModelML)) || 0;
+    const mlDiffSigned   = g.mlbOdds?.homeML != null ? homeModelMLNum - g.mlbOdds.homeML : null;
+    const mlDiff         = mlDiffSigned != null ? Math.abs(mlDiffSigned) : null;
+    const mlDiffCls      = mlDiff == null ? 'diff-gray' : mlDiff >= 20 ? 'diff-green' : mlDiff >= 10 ? 'diff-yellow' : 'diff-gray';
+
+    const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
+    const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
+    const totalDiffCls = totalDiffAbs == null ? 'diff-gray' : totalDiffAbs >= 1.0 ? 'diff-green' : totalDiffAbs >= 0.5 ? 'diff-yellow' : 'diff-gray';
+
+    const rlMargin  = Math.abs(g.runDiff);
+    const rlDiffCls = (rlMargin >= 2.0 || rlMargin <= 0.5) ? 'diff-green' : (rlMargin >= 0.8 && rlMargin <= 1.1) ? 'diff-yellow' : 'diff-gray';
+
+    const f5Diff    = g.f5TotalEdge;
+    const f5DiffAbs = f5Diff != null ? Math.abs(f5Diff) : null;
+    const f5DiffCls = f5DiffAbs == null ? 'diff-gray' : f5DiffAbs >= 1.0 ? 'diff-green' : f5DiffAbs >= 0.5 ? 'diff-yellow' : 'diff-gray';
+
+    const _signals = [];
+    const _favShort = (g.homeWinProb >= g.awayWinProb ? g.home : g.away).split(' ').pop();
+    if (mlDiffCls !== 'diff-gray' && g.mlbOdds?.homeML != null) {
+      const _mML = g.homeWinProb >= g.awayWinProb ? g.homeModelML : g.awayModelML;
+      _signals.push({ tier: mlDiffCls === 'diff-green' ? 'take' : 'lean',
+        text: mlDiffCls === 'diff-green' ? `Bet ${_favShort} ML — take ${_mML} or better` : `Lean ${_favShort} ML` });
+    }
+    if (totalDiffCls !== 'diff-gray' && totalDiff != null) {
+      const _dir = totalDiff < 0 ? 'Under' : 'Over';
+      const _ln  = g.mlbOdds.totalLine;
+      _signals.push({ tier: totalDiffCls === 'diff-green' ? 'take' : 'lean',
+        text: totalDiffCls === 'diff-green'
+          ? `Bet ${_dir} — take ${_ln}${totalDiff < 0 ? ' or higher' : ' or lower'}`
+          : `Lean ${_dir} — take if you can get ${_ln}${totalDiff < 0 ? ' or higher' : ' or lower'}` });
+    }
+    if (rlDiffCls !== 'diff-gray') {
+      const _rfShort = g.rlFavTeam.split(' ').pop();
+      const _rdShort = (g.rlFavTeam === g.home ? g.away : g.home).split(' ').pop();
+      _signals.push({ tier: rlDiffCls === 'diff-green' ? 'take' : 'lean',
+        text: rlDiffCls === 'diff-green'
+          ? (rlMargin >= 2.0 ? `Bet ${_rfShort} -1.5` : `Bet ${_rdShort} +1.5`)
+          : `Lean ${_rfShort} -1.5` });
+    }
+    if (f5DiffCls !== 'diff-gray' && f5Diff != null) {
+      const _dir = f5Diff < 0 ? 'Under' : 'Over';
+      const _ln  = g.mlbOdds?.f5TotalLine;
+      _signals.push({ tier: f5DiffCls === 'diff-green' ? 'take' : 'lean',
+        text: f5DiffCls === 'diff-green'
+          ? `Bet F5 ${_dir} — take ${_ln}${f5Diff < 0 ? ' or higher' : ' or lower'}`
+          : `Lean F5 ${_dir}` });
+    }
+    _signals.sort((a, b) => (a.tier === 'take' ? 0 : 1) - (b.tier === 'take' ? 0 : 1));
+    const _best = _signals[0] || null;
+    const betSignalHtml = _best
+      ? `<div class="mlb-bet-signal ${_best.tier}"><span class="mlb-bet-icon">${_best.tier === 'take' ? '🔥' : '📊'}</span><span class="mlb-bet-text">${esc(_best.text)}</span></div>`
+      : '';
+
     return `
       <div class="card" id="mlb-game-${g.id}">
         <div class="card-hd">
@@ -4270,47 +4332,37 @@ function renderMLB() {
             <span>${esc(g.home.split(' ').pop())}</span>
           </div>
         </div>
-        <table class="mlb-cmp-table">
-          <tr><th></th><th>Model</th><th>Vegas</th></tr>
+        <table class="mlb-diff-table">
           <tr>
-            <td>ML</td>
+            <th></th>
+            <th>ML</th>
+            <th>Total</th>
+            <th>Run Line</th>
+            <th>F5</th>
+          </tr>
+          <tr>
+            <td>Vegas</td>
+            <td>${g.mlbOdds?.homeML != null ? `${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML}` : '—'}</td>
+            <td>${g.mlbOdds?.totalLine != null ? `o${g.mlbOdds.totalLine}` : '—'}</td>
+            <td>${g.mlbOdds?.rlFavTeam ? `${esc(g.mlbOdds.rlFavTeam.split(' ').pop())} -1.5` : '—'}</td>
+            <td>${g.mlbOdds?.f5TotalLine != null ? `o${g.mlbOdds.f5TotalLine}` : '—'}</td>
+          </tr>
+          <tr>
+            <td>Model</td>
             <td>${g.homeModelML}</td>
-            <td>${g.mlbOdds?.homeML != null ? `${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML} / ${g.mlbOdds.awayML > 0 ? '+' : ''}${g.mlbOdds.awayML}` : '—'}</td>
-          </tr>
-          <tr>
-            <td>Run Line</td>
-            <td>${g.runDiff >= 0 ? '+' : ''}${g.runDiff.toFixed(1)}</td>
-            <td>${g.mlbOdds?.rlFavTeam ? `-1.5 ${esc(g.mlbOdds.rlFavTeam.split(' ').pop())}` : '—'}</td>
-          </tr>
-          <tr>
-            <td>Total</td>
             <td>${g.proj.total.toFixed(1)}</td>
-            <td>—</td>
+            <td>${g.runDiff >= 0 ? '+' : ''}${g.runDiff.toFixed(1)}</td>
+            <td>${g.f5.total.toFixed(1)}</td>
+          </tr>
+          <tr class="mlb-dt-diff">
+            <td>Diff</td>
+            <td class="${mlDiffCls}">${mlDiffSigned != null ? `${mlDiffSigned > 0 ? '+' : ''}${mlDiffSigned}` : '—'}</td>
+            <td class="${totalDiffCls}">${totalDiff != null ? `${totalDiff > 0 ? '+' : ''}${totalDiff.toFixed(1)}` : '—'}</td>
+            <td class="${rlDiffCls}">${`${g.runDiff >= 0 ? '+' : ''}${g.runDiff.toFixed(1)}`}</td>
+            <td class="${f5DiffCls}">${f5Diff != null ? `${f5Diff > 0 ? '+' : ''}${f5Diff.toFixed(1)}` : '—'}</td>
           </tr>
         </table>
-        ${g.homeEdge != null ? `<div class="mlb-edge-row"><span class="mlb-edge-badge ${g.homeEdge > 3 ? 'mlb-edge-pos' : g.homeEdge < -3 ? 'mlb-edge-neg' : 'mlb-edge-neu'}">${g.homeEdge > 0 ? '+' : ''}${g.homeEdge}% edge on ${esc(g.homeEdge >= 0 ? g.home : g.away)}</span></div>` : ''}
-        <div class="mlb-lines">
-          <div></div>
-          <div class="mlb-lines-hd">Run Line</div>
-          <div class="mlb-lines-hd">F5 Line</div>
-          <div class="mlb-lines-hd">Total</div>
-          <div class="mlb-lines-lbl">Model</div>
-          <div class="mlb-lines-val">${g.runLineEdge != null
-            ? `<span class="mlb-edge-badge ${g.runLineEdge > 3 ? 'mlb-edge-pos' : g.runLineEdge < -3 ? 'mlb-edge-neg' : 'mlb-edge-neu'}">${g.runLineEdge > 0 ? '+' : ''}${g.runLineEdge}%</span>`
-            : `<span style="color:var(--muted);font-size:.68rem">${g.rlModelCoverPct}%</span>`}</div>
-          <div class="mlb-lines-val" style="color:var(--blue);font-weight:600">${g.f5.total.toFixed(1)}</div>
-          <div class="mlb-lines-val" style="color:var(--blue);font-weight:600">${g.proj.total.toFixed(1)}</div>
-          <div class="mlb-lines-lbl">Vegas</div>
-          <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.rlModelFavML != null
-            ? `${esc(g.rlFavTeam.split(' ').pop())} -1.5`
-            : '—'}</div>
-          <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.mlbOdds?.f5RlFavTeam
-            ? `${esc(g.mlbOdds.f5RlFavTeam.split(' ').pop())} -0.5`
-            : '—'}</div>
-          <div class="mlb-lines-val" style="font-size:.68rem;color:var(--muted)">${g.mlbOdds?.totalLine != null
-            ? `o${g.mlbOdds.totalLine}`
-            : '—'}</div>
-        </div>
+        ${betSignalHtml}
         <div class="mlb-pitchers">
           ${pitcherSlot('Away', pitchers.away, g.home)}
           <div class="mlb-pitcher-div"></div>
