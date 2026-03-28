@@ -4086,6 +4086,9 @@ document.querySelectorAll('.sp-tab').forEach(btn => {
   btn.addEventListener('click', () => setSport(btn.dataset.sport));
 });
 
+// Default to MLB on load
+mlbRefresh();
+
 // ── MLB data ─────────────────────────────────────────────────────────────────
 const MLB_ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard';
 let mlbGameList = [];
@@ -5360,9 +5363,6 @@ async function loadMLBTeams() { /* TODO: fetch MLB team ratings */ }
     if (e.target.closest('.edge-tip')) tip.style.display = 'none';
   });
 })();
-
-// Default to MLB on load (must run after all variables/functions are declared)
-mlbRefresh();
 </script>
 </body>
 </html>
