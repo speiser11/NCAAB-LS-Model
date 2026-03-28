@@ -4259,50 +4259,71 @@ function renderMLB() {
     };
 
     // ── Diff + bet signal pre-computation ──────────────────────────────────
+    // Juice-scaled tier helper for ML and Run Line.
+    // vegasJuice = the Vegas ML for the model-favored side (negative = favorite).
+    // Returns 'take', 'lean', or null.
+    function _juiceTier(diff, vegasJuice) {
+      if (vegasJuice == null) return null;
+      const abs = Math.abs(vegasJuice);
+      if (abs >= 300) return null;                        // suppress
+      if (abs >= 250) return diff >= 100 ? 'take' : diff >= 80  ? 'lean' : null;
+      if (abs >= 200) return diff >= 80  ? 'take' : diff >= 55  ? 'lean' : null;
+      if (abs >= 150) return diff >= 55  ? 'take' : diff >= 35  ? 'lean' : null;
+      return              diff >= 35  ? 'take' : diff >= 20  ? 'lean' : null; // -100 to -149
+    }
+
     const homeModelMLNum = parseInt(String(g.homeModelML)) || 0;
     const mlDiffSigned   = g.mlbOdds?.homeML != null ? homeModelMLNum - g.mlbOdds.homeML : null;
     const mlDiff         = mlDiffSigned != null ? Math.abs(mlDiffSigned) : null;
-    const mlDiffCls      = mlDiff == null ? 'diff-gray' : mlDiff >= 20 ? 'diff-green' : mlDiff >= 10 ? 'diff-yellow' : 'diff-gray';
+    // Use Vegas ML for the model-favored team as the juice reference
+    const _mlFavVegasML  = g.homeWinProb >= g.awayWinProb ? g.mlbOdds?.homeML : g.mlbOdds?.awayML;
+    const mlTier         = mlDiff != null ? _juiceTier(mlDiff, _mlFavVegasML) : null;
+    const mlDiffCls      = mlTier === 'take' ? 'diff-green' : mlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalDiffCls = totalDiffAbs == null ? 'diff-gray' : totalDiffAbs >= 1.0 ? 'diff-green' : totalDiffAbs >= 0.5 ? 'diff-yellow' : 'diff-gray';
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 1.5 ? 'take' : totalDiffAbs >= 1.0 ? 'lean' : null;
+    const totalDiffCls = totalTier === 'take' ? 'diff-green' : totalTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
-    const rlMargin  = Math.abs(g.runDiff);
-    const rlDiffCls = (rlMargin >= 2.0 || rlMargin <= 0.5) ? 'diff-green' : (rlMargin >= 0.8 && rlMargin <= 1.1) ? 'diff-yellow' : 'diff-gray';
+    // Run line: use model run diff vs Vegas -1.5; juice reference = Vegas ML for model-favored RL team
+    const rlMargin       = Math.abs(g.runDiff);
+    const _rlFavVegasML  = g.rlFavTeam === g.home ? g.mlbOdds?.homeML : g.mlbOdds?.awayML;
+    const rlTier         = _juiceTier(rlMargin * 40, _rlFavVegasML); // scale margin to ~ML-point units
+    const rlDiffCls      = rlTier === 'take' ? 'diff-green' : rlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const f5Diff    = g.f5TotalEdge;
     const f5DiffAbs = f5Diff != null ? Math.abs(f5Diff) : null;
-    const f5DiffCls = f5DiffAbs == null ? 'diff-gray' : f5DiffAbs >= 1.0 ? 'diff-green' : f5DiffAbs >= 0.5 ? 'diff-yellow' : 'diff-gray';
+    const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : f5DiffAbs >= 1.0 ? 'lean' : null;
+    const f5DiffCls = f5Tier === 'take' ? 'diff-green' : f5Tier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const _signals = [];
     const _favShort = (g.homeWinProb >= g.awayWinProb ? g.home : g.away).split(' ').pop();
-    if (mlDiffCls !== 'diff-gray' && g.mlbOdds?.homeML != null) {
+    if (mlTier && g.mlbOdds?.homeML != null) {
       const _mML = g.homeWinProb >= g.awayWinProb ? g.homeModelML : g.awayModelML;
-      _signals.push({ tier: mlDiffCls === 'diff-green' ? 'take' : 'lean',
-        text: mlDiffCls === 'diff-green' ? `Bet ${_favShort} ML — take ${_mML} or better` : `Lean ${_favShort} ML` });
+      _signals.push({ tier: mlTier,
+        text: mlTier === 'take' ? `Bet ${_favShort} ML — take ${_mML} or better` : `Lean ${_favShort} ML` });
     }
-    if (totalDiffCls !== 'diff-gray' && totalDiff != null) {
+    if (totalTier && totalDiff != null) {
       const _dir = totalDiff < 0 ? 'Under' : 'Over';
       const _ln  = g.mlbOdds.totalLine;
-      _signals.push({ tier: totalDiffCls === 'diff-green' ? 'take' : 'lean',
-        text: totalDiffCls === 'diff-green'
+      _signals.push({ tier: totalTier,
+        text: totalTier === 'take'
           ? `Bet ${_dir} — take ${_ln}${totalDiff < 0 ? ' or higher' : ' or lower'}`
           : `Lean ${_dir} — take if you can get ${_ln}${totalDiff < 0 ? ' or higher' : ' or lower'}` });
     }
-    if (rlDiffCls !== 'diff-gray') {
+    if (rlTier) {
       const _rfShort = g.rlFavTeam.split(' ').pop();
       const _rdShort = (g.rlFavTeam === g.home ? g.away : g.home).split(' ').pop();
-      _signals.push({ tier: rlDiffCls === 'diff-green' ? 'take' : 'lean',
-        text: rlDiffCls === 'diff-green'
+      _signals.push({ tier: rlTier,
+        text: rlTier === 'take'
           ? (rlMargin >= 2.0 ? `Bet ${_rfShort} -1.5` : `Bet ${_rdShort} +1.5`)
           : `Lean ${_rfShort} -1.5` });
     }
-    if (f5DiffCls !== 'diff-gray' && f5Diff != null) {
+    if (f5Tier && f5Diff != null) {
       const _dir = f5Diff < 0 ? 'Under' : 'Over';
       const _ln  = g.mlbOdds?.f5TotalLine;
-      _signals.push({ tier: f5DiffCls === 'diff-green' ? 'take' : 'lean',
-        text: f5DiffCls === 'diff-green'
+      _signals.push({ tier: f5Tier,
+        text: f5Tier === 'take'
           ? `Bet F5 ${_dir} — take ${_ln}${f5Diff < 0 ? ' or higher' : ' or lower'}`
           : `Lean F5 ${_dir}` });
     }
