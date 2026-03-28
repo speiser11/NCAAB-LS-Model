@@ -5022,7 +5022,7 @@ function predictMLBWinProb(g, pitchers) {
   awayRuns *= pf * 0.95; // road penalty
 
   const runDiff = homeRuns - awayRuns;
-  const rawProb = 1 / (1 + Math.exp(-runDiff * 0.35));
+  const rawProb = 1 / (1 + Math.exp(-runDiff * 0.18));
   const rawProbHfa = rawProb + 0.025;
   let homeWinProb = Math.max(0.30, Math.min(0.75, rawProbHfa));
 
