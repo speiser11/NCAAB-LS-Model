@@ -4319,7 +4319,9 @@ function renderMLB() {
     const vegasFavModelML = vegasFavIsHome ? homeModelMLNum : awayModelMLNum;
     const mlDiffSignedFav = _mlDiffNorm(vegasFavModelML, vegasFavVegasML);
     const mlDiff          = mlDiffSignedFav != null ? Math.abs(mlDiffSignedFav) : null;
-    const mlImpDiffPct    = vegasFavVegasML != null ? Math.abs((_mlImpNum(vegasFavModelML) ?? 0) - (_mlImpNum(vegasFavVegasML) ?? 0)) * 100 : null;
+    // Signed imp diff: positive = model gives Vegas fav less prob = value on dog
+    const mlImpDiffSigned = vegasFavVegasML != null ? ((_mlImpNum(vegasFavVegasML) ?? 0) - (_mlImpNum(vegasFavModelML) ?? 0)) * 100 : null;
+    const mlImpDiffPct    = mlImpDiffSigned != null ? Math.abs(mlImpDiffSigned) : null;
     const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
     const mlDiffCls       = mlTier === 'take' ? 'diff-green' : mlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
@@ -4435,7 +4437,7 @@ function renderMLB() {
           </tr>
           <tr class="mlb-dt-diff">
             <td>Diff</td>
-            <td class="${mlDiffCls}">${mlDiffSignedFav != null ? `${mlDiffSignedFav > 0 ? '+' : ''}${mlDiffSignedFav}` : '—'}</td>
+            <td class="${mlDiffCls}">${mlImpDiffSigned != null ? `${mlImpDiffSigned > 0 ? '+' : ''}${mlImpDiffSigned.toFixed(1)}%` : '—'}</td>
             <td class="${totalDiffCls}">${totalDiff != null ? `${totalDiff > 0 ? '+' : ''}${totalDiff.toFixed(1)}` : '—'}</td>
             <td class="${rlDiffCls}">${rlImpDiff != null ? `${rlImpDiff > 0 ? '+' : ''}${(rlImpDiff * 100).toFixed(1)}%` : '—'}</td>
             <td class="${f5DiffCls}">${f5Diff != null ? `${f5Diff > 0 ? '+' : ''}${f5Diff.toFixed(1)}` : '—'}</td>
@@ -4477,7 +4479,7 @@ function renderMLBTopPicks(games) {
     const mlImpDiffPct    = vegasFavVegasML != null ? Math.abs((_mlImpNum(vegasFavModelML) ?? 0) - (_mlImpNum(vegasFavVegasML) ?? 0)) * 100 : null;
     const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
 
-    // Total
+    // Total (renderMLBTopPicks)
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
     const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : totalDiffAbs >= 1.5 ? 'lean' : null;
