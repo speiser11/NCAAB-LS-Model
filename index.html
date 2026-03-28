@@ -4686,9 +4686,10 @@ async function loadMLBPitchers(dateStr) {
     if (!r.ok) throw new Error(`MLB Stats API ${r.status}`);
     const d = await r.json();
 
-    // Collect pitcher IDs and build game stubs
+    // Collect pitcher IDs, team IDs, and build game stubs
     const pitcherIds = new Set();
-    const gameStubs = [];
+    const teamIdMap  = new Map(); // normTeamName → { teamId, teamName }
+    const gameStubs  = [];
     for (const dateEntry of (d.dates || [])) {
       for (const game of (dateEntry.games || [])) {
         const awayP = game.teams?.away?.probablePitcher || null;
@@ -4696,11 +4697,14 @@ async function loadMLBPitchers(dateStr) {
         if (awayP?.id) pitcherIds.add(awayP.id);
         if (homeP?.id) pitcherIds.add(homeP.id);
 
-        gameStubs.push({
-          awayName: game.teams?.away?.team?.name || '',
-          homeName: game.teams?.home?.team?.name || '',
-          awayP, homeP,
-        });
+        const awayName = game.teams?.away?.team?.name || '';
+        const homeName = game.teams?.home?.team?.name || '';
+        const awayId   = game.teams?.away?.team?.id;
+        const homeId   = game.teams?.home?.team?.id;
+        if (awayId) teamIdMap.set(normMLBTeam(awayName), { teamId: awayId, teamName: awayName });
+        if (homeId) teamIdMap.set(normMLBTeam(homeName), { teamId: homeId, teamName: homeName });
+
+        gameStubs.push({ awayName, homeName, awayP, homeP });
       }
     }
 
@@ -4732,9 +4736,77 @@ async function loadMLBPitchers(dateStr) {
         home: parsePitcher(homeP),
       });
     }
+
+    // Step 4: fetch bullpen stats for all teams in parallel
+    loadMLBBullpens(isoDate, teamIdMap);
   } catch(e) {
     console.warn('loadMLBPitchers failed:', e.message);
   }
+}
+
+// ── MLB bullpen quality map ───────────────────────────────────────────────────
+// normTeamName → { score, era, seasonIp, recentIp }
+// score: positive = better than avg bullpen (same scale as ratePitcher)
+let mlbBullpenMap = new Map();
+
+// Baseline league-average bullpen ERA (relievers run ~4.20 vs ~4.50 for starters)
+const BP_BASELINE_ERA = 4.20;
+const BP_MIN_RECENT_IP = 10; // minimum IP in last-15 window to use blended weight
+
+async function loadMLBBullpens(isoDate, teamIdMap) {
+  if (!teamIdMap.size) return;
+
+  const d15 = new Date(isoDate);
+  d15.setDate(d15.getDate() - 15);
+  const startDate = d15.toISOString().slice(0, 10);
+
+  // Helper: extract relief pitcher ERA weighted by IP from a stats API response
+  function extractBullpen(data) {
+    const splits = data?.stats?.[0]?.splits ?? [];
+    let totalIp = 0, eraTotalWt = 0;
+    for (const s of splits) {
+      const gs  = s.stat?.gamesStarted ?? 0;
+      const gp  = s.stat?.gamesPlayed  ?? s.stat?.gamesPitched ?? 1;
+      // Classify as reliever: zero starts, or starts < 30% of appearances
+      if (gs > 0 && gs / gp >= 0.30) continue;
+      const ip  = parseFloat(s.stat?.inningsPitched) || 0;
+      if (ip <= 0) continue;
+      const era = parseFloat(s.stat?.era);
+      if (isNaN(era)) continue;
+      totalIp   += ip;
+      eraTotalWt += era * ip;
+    }
+    if (totalIp === 0) return null;
+    return { era: eraTotalWt / totalIp, ip: totalIp };
+  }
+
+  await Promise.all([...teamIdMap.entries()].map(async ([normName, { teamId }]) => {
+    try {
+      const base = `https://statsapi.mlb.com/api/v1/stats?group=pitching&sportId=1&season=2025&teamId=${teamId}&playerPool=All&limit=60`;
+      const [seasonData, recentData] = await Promise.all([
+        fetch(`${base}&stats=season`,          { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null),
+        fetch(`${base}&stats=byDateRange&startDate=${startDate}&endDate=${isoDate}`,
+              { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null),
+      ]);
+
+      const season = extractBullpen(seasonData);
+      if (!season) return;
+
+      const recent = extractBullpen(recentData);
+      const blendedEra = (recent && recent.ip >= BP_MIN_RECENT_IP)
+        ? season.era * (2/3) + recent.era * (1/3)
+        : season.era;
+
+      mlbBullpenMap.set(normName, {
+        score:    Math.round((BP_BASELINE_ERA - blendedEra) * 100) / 100,
+        era:      Math.round(blendedEra * 100) / 100,
+        seasonIp: season.ip,
+        recentIp: recent?.ip ?? 0,
+      });
+    } catch(e) {
+      console.warn(`loadMLBBullpens: ${normName} failed`, e.message);
+    }
+  }));
 }
 
 // ── MLB park factors (Baseball Reference 2024) ───────────────────────────────
@@ -4851,16 +4923,24 @@ function rateOffense(teamName, pitcherHand) {
 function calcMLBTotal(g, pitchers) {
   const hp = ratePitcher(pitchers.home) ?? 0; // home starter quality (null → avg)
   const ap = ratePitcher(pitchers.away) ?? 0; // away starter quality
-  const ho = rateOffense(g.home, pitchers.away?.hand)?.score ?? 0; // home offense vs away SP
-  const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0; // away offense vs home SP
+  const ho = rateOffense(g.home, pitchers.away?.hand)?.score ?? 0;
+  const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0;
   const pf = (g.parkFactor || getParkFactor(g.home)).factor;
 
+  // Bullpen quality for each team (0 = league average when no data)
+  const homeBp = mlbBullpenMap.get(normMLBTeam(g.home))?.score ?? 0;
+  const awayBp = mlbBullpenMap.get(normMLBTeam(g.away))?.score ?? 0;
+
+  // Effective pitching quality: starter × 5/9 + bullpen × 4/9
+  const homeEffP = hp * (5/9) + homeBp * (4/9);
+  const awayEffP = ap * (5/9) + awayBp * (4/9);
+
   let total = 9.0;
-  total -= hp + ap;           // subtract pitcher quality (better pitchers → fewer runs)
-  total += (ho + ao) * 2.0;  // add offense adjustments (each score unit ≈ 0.2 wRC+ pts)
-  total *= pf;                // scale by park run factor
-  total = Math.max(5.5, Math.min(14.0, total)); // realistic MLB total range
-  return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf };
+  total -= homeEffP + awayEffP;
+  total += (ho + ao) * 2.0;
+  total *= pf;
+  total = Math.max(5.5, Math.min(14.0, total));
+  return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf, homeBp, awayBp };
 }
 
 // ── MLB moneyline win probability (Sprint 5) ─────────────────────────────────
@@ -4871,10 +4951,18 @@ function predictMLBWinProb(g, pitchers) {
   const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0;
   const pf = (g.parkFactor || getParkFactor(g.home)).factor;
 
-  let homeRuns = (9.0 / 2) - ap + ho * 2.0; // home runs suppressed by away pitcher
-  let awayRuns = (9.0 / 2) - hp + ao * 2.0; // away runs suppressed by home pitcher
+  const homeBp = mlbBullpenMap.get(normMLBTeam(g.home))?.score ?? 0;
+  const awayBp = mlbBullpenMap.get(normMLBTeam(g.away))?.score ?? 0;
+
+  // Runs allowed by each team's PITCHING STAFF (opponent scores against it)
+  // Away pitching (SP + BP) suppresses home runs; home pitching suppresses away runs
+  const effAP = ap * (5/9) + awayBp * (4/9); // away staff effectiveness vs home bats
+  const effHP = hp * (5/9) + homeBp * (4/9); // home staff effectiveness vs away bats
+
+  let homeRuns = (9.0 / 2) - effAP + ho * 2.0;
+  let awayRuns = (9.0 / 2) - effHP + ao * 2.0;
   homeRuns *= pf;
-  awayRuns *= pf * 0.95; // away team road penalty
+  awayRuns *= pf * 0.95; // road penalty
 
   const runDiff = homeRuns - awayRuns;
   let homeWinProb = 1 / (1 + Math.exp(-runDiff * 0.35));
@@ -4883,7 +4971,7 @@ function predictMLBWinProb(g, pitchers) {
   return {
     homeWinProb: Math.round(homeWinProb * 100),
     awayWinProb: Math.round((1 - homeWinProb) * 100),
-    runDiff, // raw run differential — used for run line cover probability
+    runDiff,
     homeRuns: Math.round(homeRuns * 10) / 10,
     awayRuns: Math.round(awayRuns * 10) / 10,
   };
