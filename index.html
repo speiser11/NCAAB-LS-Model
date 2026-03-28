@@ -306,6 +306,9 @@ input[type=date]{
 .pick-card.warm .pick-edge{color:var(--yellow);}
 .pick-type-tag{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.06rem .3rem;}
 .pick-why{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);line-height:1.4;}
+.mlb-picks-section{margin-bottom:.45rem;}
+.mlb-picks-section:last-child{margin-bottom:0;}
+.mlb-picks-section-label{font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:.5px;color:var(--muted);margin-bottom:.35rem;}
 
 /* ── Settings modal ── */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;}
@@ -1140,6 +1143,7 @@ input[type=date] {
       <span class="mlb-cs-tag">Coming Soon</span>
       <span class="mlb-cs-text">Schedule is live. Run line · total · F5 · pitcher model data coming soon.</span>
     </div>
+    <div id="mlb-top-picks" class="top-picks-bar" style="display:none"></div>
     <div id="mlb-game-list" class="game-list"></div>
   </div>
 </div><!-- /#mlb-view -->
@@ -4148,6 +4152,19 @@ async function loadMLBESPN(dateStr) {
   }
 }
 
+// ── Juice-scaled tier helper (shared by renderMLB and renderMLBTopPicks) ──────
+// vegasJuice = the Vegas ML for the model-favored side (negative = favourite).
+// Returns 'take', 'lean', or null.
+function _juiceTier(diff, vegasJuice) {
+  if (vegasJuice == null) return null;
+  const abs = Math.abs(vegasJuice);
+  if (abs >= 300) return null;
+  if (abs >= 250) return diff >= 100 ? 'take' : diff >= 80  ? 'lean' : null;
+  if (abs >= 200) return diff >= 80  ? 'take' : diff >= 55  ? 'lean' : null;
+  if (abs >= 150) return diff >= 55  ? 'take' : diff >= 35  ? 'lean' : null;
+  return              diff >= 35  ? 'take' : diff >= 20  ? 'lean' : null;
+}
+
 function renderMLB() {
   const el = document.getElementById('mlb-game-list');
   if (!el) return;
@@ -4259,19 +4276,6 @@ function renderMLB() {
     };
 
     // ── Diff + bet signal pre-computation ──────────────────────────────────
-    // Juice-scaled tier helper for ML and Run Line.
-    // vegasJuice = the Vegas ML for the model-favored side (negative = favorite).
-    // Returns 'take', 'lean', or null.
-    function _juiceTier(diff, vegasJuice) {
-      if (vegasJuice == null) return null;
-      const abs = Math.abs(vegasJuice);
-      if (abs >= 300) return null;                        // suppress
-      if (abs >= 250) return diff >= 100 ? 'take' : diff >= 80  ? 'lean' : null;
-      if (abs >= 200) return diff >= 80  ? 'take' : diff >= 55  ? 'lean' : null;
-      if (abs >= 150) return diff >= 55  ? 'take' : diff >= 35  ? 'lean' : null;
-      return              diff >= 35  ? 'take' : diff >= 20  ? 'lean' : null; // -100 to -149
-    }
-
     const homeModelMLNum = parseInt(String(g.homeModelML)) || 0;
     const mlDiffSigned   = g.mlbOdds?.homeML != null ? homeModelMLNum - g.mlbOdds.homeML : null;
     const mlDiff         = mlDiffSigned != null ? Math.abs(mlDiffSigned) : null;
@@ -4394,6 +4398,210 @@ function renderMLB() {
         </div>
       </div>`;
   }).join('');
+  renderMLBTopPicks(mlbGameList);
+}
+
+// ── MLB Top Picks bar ─────────────────────────────────────────────────────────
+function renderMLBTopPicks(games) {
+  const bar = document.getElementById('mlb-top-picks');
+  if (!bar) return;
+
+  const takes = [], leans = [];
+
+  for (const g of games) {
+    if (g.homeWinProb == null) continue; // projections not computed yet
+
+    // ML
+    const homeModelMLNum = parseInt(String(g.homeModelML)) || 0;
+    const mlDiffSigned   = g.mlbOdds?.homeML != null ? homeModelMLNum - g.mlbOdds.homeML : null;
+    const mlDiff         = mlDiffSigned != null ? Math.abs(mlDiffSigned) : null;
+    const mlFavVegasML   = g.homeWinProb >= g.awayWinProb ? g.mlbOdds?.homeML : g.mlbOdds?.awayML;
+    const mlTier         = mlDiff != null ? _juiceTier(mlDiff, mlFavVegasML) : null;
+
+    // Total
+    const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
+    const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 1.5 ? 'take' : totalDiffAbs >= 1.0 ? 'lean' : null;
+
+    // Run line
+    const rlMargin     = Math.abs(g.runDiff || 0);
+    const rlFavVegasML = g.rlFavTeam === g.home ? g.mlbOdds?.homeML : g.mlbOdds?.awayML;
+    const rlTier       = _juiceTier(rlMargin * 40, rlFavVegasML);
+
+    // F5 total
+    const f5DiffAbs = g.f5TotalEdge != null ? Math.abs(g.f5TotalEdge) : null;
+    const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : f5DiffAbs >= 1.0 ? 'lean' : null;
+
+    const favShort  = (g.homeWinProb >= g.awayWinProb ? g.home : g.away).split(' ').pop();
+
+    if (mlTier && g.mlbOdds?.homeML != null) {
+      const mML  = g.homeWinProb >= g.awayWinProb ? g.homeModelML : g.awayModelML;
+      const text = mlTier === 'take' ? `Bet ${favShort} ML — take ${mML} or better` : `Lean ${favShort} ML`;
+      (mlTier === 'take' ? takes : leans).push({ g, betType: 'ML', tier: mlTier, text, diffSize: mlDiff });
+    }
+
+    if (totalTier && totalDiff != null) {
+      const dir  = totalDiff < 0 ? 'Under' : 'Over';
+      const ln   = g.mlbOdds.totalLine;
+      const text = totalTier === 'take'
+        ? `Bet ${dir} — take ${ln}${totalDiff < 0 ? ' or higher' : ' or lower'}`
+        : `Lean ${dir} — take if you can get ${ln}${totalDiff < 0 ? ' or higher' : ' or lower'}`;
+      (totalTier === 'take' ? takes : leans).push({ g, betType: 'Total', tier: totalTier, text, diffSize: totalDiffAbs });
+    }
+
+    if (rlTier) {
+      const rfShort = g.rlFavTeam.split(' ').pop();
+      const rdShort = (g.rlFavTeam === g.home ? g.away : g.home).split(' ').pop();
+      const text    = rlTier === 'take'
+        ? (rlMargin >= 2.0 ? `Bet ${rfShort} -1.5` : `Bet ${rdShort} +1.5`)
+        : `Lean ${rfShort} -1.5`;
+      (rlTier === 'take' ? takes : leans).push({ g, betType: 'Run Line', tier: rlTier, text, diffSize: rlMargin * 40 });
+    }
+
+    if (f5Tier && g.f5TotalEdge != null) {
+      const dir  = g.f5TotalEdge < 0 ? 'Under' : 'Over';
+      const ln   = g.mlbOdds?.f5TotalLine;
+      const text = f5Tier === 'take'
+        ? `Bet F5 ${dir} — take ${ln}${g.f5TotalEdge < 0 ? ' or higher' : ' or lower'}`
+        : `Lean F5 ${dir}`;
+      (f5Tier === 'take' ? takes : leans).push({ g, betType: 'F5', tier: f5Tier, text, diffSize: f5DiffAbs });
+    }
+  }
+
+  takes.sort((a, b) => b.diffSize - a.diffSize);
+  leans.sort((a, b) => b.diffSize - a.diffSize);
+
+  if (!takes.length && !leans.length) {
+    bar.style.display = 'none';
+    bar.innerHTML = '';
+    return;
+  }
+
+  const pickCard = p => {
+    const aShort = p.g.away.split(' ').pop();
+    const hShort = p.g.home.split(' ').pop();
+    return `<div class="pick-card ${p.tier === 'take' ? 'hot' : 'warm'}" onclick="document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
+      <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
+      <div class="pick-main">${esc(p.betType)}</div>
+      <div class="pick-why">${esc(p.text)}</div>
+    </div>`;
+  };
+
+  const section = (label, picks) => picks.length
+    ? `<div class="mlb-picks-section"><div class="mlb-picks-section-label">${label}</div><div class="picks-row">${picks.map(pickCard).join('')}</div></div>`
+    : '';
+
+  bar.style.display = '';
+  bar.innerHTML = `
+    <div class="picks-header">
+      <span class="top-picks-title">Today's MLB Picks</span>
+      <div class="picks-accuracy" id="mlb-picks-accuracy-row">
+        <span class="acc-badge" style="opacity:.5">Loading record…</span>
+      </div>
+    </div>
+    ${section('🔥 Takes', takes)}
+    ${section('📊 Leans', leans)}`;
+
+  loadMLBRecord();
+}
+
+// ── MLB historical record (Takes only, from mlb-log Gist files) ───────────────
+const MLB_ACC_START_DATE = '2026-03-27';
+let _mlbAccCache = null, _mlbAccCacheTs = 0;
+
+function _mlbLogSignal(entry) {
+  const m = entry.model, v = entry.vegas;
+  if (!m || !v) return null;
+  const homeModelMLNum = parseInt(String(m.homeModelML)) || 0;
+  const mlDiff         = v.homeML != null ? Math.abs(homeModelMLNum - v.homeML) : null;
+  const mlFavVegasML   = m.homeWinProb >= m.awayWinProb ? v.homeML : v.awayML;
+  const mlTier         = mlDiff != null ? _juiceTier(mlDiff, mlFavVegasML) : null;
+
+  const totalDiffAbs = v.totalLine != null && m.total != null
+    ? Math.abs(Math.round((m.total - v.totalLine) * 10) / 10) : null;
+  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 1.5 ? 'take' : null;
+
+  const rlMargin     = Math.abs(m.runDiff || 0);
+  const rlFavVegasML = (m.rlFavTeam === entry.home) ? v.homeML : v.awayML;
+  const rlTier       = _juiceTier(rlMargin * 40, rlFavVegasML);
+
+  const f5DiffAbs = m.f5Total != null && v.f5TotalLine != null
+    ? Math.abs(Math.round((m.f5Total - v.f5TotalLine) * 10) / 10) : null;
+  const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : null;
+
+  const candidates = [];
+  if (mlTier    === 'take') candidates.push({ type: 'ml',    diffSize: mlDiff });
+  if (totalTier === 'take') candidates.push({ type: 'total', diffSize: totalDiffAbs, modelDir: m.total > v.totalLine ? 'over' : 'under' });
+  if (rlTier    === 'take') candidates.push({ type: 'rl',    diffSize: rlMargin * 40 });
+  if (f5Tier    === 'take') candidates.push({ type: 'f5',    diffSize: f5DiffAbs, modelDir: m.f5Total > v.f5TotalLine ? 'over' : 'under' });
+  candidates.sort((a, b) => b.diffSize - a.diffSize);
+  return candidates[0] ?? null;
+}
+
+function _scoreMLBTake(entry, take) {
+  const r = entry.result;
+  if (!r) return null;
+  if (take.type === 'ml')    return r.mlCorrect === true ? 'W' : r.mlCorrect === false ? 'L' : null;
+  if (take.type === 'rl')    return r.rlResult === 'cover' ? 'W' : r.rlResult === 'no_cover' ? 'L' : null;
+  if (take.type === 'total') return r.ouResult === 'push' || r.ouResult == null ? null : (take.modelDir === r.ouResult ? 'W' : 'L');
+  if (take.type === 'f5')    return r.f5OuResult === 'push' || r.f5OuResult == null ? null : (take.modelDir === r.f5OuResult ? 'W' : 'L');
+  return null;
+}
+
+async function loadMLBRecord() {
+  if (!cfg.oddsGistId) return;
+  const now = Date.now();
+  if (_mlbAccCache && (now - _mlbAccCacheTs) < 30 * 60 * 1000) {
+    _renderMLBRecordBadge(_mlbAccCache);
+    return;
+  }
+  const pad = n => String(n).padStart(2, '0');
+  const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today    = new Date();
+  const weekAgo  = toISO(new Date(today.getTime() - 7  * 86400000));
+  const monthAgo = toISO(new Date(today.getTime() - 30 * 86400000));
+  const dates = [];
+  for (let i = 30; i >= 1; i--) {
+    const d = new Date(today.getTime() - i * 86400000);
+    const s = toISO(d);
+    if (s >= MLB_ACC_START_DATE) dates.push(s);
+  }
+  const wk = { w: 0, l: 0 }, mo = { w: 0, l: 0 };
+  await Promise.all(dates.map(async dateStr => {
+    try {
+      const r = await fetch(
+        `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/mlb-log-${dateStr}.json`,
+        { cache: 'no-store', signal: AbortSignal.timeout(5000) }
+      );
+      if (!r.ok) return;
+      const log = await r.json();
+      for (const entry of (Array.isArray(log) ? log : [])) {
+        if (!entry.result) continue;
+        const take = _mlbLogSignal(entry);
+        if (!take) continue;
+        const score = _scoreMLBTake(entry, take);
+        if (!score) continue;
+        mo[score === 'W' ? 'w' : 'l']++;
+        if (dateStr >= weekAgo) wk[score === 'W' ? 'w' : 'l']++;
+      }
+    } catch(e) { /* skip */ }
+  }));
+  _mlbAccCache = { wk, mo };
+  _mlbAccCacheTs = now;
+  _renderMLBRecordBadge(_mlbAccCache);
+}
+
+function _renderMLBRecordBadge({ wk, mo }) {
+  const row = document.getElementById('mlb-picks-accuracy-row');
+  if (!row) return;
+  const badge = (lbl, { w, l }) => {
+    const tot = w + l;
+    if (!tot) return `<span class="acc-badge">${lbl}: <span class="acc-pct">—</span></span>`;
+    const pct = Math.round(w / tot * 100);
+    const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
+    return `<span class="acc-badge ${cls}" title="Takes only">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></span>`;
+  };
+  row.innerHTML = badge('Week', wk) + badge('Month', mo);
 }
 
 // ── MLB probable pitchers (MLB Stats API — free, no auth) ────────────────────
