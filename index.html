@@ -4319,12 +4319,13 @@ function renderMLB() {
     const vegasFavModelML = vegasFavIsHome ? homeModelMLNum : awayModelMLNum;
     const mlDiffSignedFav = _mlDiffNorm(vegasFavModelML, vegasFavVegasML);
     const mlDiff          = mlDiffSignedFav != null ? Math.abs(mlDiffSignedFav) : null;
-    const mlTier          = mlDiff != null ? _juiceTier(mlDiff, vegasFavVegasML) : null;
+    const mlImpDiffPct    = vegasFavVegasML != null ? Math.abs((_mlImpNum(vegasFavModelML) ?? 0) - (_mlImpNum(vegasFavVegasML) ?? 0)) * 100 : null;
+    const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
     const mlDiffCls       = mlTier === 'take' ? 'diff-green' : mlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 1.5 ? 'take' : totalDiffAbs >= 1.0 ? 'lean' : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : totalDiffAbs >= 1.5 ? 'lean' : null;
     const totalDiffCls = totalTier === 'take' ? 'diff-green' : totalTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // Run line — direct implied-prob diff (avoids _mlDiffNorm sign issues when RL fav has positive odds)
@@ -4341,11 +4342,10 @@ function renderMLB() {
       ? (vegasCoverImp >= 0.5 ? -100 / Math.pow(1 - vegasCoverImp, 2) : 100 / Math.pow(vegasCoverImp, 2))
       : null;
     const rlDiffMLEquiv    = rlImpDiff != null ? Math.round(Math.abs(rlImpDiff) * Math.abs(_rlDp)) : null;
-    // Direction: runDiff > 2.5 → take fav -1.5; > 2.0 → lean fav -1.5; < 2.0 → no signal
-    const rlFavCvr         = rlMargin > 2.0;
-    const rlTier           = rlFavCvr && rlImpDiff != null
-      ? (rlMargin > 2.5 ? 'take' : 'lean') : null;
-    const rlDiffCls        = rlTier === 'take' ? 'diff-green' : rlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
+    // Direction: runDiff > 2.5 → take fav -1.5; < 2.5 → no signal
+    const rlFavCvr         = rlMargin > 2.5;
+    const rlTier           = rlFavCvr && rlImpDiff != null ? 'take' : null;
+    const rlDiffCls        = rlTier === 'take' ? 'diff-green' : 'diff-gray';
 
     const f5Diff    = g.f5TotalEdge;
     const f5DiffAbs = f5Diff != null ? Math.abs(f5Diff) : null;
@@ -4421,16 +4421,16 @@ function renderMLB() {
           </tr>
           <tr>
             <td>Vegas</td>
-            <td>${vegasFavVegasML != null ? `${vegasFavVegasML > 0 ? '+' : ''}${vegasFavVegasML} <span class="mlb-impl">(${mlImp(vegasFavVegasML)}%)</span><span style="font-size:.5rem;color:var(--muted)"> ${vegasFavIsHome ? '(home)' : '(away)'}</span>` : '—'}</td>
+            <td>${vegasFavVegasML != null ? `${mlImp(vegasFavVegasML)}% <span class="mlb-impl">(${vegasFavVegasML > 0 ? '+' : ''}${vegasFavVegasML})</span><span style="font-size:.5rem;color:var(--muted)"> ${vegasFavIsHome ? '(home)' : '(away)'}</span>` : '—'}</td>
             <td>${g.mlbOdds?.totalLine != null ? `o${g.mlbOdds.totalLine}` : '—'}</td>
             <td>${g.mlbOdds?.rlFavTeam ? `${esc(g.mlbOdds.rlFavTeam.split(' ').pop())} -1.5${vegasRLFavML != null ? ` (${vegasRLFavML > 0 ? '+' : ''}${vegasRLFavML})` : ''}` : '—'}</td>
             <td>${g.mlbOdds?.f5TotalLine != null ? `o${g.mlbOdds.f5TotalLine}` : '—'}</td>
           </tr>
           <tr>
             <td>Model</td>
-            <td>${vegasFavVegasML != null ? `${vegasFavModelML > 0 ? '+' : ''}${vegasFavModelML} <span class="mlb-impl">(${mlImp(vegasFavModelML)}%)</span>` : '—'}</td>
+            <td>${vegasFavVegasML != null ? `${mlImp(vegasFavModelML)}% <span class="mlb-impl">(${vegasFavModelML > 0 ? '+' : ''}${vegasFavModelML})</span>` : '—'}</td>
             <td>${g.proj.total.toFixed(1)}</td>
-            <td>${modelRLML != null ? `${modelRLML > 0 ? '+' : ''}${modelRLML} <span class="mlb-impl">(${mlImp(modelRLML)}%)</span>` : '—'}</td>
+            <td>${modelRLML != null ? `${mlImp(modelRLML)}% <span class="mlb-impl">(${modelRLML > 0 ? '+' : ''}${modelRLML})</span>` : '—'}</td>
             <td>${g.f5.total.toFixed(1)}</td>
           </tr>
           <tr class="mlb-dt-diff">
@@ -4474,12 +4474,13 @@ function renderMLBTopPicks(games) {
     const vegasFavModelML = vegasFavIsHome ? homeModelMLNum : awayModelMLNum;
     const mlDiffSignedFav = _mlDiffNorm(vegasFavModelML, vegasFavVegasML);
     const mlDiff          = mlDiffSignedFav != null ? Math.abs(mlDiffSignedFav) : null;
-    const mlTier          = mlDiff != null ? _juiceTier(mlDiff, vegasFavVegasML) : null;
+    const mlImpDiffPct    = vegasFavVegasML != null ? Math.abs((_mlImpNum(vegasFavModelML) ?? 0) - (_mlImpNum(vegasFavVegasML) ?? 0)) * 100 : null;
+    const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
 
     // Total
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 1.5 ? 'take' : totalDiffAbs >= 1.0 ? 'lean' : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : totalDiffAbs >= 1.5 ? 'lean' : null;
 
     // Run line — direct implied-prob diff
     const rlMargin         = Math.abs(g.runDiff || 0);
@@ -4492,9 +4493,8 @@ function renderMLBTopPicks(games) {
       ? (rlVegasCoverImp >= 0.5 ? -100 / Math.pow(1 - rlVegasCoverImp, 2) : 100 / Math.pow(rlVegasCoverImp, 2))
       : null;
     const rlDiffMLEquiv    = rlImpDiff != null ? Math.round(Math.abs(rlImpDiff) * Math.abs(_rlDp)) : null;
-    const rlFavCvr         = rlMargin > 2.0;
-    const rlTier           = rlFavCvr && rlImpDiff != null
-      ? (rlMargin > 2.5 ? 'take' : 'lean') : null;
+    const rlFavCvr         = rlMargin > 2.5;
+    const rlTier           = rlFavCvr && rlImpDiff != null ? 'take' : null;
 
     // F5 total
     const f5DiffAbs = g.f5TotalEdge != null ? Math.abs(g.f5TotalEdge) : null;
@@ -4597,17 +4597,18 @@ function _mlbLogSignal(entry) {
   const m = entry.model, v = entry.vegas;
   if (!m || !v) return null;
   const homeModelMLNum = parseInt(String(m.homeModelML)) || 0;
-  const mlDiff         = v.homeML != null ? Math.abs(homeModelMLNum - v.homeML) : null;
-  const mlFavVegasML   = m.homeWinProb >= m.awayWinProb ? v.homeML : v.awayML;
-  const mlTier         = mlDiff != null ? _juiceTier(mlDiff, mlFavVegasML) : null;
+  const mlFavIsHome    = m.homeWinProb >= m.awayWinProb;
+  const mlFavVegasML   = mlFavIsHome ? v.homeML : v.awayML;
+  const mlFavModelML   = mlFavIsHome ? homeModelMLNum : (parseInt(String(m.awayModelML)) || 0);
+  const mlImpDiffPct   = mlFavVegasML != null ? Math.abs((_mlImpNum(mlFavModelML) ?? 0) - (_mlImpNum(mlFavVegasML) ?? 0)) * 100 : null;
+  const mlTier         = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
 
   const totalDiffAbs = v.totalLine != null && m.total != null
     ? Math.abs(Math.round((m.total - v.totalLine) * 10) / 10) : null;
-  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 1.5 ? 'take' : null;
+  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : null;
 
-  const rlMargin     = Math.abs(m.runDiff || 0);
-  const rlFavVegasML = (m.rlFavTeam === entry.home) ? v.homeML : v.awayML;
-  const rlTier       = _juiceTier(rlMargin * 40, rlFavVegasML);
+  const rlMargin = Math.abs(m.runDiff || 0);
+  const rlTier   = rlMargin > 2.5 ? 'take' : null;
 
   const f5DiffAbs = m.f5Total != null && v.f5TotalLine != null
     ? Math.abs(Math.round((m.f5Total - v.f5TotalLine) * 10) / 10) : null;
