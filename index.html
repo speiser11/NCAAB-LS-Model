@@ -4308,11 +4308,15 @@ function renderMLB() {
     const f5DiffCls = f5Tier === 'take' ? 'diff-green' : f5Tier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const _signals = [];
-    const _favShort = (g.homeWinProb >= g.awayWinProb ? g.home : g.away).split(' ').pop();
-    if (mlTier && g.mlbOdds?.homeML != null) {
-      const _mML = g.homeWinProb >= g.awayWinProb ? g.homeModelML : g.awayModelML;
+    if (mlTier && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
+      // mlDiffSigned > 0 → home overpriced by Vegas → value on away (underdog)
+      // mlDiffSigned < 0 → home underpriced by Vegas → value on home
+      const _mlValHome    = mlDiffSigned != null && mlDiffSigned <= 0;
+      const _mlValShort   = (_mlValHome ? g.home : g.away).split(' ').pop();
+      const _mlValVegasML = _mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+      const _mlValFmt     = `${_mlValVegasML > 0 ? '+' : ''}${_mlValVegasML}`;
       _signals.push({ tier: mlTier,
-        text: mlTier === 'take' ? `Bet ${_favShort} ML — take ${_mML} or better` : `Lean ${_favShort} ML` });
+        text: mlTier === 'take' ? `Bet ${_mlValShort} ML — take ${_mlValFmt} or better` : `Lean ${_mlValShort} ML` });
     }
     if (totalTier && totalDiff != null) {
       const _dir = totalDiff < 0 ? 'Under' : 'Over';
@@ -4439,12 +4443,13 @@ function renderMLBTopPicks(games) {
     const f5DiffAbs = g.f5TotalEdge != null ? Math.abs(g.f5TotalEdge) : null;
     const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : f5DiffAbs >= 1.0 ? 'lean' : null;
 
-    const favShort  = (g.homeWinProb >= g.awayWinProb ? g.home : g.away).split(' ').pop();
-
-    if (mlTier && g.mlbOdds?.homeML != null) {
-      const mML  = g.homeWinProb >= g.awayWinProb ? g.homeModelML : g.awayModelML;
-      const text = mlTier === 'take' ? `Bet ${favShort} ML — take ${mML} or better` : `Lean ${favShort} ML`;
-      (mlTier === 'take' ? takes : leans).push({ g, betType: 'ML', tier: mlTier, text, diffSize: mlDiff });
+    if (mlTier && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
+      const mlValHome    = mlDiffSigned != null && mlDiffSigned <= 0;
+      const mlValShort   = (mlValHome ? g.home : g.away).split(' ').pop();
+      const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+      const mlValFmt     = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
+      const text = mlTier === 'take' ? `Bet ${mlValShort} ML — take ${mlValFmt} or better` : `Lean ${mlValShort} ML`;
+      (mlTier === 'take' ? takes : leans).push({ g, betType: 'ML', tier: mlTier, text, diffSize: mlDiff, mlValHome });
     }
 
     if (totalTier && totalDiff != null) {
@@ -4493,7 +4498,7 @@ function renderMLBTopPicks(games) {
     const hShort = p.g.home.split(' ').pop();
     // main = short action label; why = full signal text
     const mainText = (() => {
-      if (p.betType === 'ML')       return `${(p.g.homeWinProb >= p.g.awayWinProb ? p.g.home : p.g.away).split(' ').pop()} ML`;
+      if (p.betType === 'ML')       return `${(p.mlValHome ? p.g.home : p.g.away).split(' ').pop()} ML`;
       if (p.betType === 'Total')    return `${p.g.proj.total > (p.g.mlbOdds?.totalLine ?? 0) ? 'Over' : 'Under'} ${p.g.mlbOdds?.totalLine}`;
       if (p.betType === 'Run Line') return `${p.g.rlFavTeam.split(' ').pop()} ${Math.abs(p.g.runDiff) >= 2.0 ? '-1.5' : '+1.5'}`;
       if (p.betType === 'F5')       return `F5 ${(p.g.f5TotalEdge ?? 0) > 0 ? 'Over' : 'Under'} ${p.g.mlbOdds?.f5TotalLine}`;
