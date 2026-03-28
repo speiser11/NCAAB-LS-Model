@@ -1053,11 +1053,11 @@ input[type=date] {
 </div>
 
 <div class="sport-nav" id="sport-nav">
-  <button class="sp-tab" data-sport="ncaab">NCAAB</button>
-  <button class="sp-tab active" data-sport="mlb">MLB</button>
+  <button class="sp-tab active" data-sport="ncaab">NCAAB</button>
+  <button class="sp-tab" data-sport="mlb">MLB</button>
 </div>
 
-<div id="ncaab-view" style="display:none">
+<div id="ncaab-view">
 <div id="top-picks-bar" class="top-picks-bar" style="display:none"></div>
 
 <div class="sub-nav" id="sub-nav">
@@ -1123,7 +1123,7 @@ input[type=date] {
 </div>
 </div><!-- /#ncaab-view -->
 
-<div id="mlb-view">
+<div id="mlb-view" style="display:none">
   <div class="mlb-sub-nav">
     <div class="mlb-sub-nav-left">
       <span class="mlb-season-tag">2026 Regular Season</span>
@@ -4085,9 +4085,6 @@ window.setSport = setSport; // explicit global in case inline onclick has scope 
 document.querySelectorAll('.sp-tab').forEach(btn => {
   btn.addEventListener('click', () => setSport(btn.dataset.sport));
 });
-
-// Default to MLB on load
-mlbRefresh();
 
 // ── MLB data ─────────────────────────────────────────────────────────────────
 const MLB_ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard';
