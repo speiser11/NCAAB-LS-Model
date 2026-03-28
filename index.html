@@ -1053,11 +1053,11 @@ input[type=date] {
 </div>
 
 <div class="sport-nav" id="sport-nav">
-  <button class="sp-tab active" data-sport="ncaab">NCAAB</button>
-  <button class="sp-tab" data-sport="mlb">MLB</button>
+  <button class="sp-tab" data-sport="ncaab">NCAAB</button>
+  <button class="sp-tab active" data-sport="mlb">MLB</button>
 </div>
 
-<div id="ncaab-view">
+<div id="ncaab-view" style="display:none">
 <div id="top-picks-bar" class="top-picks-bar" style="display:none"></div>
 
 <div class="sub-nav" id="sub-nav">
@@ -1123,7 +1123,7 @@ input[type=date] {
 </div>
 </div><!-- /#ncaab-view -->
 
-<div id="mlb-view" style="display:none">
+<div id="mlb-view">
   <div class="mlb-sub-nav">
     <div class="mlb-sub-nav-left">
       <span class="mlb-season-tag">2026 Regular Season</span>
@@ -5413,6 +5413,9 @@ async function loadMLBTeams() { /* TODO: fetch MLB team ratings */ }
     if (e.target.closest('.edge-tip')) tip.style.display = 'none';
   });
 })();
+
+// Default to MLB on load — must be after all variable/function declarations
+mlbRefresh();
 </script>
 </body>
 </html>
