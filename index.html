@@ -1007,6 +1007,7 @@ input[type=date] {
 .mlb-diff-table td:first-child{text-align:left;padding-left:1.15rem;color:var(--muted);font-size:.57rem;text-transform:uppercase;letter-spacing:.04em;}
 .mlb-diff-table td:last-child,.mlb-diff-table th:last-child{padding-right:1.15rem;}
 .mlb-dt-diff td{font-weight:600;font-size:.67rem;}
+.mlb-impl{font-size:.55rem;color:var(--muted);font-weight:400;}
 .diff-green{color:var(--green);}
 .diff-yellow{color:var(--yellow);}
 .diff-gray{color:var(--muted);font-weight:400;}
@@ -4150,6 +4151,14 @@ async function loadMLBESPN(dateStr) {
   }
 }
 
+// Implied probability from American odds (rounded to 1 dp)
+function mlImp(ml) {
+  const n = parseInt(ml) || 0;
+  return n < 0
+    ? (Math.abs(n) / (Math.abs(n) + 100) * 100).toFixed(1)
+    : (100 / (n + 100) * 100).toFixed(1);
+}
+
 // ── Juice-scaled tier helper (shared by renderMLB and renderMLBTopPicks) ──────
 // vegasJuice = the Vegas ML for the model-favored side (negative = favourite).
 // Returns 'take', 'lean', or null.
@@ -4365,14 +4374,14 @@ function renderMLB() {
           </tr>
           <tr>
             <td>Vegas</td>
-            <td>${g.mlbOdds?.homeML != null ? `${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML}` : '—'}</td>
+            <td>${g.mlbOdds?.homeML != null ? `${g.mlbOdds.homeML > 0 ? '+' : ''}${g.mlbOdds.homeML} <span class="mlb-impl">(${mlImp(g.mlbOdds.homeML)}%)</span>` : '—'}</td>
             <td>${g.mlbOdds?.totalLine != null ? `o${g.mlbOdds.totalLine}` : '—'}</td>
             <td>${g.mlbOdds?.rlFavTeam ? `${esc(g.mlbOdds.rlFavTeam.split(' ').pop())} -1.5` : '—'}</td>
             <td>${g.mlbOdds?.f5TotalLine != null ? `o${g.mlbOdds.f5TotalLine}` : '—'}</td>
           </tr>
           <tr>
             <td>Model</td>
-            <td>${g.homeModelML}</td>
+            <td>${g.homeModelML} <span class="mlb-impl">(${mlImp(g.homeModelML)}%)</span></td>
             <td>${g.proj.total.toFixed(1)}</td>
             <td>${g.runDiff >= 0 ? '+' : ''}${g.runDiff.toFixed(1)}</td>
             <td>${g.f5.total.toFixed(1)}</td>
