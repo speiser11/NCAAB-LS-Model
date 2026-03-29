@@ -4555,7 +4555,8 @@ function renderMLB() {
 }
 
 // ── MLB Top Picks bar ─────────────────────────────────────────────────────────
-let _mlbAllPicks = []; // stored for the picks modal
+let _mlbAllPicks    = []; // stored for the picks modal
+let _mlbPreGamePicks = []; // pre-game picks preserved across renders
 
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
@@ -4649,11 +4650,25 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
+  // Preserve pre-game picks so they survive re-renders after games start
+  if (takes.length || leans.length) {
+    _mlbPreGamePicks = [...takes, ...leans];
+  }
+
+  // Locked picks: explicitly computed + any pre-game picks now started
+  const allStartedIds = new Set(
+    games.filter(g => g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL').map(g => g.id)
+  );
+  const preservedLocked = _mlbPreGamePicks
+    .filter(p => allStartedIds.has(p.g.id) && !lockedPicks.some(lp => lp.g.id === p.g.id && lp.betType === p.betType))
+    .map(p => ({ ...p, locked: true }));
+  const allLockedPicks = [...lockedPicks, ...preservedLocked];
+
   // Store all picks for the modal (pre-game + locked)
-  _mlbAllPicks = [...takes, ...leans, ...lockedPicks];
+  _mlbAllPicks = [...takes, ...leans, ...allLockedPicks];
 
   if (!takes.length && !leans.length) {
-    if (!lockedPicks.length) {
+    if (!allLockedPicks.length) {
       bar.style.display = 'none';
       bar.innerHTML = '';
       return;
@@ -4667,7 +4682,7 @@ function renderMLBTopPicks(games) {
           <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
         </div>
         <div style="display:flex;align-items:center;gap:.5rem;">
-          <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${lockedPicks.length} locked)</button>
+          <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${allLockedPicks.length} locked)</button>
         </div>
       </div>
       <div style="padding:.4rem 1rem;font-size:.7rem;color:var(--muted)">All games in progress or final — pre-game picks locked.</div>`;
