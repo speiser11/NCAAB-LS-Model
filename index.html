@@ -4828,18 +4828,44 @@ function showMLBPicksModal() {
       </div>`;
     };
 
+    // Merge pre-game + locked into takes/leans sections
+    const allTakes = [...takes, ...locked.filter(p => p.tier === 'take')];
+    const allLeans = [...leans, ...locked.filter(p => p.tier === 'lean')];
+
+    // Compute hit/miss for record tallying (mirrors logic in pickRow)
+    const getHit = p => {
+      if (p.g.statusName !== 'STATUS_FINAL') return null;
+      const hs = parseInt(p.g.homeScore) || 0;
+      const as = parseInt(p.g.awayScore) || 0;
+      if (p.betType === 'ML') return p.mlValHome ? (hs > as) : (as > hs);
+      if (p.betType === 'Total') {
+        const line = p.g.mlbOdds?.totalLine;
+        const dir  = (p.g.proj?.total ?? 0) > (line ?? 0) ? 'over' : 'under';
+        return line != null ? (dir === 'over' ? (hs + as) > line : (hs + as) < line) : null;
+      }
+      if (p.betType === 'Run Line') {
+        const favShort = (p.g.mlbOdds?.rlFavTeam ?? '').split(' ').pop();
+        const favIsHome = p.g.home.split(' ').pop() === favShort;
+        return favIsHome ? (hs - as) >= 2 : (as - hs) >= 2;
+      }
+      return null;
+    };
+
+    const record = picks => {
+      const results = picks.map(getHit).filter(r => r !== null);
+      const w = results.filter(r => r === true).length;
+      const l = results.filter(r => r === false).length;
+      return results.length ? ` · ${w}-${l}` : '';
+    };
+
     let html = '';
-    if (takes.length) {
-      html += `<div class="mlb-picks-section-label">🔥 Takes (${takes.length})</div>`;
-      html += takes.map(pickRow).join('');
+    if (allTakes.length) {
+      html += `<div class="mlb-picks-section-label">🔥 Takes (${allTakes.length})${record(allTakes)}</div>`;
+      html += allTakes.map(pickRow).join('');
     }
-    if (leans.length) {
-      html += `<div class="mlb-picks-section-label">📊 Leans (${leans.length})</div>`;
-      html += leans.map(pickRow).join('');
-    }
-    if (locked.length) {
-      html += `<div class="mlb-picks-section-label" style="opacity:0.6">🔒 Started / Final (${locked.length})</div>`;
-      html += locked.map(pickRow).join('');
+    if (allLeans.length) {
+      html += `<div class="mlb-picks-section-label">📊 Leans (${allLeans.length})${record(allLeans)}</div>`;
+      html += allLeans.map(pickRow).join('');
     }
     body.innerHTML = html;
   }
