@@ -1,1 +1,3 @@
 optimize/data/
+.mlb_backtest_cache/
+mlb_backtest.csv
