@@ -4739,17 +4739,17 @@ async function fetchF5Score(eventId) {
     );
     if (!r.ok) throw new Error(`ESPN summary ${r.status}`);
     const d = await r.json();
-    const teams = d.boxscore?.teams || [];
+    // Linescores are in header.competitions[0].competitors (ordered array, no period field)
+    const competitors = d.header?.competitions?.[0]?.competitors || [];
     const result = { homeF5: null, awayF5: null };
-    for (const t of teams) {
-      const scores = (t.linescores || [])
-        .filter(ls => ls.period >= 1 && ls.period <= 5)
-        .reduce((sum, ls) => sum + (parseInt(ls.value ?? ls.displayValue) || 0), 0);
-      if (t.homeAway === 'home') result.homeF5 = scores;
-      else result.awayF5 = scores;
+    for (const c of competitors) {
+      const innings = (c.linescores || []).slice(0, 5);
+      const runs = innings.reduce((sum, ls) => sum + (parseInt(ls.displayValue) || 0), 0);
+      if (c.homeAway === 'home') result.homeF5 = runs;
+      else result.awayF5 = runs;
     }
-    _f5ScoreCache[eventId] = result;
-    return result;
+    _f5ScoreCache[eventId] = (result.homeF5 !== null && result.awayF5 !== null) ? result : null;
+    return _f5ScoreCache[eventId];
   } catch(e) {
     _f5ScoreCache[eventId] = null;
     return null;
