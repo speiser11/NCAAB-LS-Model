@@ -1026,6 +1026,7 @@ input[type=date] {
 .mlb-pick-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;}
 .mlb-pick-row:last-child{border-bottom:none;}
 .mlb-pick-row:hover{background:var(--surface2);}
+.mlb-pick-row.locked{opacity:0.55;}
 .mlb-pick-row-icon{font-size:1rem;flex-shrink:0;width:1.2rem;text-align:center;}
 .mlb-pick-row-body{flex:1;min-width:0;}
 .mlb-pick-row-matchup{font-size:.62rem;color:var(--muted);margin-bottom:.15rem;}
@@ -4560,9 +4561,44 @@ function renderMLBTopPicks(games) {
 
   const takes = [], leans = [];
 
+  // Also collect locked picks (started/final games) for the modal
+  const lockedPicks = [];
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
-    // Skip games that have started — pre-game picks only
+    if (g.statusName !== 'STATUS_IN_PROGRESS' && g.statusName !== 'STATUS_FINAL') continue;
+    const { mlTier, mlDiffSignedFav, vegasFavIsHome, mlImpDiffPct,
+            totalTier, totalDiff, totalDiffAbs,
+            rlTier, rlDiffMLEquiv, f5Tier } = g._tiers;
+    if (mlTier && g.mlbOdds?.homeML != null) {
+      const mlValHome = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
+      const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+      const mlValFmt = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
+      const side = (mlValHome ? g.home : g.away).split(' ').pop();
+      lockedPicks.push({ g, betType: 'ML', tier: mlTier, locked: true,
+        text: `Bet ${side} ML — take ${mlValFmt} or better`, diffSize: mlImpDiffPct ?? 0, mlValHome });
+    }
+    if (totalTier && totalDiff != null) {
+      const dir = totalDiff < 0 ? 'Under' : 'Over';
+      const ln  = g.mlbOdds.totalLine;
+      lockedPicks.push({ g, betType: 'Total', tier: totalTier, locked: true,
+        text: `Bet ${dir} — take ${ln}${totalDiff < 0 ? ' or higher' : ' or lower'}`, diffSize: totalDiffAbs });
+    }
+    if (rlTier && g.mlbOdds?.rlFavTeam) {
+      const rfShort = (g.mlbOdds.rlFavTeam).split(' ').pop();
+      lockedPicks.push({ g, betType: 'Run Line', tier: 'take', locked: true,
+        text: `${rfShort} -1.5`, diffSize: rlDiffMLEquiv });
+    }
+    if (f5Tier && g.f5TotalEdge != null) {
+      const dir = g.f5TotalEdge < 0 ? 'Under' : 'Over';
+      const ln  = g.mlbOdds?.f5TotalLine;
+      lockedPicks.push({ g, betType: 'F5', tier: f5Tier, locked: true,
+        text: `Bet F5 ${dir} — take ${ln}${g.f5TotalEdge < 0 ? ' or higher' : ' or lower'}`, diffSize: Math.abs(g.f5TotalEdge) });
+    }
+  }
+
+  for (const g of games) {
+    if (g.homeWinProb == null || !g._tiers) continue;
+    // Skip games that have started — pre-game picks only in the top bar
     if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
     const { mlTier, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML,
             totalTier, totalDiff, totalDiffAbs,
@@ -4611,8 +4647,8 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
-  // Store all picks for the modal
-  _mlbAllPicks = [...takes, ...leans];
+  // Store all picks for the modal (pre-game + locked)
+  _mlbAllPicks = [...takes, ...leans, ...lockedPicks];
 
   if (!takes.length && !leans.length) {
     bar.style.display = 'none';
@@ -4680,8 +4716,9 @@ function showMLBPicksModal() {
   if (!_mlbAllPicks.length) {
     body.innerHTML = '<div class="mlb-picks-empty">No picks available yet — check back once odds are posted.</div>';
   } else {
-    const takes = _mlbAllPicks.filter(p => p.tier === 'take');
-    const leans = _mlbAllPicks.filter(p => p.tier === 'lean');
+    const takes  = _mlbAllPicks.filter(p => !p.locked && p.tier === 'take');
+    const leans  = _mlbAllPicks.filter(p => !p.locked && p.tier === 'lean');
+    const locked = _mlbAllPicks.filter(p => p.locked);
 
     const edgeLabel = p => {
       const d = p.diffSize ?? 0;
@@ -4695,6 +4732,8 @@ function showMLBPicksModal() {
     const pickRow = p => {
       const aShort = p.g.away.split(' ').pop();
       const hShort = p.g.home.split(' ').pop();
+      const isLocked = p.locked || p.g.statusName === 'STATUS_IN_PROGRESS' || p.g.statusName === 'STATUS_FINAL';
+      const lockedBadge = isLocked ? `<span style="font-size:11px;opacity:0.6;margin-left:4px">${p.g.statusName === 'STATUS_FINAL' ? '· Final' : '· Live'}</span>` : '';
       const actionText = (() => {
         if (p.betType === 'ML') {
           const side = (p.mlValHome ? p.g.home : p.g.away).split(' ').pop();
@@ -4728,11 +4767,11 @@ function showMLBPicksModal() {
         }
         return null;
       })();
-      const icon = p.tier === 'take' ? '🔥' : '📊';
-      return `<div class="mlb-pick-row" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
+      const icon = isLocked ? '🔒' : (p.tier === 'take' ? '🔥' : '📊');
+      return `<div class="mlb-pick-row${isLocked ? ' locked' : ''}" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
-          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · ${p.betType}</div>
+          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · ${p.betType}${lockedBadge}</div>
           <div class="mlb-pick-row-action ${p.tier}">${esc(actionText)}</div>
           ${modelSubtitle ? `<div class="mlb-pick-row-model">${esc(modelSubtitle)}</div>` : ''}
           <div class="mlb-pick-row-why">${esc(p.text)}</div>
@@ -4749,6 +4788,10 @@ function showMLBPicksModal() {
     if (leans.length) {
       html += `<div class="mlb-picks-section-label">📊 Leans (${leans.length})</div>`;
       html += leans.map(pickRow).join('');
+    }
+    if (locked.length) {
+      html += `<div class="mlb-picks-section-label" style="opacity:0.6">🔒 Started / Final (${locked.length})</div>`;
+      html += locked.map(pickRow).join('');
     }
     body.innerHTML = html;
   }
