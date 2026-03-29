@@ -4320,7 +4320,7 @@ function renderMLB() {
     const vegasFavVegasML = g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null
       ? (vegasFavIsHome ? g.mlbOdds.homeML : g.mlbOdds.awayML) : null;
     const vegasFavModelML = vegasFavIsHome ? (homeModelMLNum ?? 0) : (awayModelMLNum ?? 0);
-    const vegasFavShortName = (vegasFavIsHome ? g.home : g.away).split(' ').pop();
+
     const mlDiffSignedFav = _mlDiffNorm(vegasFavModelML, vegasFavVegasML);
     const mlDiff          = mlDiffSignedFav != null ? Math.abs(mlDiffSignedFav) : null;
     // Signed imp diff: positive = model gives Vegas fav less prob = value on dog
@@ -4432,23 +4432,23 @@ function renderMLB() {
         <table class="mlb-diff-table">
           <tr>
             <th></th>
-            <th>ML (Fav)</th>
+            <th>ML</th>
             <th>Total</th>
             <th>Run Line</th>
             <th>F5</th>
           </tr>
           <tr>
             <td>Vegas</td>
-            <td>${vegasFavVegasML != null ? `${esc(vegasFavShortName)} ${mlImp(vegasFavVegasML)}% <span class="mlb-impl">(${vegasFavVegasML > 0 ? '+' : ''}${vegasFavVegasML})</span>` : '—'}</td>
+            <td>${vegasFavVegasML != null ? `${mlImp(vegasFavVegasML)}% <span class="mlb-impl">(${vegasFavVegasML > 0 ? '+' : ''}${vegasFavVegasML})</span><span style="font-size:.5rem;color:var(--muted)"> ${vegasFavIsHome ? '(home)' : '(away)'}</span>` : '—'}</td>
             <td>${g.mlbOdds?.totalLine != null ? `o${g.mlbOdds.totalLine}` : '—'}</td>
             <td>${g.mlbOdds?.rlFavTeam ? `${esc(g.mlbOdds.rlFavTeam.split(' ').pop())} -1.5${vegasRLFavML != null ? ` (${vegasRLFavML > 0 ? '+' : ''}${vegasRLFavML})` : ''}` : '—'}</td>
             <td>${g.mlbOdds?.f5TotalLine != null ? `o${g.mlbOdds.f5TotalLine}` : '—'}</td>
           </tr>
           <tr>
             <td>Model</td>
-            <td>${vegasFavVegasML != null ? `${esc(vegasFavShortName)} ${mlImp(vegasFavModelML)}% <span class="mlb-impl">(${vegasFavModelML > 0 ? '+' : ''}${vegasFavModelML})</span>` : '—'}</td>
+            <td>${vegasFavVegasML != null ? `${mlImp(vegasFavModelML)}% <span class="mlb-impl">(${vegasFavModelML > 0 ? '+' : ''}${vegasFavModelML})</span>` : '—'}</td>
             <td>${g.proj.total.toFixed(1)}</td>
-            <td>${(rlCoverProb * 100).toFixed(1)}%</td>
+            <td>${modelRLML != null ? `${mlImp(modelRLML)}% <span class="mlb-impl">(${modelRLML > 0 ? '+' : ''}${modelRLML})</span>` : '—'}</td>
             <td>${g.f5.total.toFixed(1)}</td>
           </tr>
           <tr class="mlb-dt-diff">
