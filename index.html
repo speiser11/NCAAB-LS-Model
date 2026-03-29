@@ -1031,6 +1031,7 @@ input[type=date] {
 .mlb-pick-row-matchup{font-size:.62rem;color:var(--muted);margin-bottom:.15rem;}
 .mlb-pick-row-action{font-size:.82rem;font-weight:700;color:var(--text);}
 .mlb-pick-row-action.take{color:var(--green);}
+.mlb-pick-row-model{font-size:.68rem;color:var(--accent);font-weight:600;margin-top:.1rem;}
 .mlb-pick-row-why{font-size:.65rem;color:var(--muted);margin-top:.1rem;}
 .mlb-pick-row-edge{font-size:.65rem;font-weight:600;padding:.15rem .4rem;border-radius:4px;background:var(--surface2);color:var(--muted);flex-shrink:0;white-space:nowrap;}
 .mlb-picks-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.8rem;}
@@ -4668,12 +4669,26 @@ function showMLBPicksModal() {
         }
         return p.betType;
       })();
+      const modelSubtitle = (() => {
+        if (p.betType === 'Total') {
+          const model = p.g.proj?.total?.toFixed(1);
+          const vegas = p.g.mlbOdds?.totalLine;
+          return model != null && vegas != null ? `Model ${model} · Vegas ${vegas}` : null;
+        }
+        if (p.betType === 'F5') {
+          const model = p.g.f5?.total?.toFixed(1);
+          const vegas = p.g.mlbOdds?.f5TotalLine;
+          return model != null && vegas != null ? `Model ${model} · Vegas ${vegas}` : null;
+        }
+        return null;
+      })();
       const icon = p.tier === 'take' ? '🔥' : '📊';
       return `<div class="mlb-pick-row" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
           <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · ${p.betType}</div>
           <div class="mlb-pick-row-action ${p.tier}">${esc(actionText)}</div>
+          ${modelSubtitle ? `<div class="mlb-pick-row-model">${esc(modelSubtitle)}</div>` : ''}
           <div class="mlb-pick-row-why">${esc(p.text)}</div>
         </div>
         <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
