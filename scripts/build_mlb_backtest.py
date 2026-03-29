@@ -15,10 +15,8 @@ Data sources:
   - Static: wRC+ splits and park factors (same tables as live model)
 
 Credit estimate:
-  - Bulk historical call (6 markets): ~6 credits/date × ~370 dates = ~2,200 credits
-  - If bulk rejects F5 markets, falls back to per-event F5:
-    ~15 games/day × 370 days × 3 credits = ~16,650 credits (still within 20k)
-  - Total worst case: ~17,800 credits
+  - ~3 credits/date × ~550 dates (2023–2025) = ~1,650 credits total
+  - F5 per-event disabled — too expensive at scale
 
 Notes:
   - Uses full-season pitcher/bullpen stats (not in-season rolling). Fine for testing
@@ -43,7 +41,7 @@ OUTPUT_FILE  = 'mlb_backtest.csv'
 
 # 2024 regular season through end of 2025 regular season
 # Opening day 2024 was March 20 (Seoul), domestic March 28
-START_DATE = '2024-03-20'
+START_DATE = '2023-03-30'
 END_DATE   = '2025-09-28'   # adjust when 2025 season ends
 
 # Odds snapshot time: 13:00 UTC = 9am ET (safely pre-game morning lines)
@@ -274,40 +272,8 @@ def fetch_historical_odds(date_str):
 
     time.sleep(0.5)
 
-    # If F5 not in bulk, fetch per-event using historical events endpoint
-    if not f5_in_bulk and games:
-        # Get event IDs from the bulk result
-        for game in games:
-            event_id = game.get('id')
-            if not event_id:
-                continue
-            f5_cache_key = f'f5odds_{event_id}'
-            f5_cached = cache_read(f5_cache_key)
-            if f5_cached is not None:
-                f5_bk = f5_cached
-            else:
-                try:
-                    f5_result, remaining = odds_get(
-                        f'/v4/historical/sports/baseball_mlb/events/{event_id}/odds', {
-                            'date':       snapshot_ts,
-                            'regions':    'us',
-                            'markets':    'h2h_1st_5_innings,spreads_1st_5_innings,totals_1st_5_innings',
-                            'oddsFormat': 'american',
-                        }
-                    )
-                    f5_bk = f5_result.get('data', {}).get('bookmakers', [])
-                    cache_write(f5_cache_key, f5_bk)
-                    time.sleep(0.2)
-                except Exception as e:
-                    print(f'    F5 per-event failed for {event_id}: {e}')
-                    f5_bk = []
-
-            # Merge F5 markets into the game's first bookmaker
-            if f5_bk and game.get('bookmakers'):
-                f5_mkts = [m for m in f5_bk[0].get('markets', [])
-                           if m['key'] in F5_MARKET_KEYS]
-                if f5_mkts:
-                    game['bookmakers'][0]['markets'].extend(f5_mkts)
+    # F5 per-event disabled — too expensive (345 credits/day across a full season)
+    # F5 model predictions + actual F5 results are still captured; just no Vegas F5 lines.
 
     cache_write(f'odds_{date_str}', games)
     return games
