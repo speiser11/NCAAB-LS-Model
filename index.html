@@ -1032,6 +1032,8 @@ input[type=date] {
 .mlb-pick-row-matchup{font-size:.62rem;color:var(--muted);margin-bottom:.15rem;}
 .mlb-pick-row-action{font-size:.82rem;font-weight:700;color:var(--text);}
 .mlb-pick-row-action.take{color:var(--green);}
+.mlb-pick-row-action.hit{color:var(--green);}
+.mlb-pick-row-action.miss{color:#e05252;}
 .mlb-pick-row-model{font-size:.68rem;color:var(--accent);font-weight:600;margin-top:.1rem;}
 .mlb-pick-row-why{font-size:.65rem;color:var(--muted);margin-top:.1rem;}
 .mlb-legend-btn{background:none;border:1px solid var(--border);border-radius:50%;width:1.25rem;height:1.25rem;font-size:.6rem;font-weight:700;color:var(--muted);cursor:pointer;line-height:1.25rem;text-align:center;flex-shrink:0;}
@@ -4784,12 +4786,41 @@ function showMLBPicksModal() {
         }
         return null;
       })();
-      const icon = isLocked ? '🔒' : (p.tier === 'take' ? '🔥' : '📊');
+      // Compute hit/miss for final games
+      let hitResult = null; // null = unknown/live, true = hit, false = miss
+      const isFinalGame = p.g.statusName === 'STATUS_FINAL';
+      if (isFinalGame) {
+        const hs = parseInt(p.g.homeScore) || 0;
+        const as = parseInt(p.g.awayScore) || 0;
+        if (p.betType === 'ML') {
+          hitResult = p.mlValHome ? (hs > as) : (as > hs);
+        } else if (p.betType === 'Total') {
+          const line = p.g.mlbOdds?.totalLine;
+          const dir  = (p.g.proj?.total ?? 0) > (line ?? 0) ? 'over' : 'under';
+          if (line != null) hitResult = dir === 'over' ? (hs + as) > line : (hs + as) < line;
+        } else if (p.betType === 'Run Line') {
+          const favShort = (p.g.mlbOdds?.rlFavTeam ?? '').split(' ').pop();
+          const favIsHome = p.g.home.split(' ').pop() === favShort;
+          hitResult = favIsHome ? (hs - as) >= 2 : (as - hs) >= 2;
+        }
+      }
+      const tierLabel = p.tier === 'take' ? 'TAKE' : 'LEAN';
+      const tierIcon  = p.tier === 'take' ? '🔥' : '📊';
+      const icon = isLocked
+        ? (hitResult === true ? '✅' : hitResult === false ? '❌' : '🔒')
+        : tierIcon;
+      // Action text color: green=hit, red=miss, default for pre-game
+      const actionClass = isFinalGame
+        ? (hitResult === true ? 'hit' : hitResult === false ? 'miss' : '')
+        : p.tier;
+      const scoreStr = isFinalGame
+        ? ` · ${aShort} ${parseInt(p.g.awayScore)||0}, ${hShort} ${parseInt(p.g.homeScore)||0}`
+        : '';
       return `<div class="mlb-pick-row${isLocked ? ' locked' : ''}" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
-          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · ${p.betType}${lockedBadge}</div>
-          <div class="mlb-pick-row-action ${p.tier}">${esc(actionText)}</div>
+          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · <span style="opacity:.7">${tierLabel}</span>${lockedBadge}${esc(scoreStr)}</div>
+          <div class="mlb-pick-row-action ${actionClass}">${esc(actionText)}</div>
           ${modelSubtitle ? `<div class="mlb-pick-row-model">${esc(modelSubtitle)}</div>` : ''}
           <div class="mlb-pick-row-why">${esc(p.text)}</div>
         </div>
