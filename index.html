@@ -1014,6 +1014,28 @@ input[type=date] {
 .mlb-bet-signal{display:flex;align-items:center;gap:.45rem;padding:.35rem 1.15rem .45rem;border-top:1px solid var(--border);}
 .mlb-bet-signal.take .mlb-bet-text{color:var(--green);font-weight:600;}
 .mlb-bet-signal.lean .mlb-bet-text{color:var(--yellow);font-weight:500;}
+.mlb-bet-signal.locked .mlb-bet-text{color:var(--muted);font-style:italic;}
+.mlb-picks-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:400;overflow-y:auto;padding:1rem;align-items:flex-start;justify-content:center;}
+.mlb-picks-overlay.open{display:flex;}
+.mlb-picks-modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;overflow:hidden;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.mlb-picks-modal-hd{padding:.75rem 1rem;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.mlb-picks-modal-title{font-weight:700;font-size:.95rem;color:var(--text);}
+.mlb-picks-modal-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:.9rem;padding:2px 8px;border-radius:4px;line-height:1;}
+.mlb-picks-modal-close:hover{background:var(--border);color:var(--text);}
+.mlb-picks-section-label{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);padding:.6rem 1rem .3rem;}
+.mlb-pick-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;}
+.mlb-pick-row:last-child{border-bottom:none;}
+.mlb-pick-row:hover{background:var(--surface2);}
+.mlb-pick-row-icon{font-size:1rem;flex-shrink:0;width:1.2rem;text-align:center;}
+.mlb-pick-row-body{flex:1;min-width:0;}
+.mlb-pick-row-matchup{font-size:.62rem;color:var(--muted);margin-bottom:.15rem;}
+.mlb-pick-row-action{font-size:.82rem;font-weight:700;color:var(--text);}
+.mlb-pick-row-action.take{color:var(--green);}
+.mlb-pick-row-why{font-size:.65rem;color:var(--muted);margin-top:.1rem;}
+.mlb-pick-row-edge{font-size:.65rem;font-weight:600;padding:.15rem .4rem;border-radius:4px;background:var(--surface2);color:var(--muted);flex-shrink:0;white-space:nowrap;}
+.mlb-picks-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.8rem;}
+.picks-view-all{background:none;border:1px solid var(--border);border-radius:6px;font-size:.65rem;font-weight:600;color:var(--accent);cursor:pointer;padding:.2rem .6rem;margin-left:.5rem;white-space:nowrap;}
+.picks-view-all:hover{background:var(--surface);}
 .mlb-bet-text{font-family:'Inter',sans-serif;font-size:.72rem;}
 .mlb-bet-icon{font-size:.8rem;line-height:1;}
 .mlb-proj-lbl{font-size:.5rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:.4rem;align-self:center;}
@@ -1174,6 +1196,17 @@ input[type=date] {
   <div class="gd-modal">
     <div class="gd-header" id="gd-header"></div>
     <div class="gd-body" id="gd-body"></div>
+  </div>
+</div>
+
+<!-- MLB Picks Summary Modal -->
+<div class="mlb-picks-overlay" id="mlb-picks-overlay" onclick="if(event.target===this)closeMLBPicksModal()">
+  <div class="mlb-picks-modal">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title">Today's MLB Picks</span>
+      <button class="mlb-picks-modal-close" onclick="closeMLBPicksModal()">✕</button>
+    </div>
+    <div id="mlb-picks-modal-body"></div>
   </div>
 </div>
 
@@ -4393,9 +4426,11 @@ function renderMLB() {
     }
     _signals.sort((a, b) => (a.tier === 'take' ? 0 : 1) - (b.tier === 'take' ? 0 : 1) || b.diffSize - a.diffSize);
     const _best = _signals[0] || null;
-    const betSignalHtml = _best
-      ? `<div class="mlb-bet-signal ${_best.tier}"><span class="mlb-bet-icon">${_best.tier === 'take' ? '🔥' : '📊'}</span><span class="mlb-bet-text">${esc(_best.text)}</span></div>`
-      : '';
+    const betSignalHtml = (live || final)
+      ? `<div class="mlb-bet-signal locked"><span class="mlb-bet-icon">🔒</span><span class="mlb-bet-text">Pre-game model — odds locked at first pitch</span></div>`
+      : (_best
+        ? `<div class="mlb-bet-signal ${_best.tier}"><span class="mlb-bet-icon">${_best.tier === 'take' ? '🔥' : '📊'}</span><span class="mlb-bet-text">${esc(_best.text)}</span></div>`
+        : '');
 
     // Store computed tiers on g so renderMLBTopPicks can read them without recomputing
     g._tiers = {
@@ -4428,8 +4463,8 @@ function renderMLB() {
           </div>
         </div>
         ${betSignalHtml}
-        ${g.mlbOdds == null ? '<div class="mlb-odds-pending">Odds not yet posted</div>' : ''}
-        <table class="mlb-diff-table">
+        ${!live && !final && g.mlbOdds == null ? '<div class="mlb-odds-pending">Odds not yet posted</div>' : ''}
+        ${!(live || final) ? `<table class="mlb-diff-table">
           <tr>
             <th></th>
             <th>ML</th>
@@ -4458,7 +4493,7 @@ function renderMLB() {
             <td class="${rlDiffCls}">${rlImpDiff != null ? `${rlImpDiff > 0 ? '+' : ''}${(rlImpDiff * 100).toFixed(1)}%` : '—'}</td>
             <td class="${f5DiffCls}">${f5Diff != null ? `${f5Diff > 0 ? '+' : ''}${f5Diff.toFixed(1)}r` : '—'}</td>
           </tr>
-        </table>
+        </table>` : ''}
         <div class="mlb-pitchers">
           ${pitcherSlot('Away', pitchers.away, g.home)}
           <div class="mlb-pitcher-div"></div>
@@ -4473,6 +4508,8 @@ function renderMLB() {
 }
 
 // ── MLB Top Picks bar ─────────────────────────────────────────────────────────
+let _mlbAllPicks = []; // stored for the picks modal
+
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
   if (!bar) return;
@@ -4481,6 +4518,8 @@ function renderMLBTopPicks(games) {
 
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
+    // Skip games that have started — pre-game picks only
+    if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
     const { mlTier, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
@@ -4528,6 +4567,9 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
+  // Store all picks for the modal
+  _mlbAllPicks = [...takes, ...leans];
+
   if (!takes.length && !leans.length) {
     bar.style.display = 'none';
     bar.innerHTML = '';
@@ -4571,13 +4613,90 @@ function renderMLBTopPicks(games) {
   bar.innerHTML = `
     <div class="picks-header">
       <span class="top-picks-title">Today's MLB Picks</span>
-      <div class="picks-accuracy" id="mlb-picks-accuracy-row">
-        <span class="acc-badge" style="opacity:.5">Loading record…</span>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${takes.length}T · ${leans.length}L)</button>
+        <div class="picks-accuracy" id="mlb-picks-accuracy-row">
+          <span class="acc-badge" style="opacity:.5">Loading record…</span>
+        </div>
       </div>
     </div>
     <div class="picks-row">${cards}</div>`;
 
   loadMLBRecord();
+}
+
+// ── MLB Picks Summary Modal ───────────────────────────────────────────────────
+function showMLBPicksModal() {
+  const body = document.getElementById('mlb-picks-modal-body');
+  if (!body) return;
+
+  if (!_mlbAllPicks.length) {
+    body.innerHTML = '<div class="mlb-picks-empty">No picks available yet — check back once odds are posted.</div>';
+  } else {
+    const takes = _mlbAllPicks.filter(p => p.tier === 'take');
+    const leans = _mlbAllPicks.filter(p => p.tier === 'lean');
+
+    const edgeLabel = p => {
+      const d = p.diffSize ?? 0;
+      if (p.betType === 'ML')       return `${d.toFixed(1)}% edge`;
+      if (p.betType === 'Total')    return `${d.toFixed(1)}r edge`;
+      if (p.betType === 'Run Line') return `${d.toFixed(0)} pts`;
+      if (p.betType === 'F5')       return `${d.toFixed(1)}r edge`;
+      return '';
+    };
+
+    const pickRow = p => {
+      const aShort = p.g.away.split(' ').pop();
+      const hShort = p.g.home.split(' ').pop();
+      const actionText = (() => {
+        if (p.betType === 'ML') {
+          const side = (p.mlValHome ? p.g.home : p.g.away).split(' ').pop();
+          const ml   = p.mlValHome ? p.g.mlbOdds?.homeML : p.g.mlbOdds?.awayML;
+          return `${side} ML ${ml != null ? (ml > 0 ? '+' : '') + ml : ''}`;
+        }
+        if (p.betType === 'Total') {
+          const dir = (p.g.proj?.total ?? 0) > (p.g.mlbOdds?.totalLine ?? 0) ? 'Over' : 'Under';
+          return `${dir} ${p.g.mlbOdds?.totalLine ?? '—'}`;
+        }
+        if (p.betType === 'Run Line') {
+          const fav = (p.g.mlbOdds?.rlFavTeam ?? '').split(' ').pop();
+          return `${fav} -1.5`;
+        }
+        if (p.betType === 'F5') {
+          const dir = (p.g.f5TotalEdge ?? 0) > 0 ? 'Over' : 'Under';
+          return `F5 ${dir} ${p.g.mlbOdds?.f5TotalLine ?? '—'}`;
+        }
+        return p.betType;
+      })();
+      const icon = p.tier === 'take' ? '🔥' : '📊';
+      return `<div class="mlb-pick-row" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
+        <span class="mlb-pick-row-icon">${icon}</span>
+        <div class="mlb-pick-row-body">
+          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · ${p.betType}</div>
+          <div class="mlb-pick-row-action ${p.tier}">${esc(actionText)}</div>
+          <div class="mlb-pick-row-why">${esc(p.text)}</div>
+        </div>
+        <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
+      </div>`;
+    };
+
+    let html = '';
+    if (takes.length) {
+      html += `<div class="mlb-picks-section-label">🔥 Takes (${takes.length})</div>`;
+      html += takes.map(pickRow).join('');
+    }
+    if (leans.length) {
+      html += `<div class="mlb-picks-section-label">📊 Leans (${leans.length})</div>`;
+      html += leans.map(pickRow).join('');
+    }
+    body.innerHTML = html;
+  }
+
+  document.getElementById('mlb-picks-overlay').classList.add('open');
+}
+
+function closeMLBPicksModal() {
+  document.getElementById('mlb-picks-overlay').classList.remove('open');
 }
 
 // ── MLB historical record (Takes only, from mlb-log Gist files) ───────────────
