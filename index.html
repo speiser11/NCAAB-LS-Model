@@ -4727,14 +4727,58 @@ function renderMLBTopPicks(games) {
   loadMLBRecord();
 }
 
+// ── F5 linescore cache: eventId → { homeF5, awayF5 } ─────────────────────────
+const _f5ScoreCache = {};
+
+async function fetchF5Score(eventId) {
+  if (_f5ScoreCache[eventId] !== undefined) return _f5ScoreCache[eventId];
+  try {
+    const r = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event=${eventId}`,
+      { signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) throw new Error(`ESPN summary ${r.status}`);
+    const d = await r.json();
+    const teams = d.boxscore?.teams || [];
+    const result = { homeF5: null, awayF5: null };
+    for (const t of teams) {
+      const scores = (t.linescores || [])
+        .filter(ls => ls.period >= 1 && ls.period <= 5)
+        .reduce((sum, ls) => sum + (parseInt(ls.value ?? ls.displayValue) || 0), 0);
+      if (t.homeAway === 'home') result.homeF5 = scores;
+      else result.awayF5 = scores;
+    }
+    _f5ScoreCache[eventId] = result;
+    return result;
+  } catch(e) {
+    _f5ScoreCache[eventId] = null;
+    return null;
+  }
+}
+
 // ── MLB Picks Summary Modal ───────────────────────────────────────────────────
-function showMLBPicksModal() {
+async function showMLBPicksModal() {
   const body = document.getElementById('mlb-picks-modal-body');
   if (!body) return;
 
+  // Show modal immediately with loading state
+  document.getElementById('mlb-picks-overlay').classList.add('open');
+
   if (!_mlbAllPicks.length) {
     body.innerHTML = '<div class="mlb-picks-empty">No picks available yet — check back once odds are posted.</div>';
-  } else {
+    return;
+  }
+
+  // Pre-fetch F5 linescores for final games with F5 bets
+  const f5Finals = _mlbAllPicks.filter(p =>
+    p.betType === 'F5' && p.g.statusName === 'STATUS_FINAL' && !_f5ScoreCache[p.g.id]
+  );
+  if (f5Finals.length) {
+    body.innerHTML = '<div class="mlb-picks-empty" style="opacity:.6">Loading F5 scores…</div>';
+    await Promise.all([...new Set(f5Finals.map(p => p.g.id))].map(fetchF5Score));
+  }
+
+  {
     const takes  = _mlbAllPicks.filter(p => !p.locked && p.tier === 'take');
     const leans  = _mlbAllPicks.filter(p => !p.locked && p.tier === 'lean');
     const locked = _mlbAllPicks.filter(p => p.locked);
@@ -4802,6 +4846,13 @@ function showMLBPicksModal() {
           const favShort = (p.g.mlbOdds?.rlFavTeam ?? '').split(' ').pop();
           const favIsHome = p.g.home.split(' ').pop() === favShort;
           hitResult = favIsHome ? (hs - as) >= 2 : (as - hs) >= 2;
+        } else if (p.betType === 'F5') {
+          const f5 = _f5ScoreCache[p.g.id];
+          if (f5?.homeF5 != null && f5?.awayF5 != null) {
+            const line = p.g.mlbOdds?.f5TotalLine;
+            const dir  = (p.g.f5TotalEdge ?? 0) > 0 ? 'over' : 'under';
+            if (line != null) hitResult = dir === 'over' ? (f5.homeF5 + f5.awayF5) > line : (f5.homeF5 + f5.awayF5) < line;
+          }
         }
       }
       const tierLabel = p.tier === 'take' ? 'TAKE' : 'LEAN';
@@ -4813,9 +4864,14 @@ function showMLBPicksModal() {
       const actionClass = isFinalGame
         ? (hitResult === true ? 'hit' : hitResult === false ? 'miss' : '')
         : p.tier;
-      const scoreStr = isFinalGame
-        ? ` · ${aShort} ${parseInt(p.g.awayScore)||0}, ${hShort} ${parseInt(p.g.homeScore)||0}`
-        : '';
+      const scoreStr = (() => {
+        if (!isFinalGame) return '';
+        if (p.betType === 'F5') {
+          const f5 = _f5ScoreCache[p.g.id];
+          return f5?.homeF5 != null ? ` · F5: ${aShort} ${f5.awayF5}, ${hShort} ${f5.homeF5}` : ' · F5 score loading';
+        }
+        return ` · ${aShort} ${parseInt(p.g.awayScore)||0}, ${hShort} ${parseInt(p.g.homeScore)||0}`;
+      })();
       return `<div class="mlb-pick-row${isLocked ? ' locked' : ''}" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
@@ -4848,6 +4904,14 @@ function showMLBPicksModal() {
         const favIsHome = p.g.home.split(' ').pop() === favShort;
         return favIsHome ? (hs - as) >= 2 : (as - hs) >= 2;
       }
+      if (p.betType === 'F5') {
+        const f5 = _f5ScoreCache[p.g.id];
+        if (!f5 || f5.homeF5 === null || f5.awayF5 === null) return null;
+        const line = p.g.mlbOdds?.f5TotalLine;
+        const dir  = (p.g.f5TotalEdge ?? 0) > 0 ? 'over' : 'under';
+        const actual = f5.homeF5 + f5.awayF5;
+        return line != null ? (dir === 'over' ? actual > line : actual < line) : null;
+      }
       return null;
     };
 
@@ -4869,8 +4933,6 @@ function showMLBPicksModal() {
     }
     body.innerHTML = html;
   }
-
-  document.getElementById('mlb-picks-overlay').classList.add('open');
 }
 
 function closeMLBPicksModal() {
