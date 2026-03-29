@@ -1033,6 +1033,18 @@ input[type=date] {
 .mlb-pick-row-action.take{color:var(--green);}
 .mlb-pick-row-model{font-size:.68rem;color:var(--accent);font-weight:600;margin-top:.1rem;}
 .mlb-pick-row-why{font-size:.65rem;color:var(--muted);margin-top:.1rem;}
+.mlb-legend-btn{background:none;border:1px solid var(--border);border-radius:50%;width:1.25rem;height:1.25rem;font-size:.6rem;font-weight:700;color:var(--muted);cursor:pointer;line-height:1.25rem;text-align:center;flex-shrink:0;}
+.mlb-legend-btn:hover{background:var(--surface2);color:var(--text);}
+.mlb-legend-section{padding:.75rem 1rem;border-bottom:1px solid var(--border);}
+.mlb-legend-section:last-child{border-bottom:none;}
+.mlb-legend-section-title{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:.5rem;}
+.mlb-legend-row{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.35rem;}
+.mlb-legend-row:last-child{margin-bottom:0;}
+.mlb-legend-tier{font-size:.7rem;font-weight:700;width:3.5rem;flex-shrink:0;}
+.mlb-legend-tier.take{color:var(--green);}
+.mlb-legend-tier.lean{color:var(--yellow);}
+.mlb-legend-desc{font-size:.72rem;color:var(--text);}
+.mlb-legend-note{font-size:.63rem;color:var(--muted);padding:.5rem 1rem .75rem;}
 .mlb-pick-row-edge{font-size:.65rem;font-weight:600;padding:.15rem .4rem;border-radius:4px;background:var(--surface2);color:var(--muted);flex-shrink:0;white-space:nowrap;}
 .mlb-picks-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.8rem;}
 .picks-view-all{background:none;border:1px solid var(--border);border-radius:6px;font-size:.65rem;font-weight:600;color:var(--accent);cursor:pointer;padding:.2rem .6rem;margin-left:.5rem;white-space:nowrap;}
@@ -1197,6 +1209,37 @@ input[type=date] {
   <div class="gd-modal">
     <div class="gd-header" id="gd-header"></div>
     <div class="gd-body" id="gd-body"></div>
+  </div>
+</div>
+
+<!-- MLB Legend Modal -->
+<div class="mlb-picks-overlay" id="mlb-legend-overlay" onclick="if(event.target===this)closeMLBLegend()">
+  <div class="mlb-picks-modal">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title">How picks are graded</span>
+      <button class="mlb-picks-modal-close" onclick="closeMLBLegend()">✕</button>
+    </div>
+    <div class="mlb-legend-section">
+      <div class="mlb-legend-section-title">Moneyline (ML)</div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier take">🔥 Take</span><span class="mlb-legend-desc">Model's implied win % differs from Vegas by ≥10 points</span></div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier lean">📊 Lean</span><span class="mlb-legend-desc">7–10 point implied probability difference</span></div>
+    </div>
+    <div class="mlb-legend-section">
+      <div class="mlb-legend-section-title">Total (Over/Under)</div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier take">🔥 Take</span><span class="mlb-legend-desc">Model projects ≥2.0 runs from the Vegas line</span></div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier lean">📊 Lean</span><span class="mlb-legend-desc">1.5–2.0 runs from the Vegas line</span></div>
+    </div>
+    <div class="mlb-legend-section">
+      <div class="mlb-legend-section-title">Run Line (−1.5)</div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier take">🔥 Take</span><span class="mlb-legend-desc">Model projects favored team winning by 2.5+ runs</span></div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier" style="color:var(--muted);width:3.5rem;font-size:.7rem;">No lean</span><span class="mlb-legend-desc" style="color:var(--muted);">Run line is high-variance — only flagged when edge is strong</span></div>
+    </div>
+    <div class="mlb-legend-section">
+      <div class="mlb-legend-section-title">First 5 Innings (F5)</div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier take">🔥 Take</span><span class="mlb-legend-desc">Model projects ≥1.5 runs from the Vegas F5 line</span></div>
+      <div class="mlb-legend-row"><span class="mlb-legend-tier lean">📊 Lean</span><span class="mlb-legend-desc">1.0–1.5 runs from the Vegas F5 line</span></div>
+    </div>
+    <div class="mlb-legend-note">F5 model uses starter quality only — bullpen excluded by design. Odds lock at first pitch for all bet types.</div>
   </div>
 </div>
 
@@ -4613,7 +4656,10 @@ function renderMLBTopPicks(games) {
   bar.style.display = '';
   bar.innerHTML = `
     <div class="picks-header">
-      <span class="top-picks-title">Today's MLB Picks</span>
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <span class="top-picks-title">Today's MLB Picks</span>
+        <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
+      </div>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${takes.length}T · ${leans.length}L)</button>
         <div class="picks-accuracy" id="mlb-picks-accuracy-row">
@@ -4712,6 +4758,14 @@ function showMLBPicksModal() {
 
 function closeMLBPicksModal() {
   document.getElementById('mlb-picks-overlay').classList.remove('open');
+}
+
+function showMLBLegend() {
+  document.getElementById('mlb-legend-overlay').classList.add('open');
+}
+
+function closeMLBLegend() {
+  document.getElementById('mlb-legend-overlay').classList.remove('open');
 }
 
 // ── MLB historical record (Takes only, from mlb-log Gist files) ───────────────
