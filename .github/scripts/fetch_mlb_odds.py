@@ -160,6 +160,26 @@ for game in games:
 if locked_count:
     print(f'Locked pre-game odds for {locked_count} started game(s).')
 
+# ── Step 3b: Re-add started games that dropped off the API response ───────────
+# The Odds API stops returning games once they start, so we must restore them
+# from the existing Gist to avoid losing their locked pre-game odds.
+games_by_id = {g['id']: g for g in games}
+restored_count = 0
+for eg in existing:
+    if not eg.get('id') or eg['id'] in games_by_id:
+        continue
+    ct = eg.get('commence_time', '')
+    try:
+        game_time = datetime.fromisoformat(ct.replace('Z', '+00:00'))
+    except Exception:
+        continue
+    if game_time <= now_utc:
+        games.append(eg)
+        restored_count += 1
+        print(f'  Restored: {eg.get("away_team")} @ {eg.get("home_team")} (started, dropped from API)')
+if restored_count:
+    print(f'Restored {restored_count} started game(s) from Gist cache.')
+
 # ── Step 4: Push merged data to Gist ─────────────────────────────────────────
 filename = f'mlb-odds-{date_str}.json'
 print(f'Pushing {filename} to Gist...')
