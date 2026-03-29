@@ -93,9 +93,12 @@ if not games:
     print('No games returned — nothing to push.')
     sys.exit(0)
 
+# ── Fetch existing Gist data (used for F5 cache + locking started games) ──────
+existing = gist_fetch(f'mlb-odds-{date_str}.json') or []
+existing_by_id = {eg['id']: eg for eg in existing if eg.get('id')}
+
 # ── Step 2: F5 per-event if not already in bulk ───────────────────────────────
 if not f5_in_bulk:
-    existing = gist_fetch(f'mlb-odds-{date_str}.json') or []
     f5_already_fetched = any(
         any(m['key'] in ('h2h_1st_5_innings', 'spreads_1st_5_innings', 'totals_1st_5_innings')
             for m in (eg.get('bookmakers', [{}])[0].get('markets', []) if eg.get('bookmakers') else []))
@@ -104,7 +107,6 @@ if not f5_in_bulk:
 
     if f5_already_fetched:
         print('F5 data already present in Gist — restoring from cache.')
-        existing_by_id = {eg['id']: eg for eg in existing}
         for game in games:
             prev = existing_by_id.get(game['id'])
             if not prev or not game.get('bookmakers'):
@@ -137,6 +139,26 @@ if not f5_in_bulk:
                     print(f'  {game["away_team"]} @ {game["home_team"]}: no F5 bookmakers yet')
             except Exception as e:
                 print(f'  WARNING: F5 fetch failed for {game.get("home_team")}: {e}')
+
+# ── Step 3: Lock odds for games that have already started ────────────────────
+now_utc = datetime.now(timezone.utc)
+locked_count = 0
+for game in games:
+    ct = game.get('commence_time')
+    if not ct:
+        continue
+    try:
+        game_time = datetime.fromisoformat(ct.replace('Z', '+00:00'))
+    except Exception:
+        continue
+    if game_time <= now_utc:
+        prev = existing_by_id.get(game['id'])
+        if prev and prev.get('bookmakers'):
+            game['bookmakers'] = prev['bookmakers']
+            locked_count += 1
+            print(f'  Locked: {game.get("away_team")} @ {game.get("home_team")} (game started)')
+if locked_count:
+    print(f'Locked pre-game odds for {locked_count} started game(s).')
 
 # ── Step 4: Push merged data to Gist ─────────────────────────────────────────
 filename = f'mlb-odds-{date_str}.json'
