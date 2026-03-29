@@ -4651,8 +4651,25 @@ function renderMLBTopPicks(games) {
   _mlbAllPicks = [...takes, ...leans, ...lockedPicks];
 
   if (!takes.length && !leans.length) {
-    bar.style.display = 'none';
-    bar.innerHTML = '';
+    if (!lockedPicks.length) {
+      bar.style.display = 'none';
+      bar.innerHTML = '';
+      return;
+    }
+    // All games have started — show a minimal bar with just the View All button
+    bar.style.display = '';
+    bar.innerHTML = `
+      <div class="picks-header">
+        <div style="display:flex;align-items:center;gap:.4rem;">
+          <span class="top-picks-title">Today's MLB Picks</span>
+          <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${lockedPicks.length} locked)</button>
+        </div>
+      </div>
+      <div style="padding:.4rem 1rem;font-size:.7rem;color:var(--muted)">All games in progress or final — pre-game picks locked.</div>`;
+    loadMLBRecord();
     return;
   }
 
