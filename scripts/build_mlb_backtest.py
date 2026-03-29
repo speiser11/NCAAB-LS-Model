@@ -41,7 +41,7 @@ OUTPUT_FILE  = 'mlb_backtest.csv'
 
 # 2024 regular season through end of 2025 regular season
 # Opening day 2024 was March 20 (Seoul), domestic March 28
-START_DATE = '2023-03-30'
+START_DATE = '2024-03-20'
 END_DATE   = '2025-09-28'   # adjust when 2025 season ends
 
 # Odds snapshot time: 13:00 UTC = 9am ET (safely pre-game morning lines)
