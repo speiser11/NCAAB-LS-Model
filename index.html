@@ -4582,6 +4582,27 @@ function renderMLB() {
 let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
 
+function _mlbSavePreGamePicks(picks) {
+  try {
+    const dateStr = mlbGetDateStr();
+    const slim = picks.map(p => ({
+      gameId: p.g.id, betType: p.betType, tier: p.tier,
+      text: p.text, diffSize: p.diffSize, mlValHome: p.mlValHome ?? null,
+    }));
+    localStorage.setItem(`mlb_pgp_${dateStr}`, JSON.stringify(slim));
+  } catch(e) {}
+}
+
+function _mlbLoadPreGamePicks(games) {
+  try {
+    const dateStr = mlbGetDateStr();
+    const raw = localStorage.getItem(`mlb_pgp_${dateStr}`);
+    if (!raw) return [];
+    const byId = Object.fromEntries(games.map(g => [g.id, g]));
+    return JSON.parse(raw).map(p => ({ ...p, g: byId[p.gameId], locked: true })).filter(p => p.g);
+  } catch(e) { return []; }
+}
+
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
   if (!bar) return;
@@ -4597,7 +4618,6 @@ function renderMLBTopPicks(games) {
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, f5Tier } = g._tiers;
     if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null) {
-      const mlValHome = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
       const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const mlValFmt = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
       const side = (mlValHome ? g.home : g.away).split(' ').pop();
@@ -4692,9 +4712,12 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
-  // Preserve pre-game picks so they survive re-renders after games start
+  // Preserve pre-game picks so they survive re-renders and page reloads
   if (takes.length || leans.length) {
     _mlbPreGamePicks = [...takes, ...leans];
+    _mlbSavePreGamePicks(_mlbPreGamePicks);
+  } else if (!_mlbPreGamePicks.length) {
+    _mlbPreGamePicks = _mlbLoadPreGamePicks(games);
   }
 
   // Locked picks: explicitly computed + any pre-game picks now started
