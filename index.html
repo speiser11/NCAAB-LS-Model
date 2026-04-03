@@ -4649,6 +4649,25 @@ function renderMLBTopPicks(games) {
     }
   }
 
+  // Suppress duplicate total signals per game: if a game has both Total and F5,
+  // keep only the one with the larger edge and drop the other.
+  for (const list of [takes, leans]) {
+    const totalByGame = new Map();
+    const f5ByGame    = new Map();
+    list.forEach((p, i) => {
+      if (p.betType === 'Total') totalByGame.set(p.g.id, { p, i });
+      if (p.betType === 'F5')    f5ByGame.set(p.g.id,    { p, i });
+    });
+    const dropIndices = new Set();
+    for (const [id, { p: tp, i: ti }] of totalByGame) {
+      const f5Entry = f5ByGame.get(id);
+      if (f5Entry) {
+        dropIndices.add(tp.diffSize >= f5Entry.p.diffSize ? f5Entry.i : ti);
+      }
+    }
+    if (dropIndices.size) list.splice(0, list.length, ...list.filter((_, i) => !dropIndices.has(i)));
+  }
+
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
@@ -5388,7 +5407,7 @@ function calcMLBTotal(g, pitchers) {
   total -= homeEffP + awayEffP;
   total += (ho + ao) * 2.0;
   total *= pf;
-  total = Math.max(5.5, Math.min(14.0, total));
+  total = Math.max(6.0, Math.min(11.0, total));
   return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf, homeBp, awayBp };
 }
 
