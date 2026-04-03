@@ -4439,13 +4439,15 @@ function renderMLB() {
     const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : f5DiffAbs >= 1.0 ? 'lean' : null;
     const f5DiffCls = f5Tier === 'take' ? 'diff-green' : f5Tier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
+    // ML signal value side + consistency check (placed after all dependencies)
+    const mlValHome  = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
+    // If projected margin ≥ 2.5r, ML signal must agree with projected winner
+    const mlSignalOk = Math.abs(g.runDiff) < 2.5 || (mlValHome === (g.runDiff > 0));
+
     const _signals = [];
-    if (mlTier && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
-      // mlDiffSignedFav > 0 → Vegas fav overpriced → value on underdog
-      // mlDiffSignedFav < 0 → Vegas fav underpriced → value on fav
-      const _mlValHome    = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
-      const _mlValShort   = (_mlValHome ? g.home : g.away).split(' ').pop();
-      const _mlValVegasML = _mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+    if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
+      const _mlValShort   = (mlValHome ? g.home : g.away).split(' ').pop();
+      const _mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const _mlValFmt     = `${_mlValVegasML > 0 ? '+' : ''}${_mlValVegasML}`;
       _signals.push({ tier: mlTier, diffSize: mlDiff,
         text: mlTier === 'take' ? `Bet ${_mlValShort} ML — take ${_mlValFmt} or better` : `Lean ${_mlValShort} ML` });
@@ -4482,7 +4484,7 @@ function renderMLB() {
 
     // Store computed tiers on g so renderMLBTopPicks can read them without recomputing
     g._tiers = {
-      mlTier, mlImpDiffSigned, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML,
+      mlTier, mlImpDiffSigned, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML, mlValHome, mlSignalOk,
       totalTier, totalDiff, totalDiffAbs,
       rlTier, rlImpDiff, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
       f5Tier, f5Diff,
@@ -4570,10 +4572,10 @@ function renderMLBTopPicks(games) {
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
     if (g.statusName !== 'STATUS_IN_PROGRESS' && g.statusName !== 'STATUS_FINAL') continue;
-    const { mlTier, mlDiffSignedFav, vegasFavIsHome, mlImpDiffPct,
+    const { mlTier, mlImpDiffPct, mlValHome, mlSignalOk,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, f5Tier } = g._tiers;
-    if (mlTier && g.mlbOdds?.homeML != null) {
+    if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null) {
       const mlValHome = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
       const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const mlValFmt = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
@@ -4604,13 +4606,12 @@ function renderMLBTopPicks(games) {
     if (g.homeWinProb == null || !g._tiers) continue;
     // Skip games that have started — pre-game picks only in the top bar
     if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
-    const { mlTier, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML,
+    const { mlTier, mlImpDiffPct, mlValHome, mlSignalOk, vegasFavVegasML, vegasFavModelML,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
             f5Tier } = g._tiers;
 
-    if (mlTier && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
-      const mlValHome    = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
+    if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
       const mlValShort   = (mlValHome ? g.home : g.away).split(' ').pop();
       const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const mlValFmt     = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
