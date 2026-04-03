@@ -4409,6 +4409,10 @@ function renderMLB() {
     const mlImpDiffPct    = mlImpDiffSigned != null ? Math.abs(mlImpDiffSigned) : null;
     const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
     const mlDiffCls       = mlTier === 'take' ? 'diff-green' : mlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
+    // ML signal value side (hoisted for consistency check below)
+    const mlValHome   = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
+    // Consistency: if projected margin ≥ 2.5r, ML signal must agree with projected winner
+    const mlSignalOk  = rlMargin < 2.5 || (mlValHome === (g.runDiff > 0));
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
@@ -4440,12 +4444,9 @@ function renderMLB() {
     const f5DiffCls = f5Tier === 'take' ? 'diff-green' : f5Tier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const _signals = [];
-    if (mlTier && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
-      // mlDiffSignedFav > 0 → Vegas fav overpriced → value on underdog
-      // mlDiffSignedFav < 0 → Vegas fav underpriced → value on fav
-      const _mlValHome    = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
-      const _mlValShort   = (_mlValHome ? g.home : g.away).split(' ').pop();
-      const _mlValVegasML = _mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+    if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
+      const _mlValShort   = (mlValHome ? g.home : g.away).split(' ').pop();
+      const _mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const _mlValFmt     = `${_mlValVegasML > 0 ? '+' : ''}${_mlValVegasML}`;
       _signals.push({ tier: mlTier, diffSize: mlDiff,
         text: mlTier === 'take' ? `Bet ${_mlValShort} ML — take ${_mlValFmt} or better` : `Lean ${_mlValShort} ML` });
@@ -4482,7 +4483,7 @@ function renderMLB() {
 
     // Store computed tiers on g so renderMLBTopPicks can read them without recomputing
     g._tiers = {
-      mlTier, mlImpDiffSigned, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML,
+      mlTier, mlImpDiffSigned, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML, mlValHome, mlSignalOk,
       totalTier, totalDiff, totalDiffAbs,
       rlTier, rlImpDiff, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
       f5Tier, f5Diff,
@@ -4604,13 +4605,12 @@ function renderMLBTopPicks(games) {
     if (g.homeWinProb == null || !g._tiers) continue;
     // Skip games that have started — pre-game picks only in the top bar
     if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
-    const { mlTier, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML,
+    const { mlTier, mlImpDiffPct, vegasFavVegasML, vegasFavModelML, mlValHome, mlSignalOk,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
             f5Tier } = g._tiers;
 
-    if (mlTier && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
-      const mlValHome    = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
+    if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null && g.mlbOdds?.awayML != null) {
       const mlValShort   = (mlValHome ? g.home : g.away).split(' ').pop();
       const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const mlValFmt     = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
