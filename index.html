@@ -984,6 +984,7 @@ input[type=date] {
 .mlb-pitcher-side{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
 .mlb-pitcher-name{font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;color:var(--text);}
 .mlb-pitcher-stats{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);display:flex;gap:.5rem;flex-wrap:wrap;}
+.mlb-pitcher-l5{font-size:.58rem;color:var(--muted);padding:.15rem 0 0;font-family:'DM Mono',monospace;opacity:.8;}
 .mlb-pitcher-stat{display:flex;flex-direction:column;gap:.05rem;align-items:center;}
 .mlb-pitcher-stat-lbl{font-size:.52rem;text-transform:uppercase;letter-spacing:.05em;opacity:.6;}
 .mlb-pitcher-stat-val{color:var(--text);font-weight:500;}
@@ -4391,6 +4392,7 @@ function renderMLB() {
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">IP</span><span class="mlb-pitcher-stat-val${ph(p?.ip)}">${sv(p?.ip)}</span></div>
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">vs OFF</span><span class="mlb-pitcher-stat-val${off ? (off.wrc > 110 ? ' mlb-opp-hot' : off.wrc < 90 ? ' mlb-opp-easy' : '') : ' ph'}">${off ? `${off.wrc}${off.wrc > 110 ? '↑' : off.wrc < 90 ? '↓' : ''} wRC+` : '—'}</span></div>
         </div>
+        ${p?.l5 ? `<div class="mlb-pitcher-l5">L5: ERA ${p.l5.era ?? '—'} · FIP ${p.l5.fip ?? '—'}</div>` : ''}
       </div>`;
     };
 
@@ -5111,7 +5113,35 @@ function parsePitcher(p) {
   const so     = season.strikeOuts  != null ? parseFloat(season.strikeOuts)  : 0;
   const bb     = season.baseOnBalls != null ? parseFloat(season.baseOnBalls) : 0;
   const hr     = season.homeRuns    != null ? parseFloat(season.homeRuns)    : 0;
-  const computedFipRaw = computeFIP(so, bb, hr, ip);
+  const computedFipRaw  = computeFIP(so, bb, hr, ip);
+  const seasonStarts    = parseInt(season.gamesStarted) || 0;
+
+  // L5 recent form — only when pitcher has 5+ season starts
+  const starts = (p.gameLog || []);
+  let l5 = null;
+  if (seasonStarts >= 5 && starts.length >= 5) {
+    const last5   = starts.slice(-5);
+    const l5So    = last5.reduce((s, g) => s + (parseFloat(g.stat?.strikeOuts)  || 0), 0);
+    const l5Bb    = last5.reduce((s, g) => s + (parseFloat(g.stat?.baseOnBalls) || 0), 0);
+    const l5Hr    = last5.reduce((s, g) => s + (parseFloat(g.stat?.homeRuns)    || 0), 0);
+    const l5Ip    = last5.reduce((s, g) => s + (parseFloat(g.stat?.inningsPitched) || 0), 0);
+    const l5Er    = last5.reduce((s, g) => s + (parseFloat(g.stat?.earnedRuns)  || 0), 0);
+    const l5EraRaw = l5Ip > 0 ? l5Er / l5Ip * 9 : null;
+    const l5FipRaw = computeFIP(l5So, l5Bb, l5Hr, l5Ip);
+    l5 = {
+      era:    l5EraRaw != null ? l5EraRaw.toFixed(2) : null,
+      fip:    l5FipRaw != null ? l5FipRaw.toFixed(2) : null,
+      eraRaw: l5EraRaw,
+      fipRaw: l5FipRaw,
+    };
+  }
+
+  // Blended FIP: 40% L5 + 60% season when both are available
+  let blendedFipRaw = computedFipRaw;
+  if (l5?.fipRaw != null && computedFipRaw != null) {
+    blendedFipRaw = 0.4 * l5.fipRaw + 0.6 * computedFipRaw;
+  }
+
   return {
     name: short || 'TBD',
     hand: p.pitchHand?.code || null,
@@ -5119,7 +5149,9 @@ function parsePitcher(p) {
     fip:  computedFipRaw != null ? computedFipRaw.toFixed(2) : (fipRaw != null ? fipRaw.toFixed(2) : null),
     fipRaw,
     computedFipRaw,
+    blendedFipRaw,
     eraRaw,
+    l5,
     whip: season.whip != null ? parseFloat(season.whip).toFixed(2) : null,
     k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
     bb9:  ip > 0 && season.baseOnBalls != null ? (season.baseOnBalls / ip * 9).toFixed(1) : null,
@@ -5133,7 +5165,7 @@ function parsePitcher(p) {
 // Baseline 4.50 ≈ league-average FIP over recent MLB seasons
 function ratePitcher(p) {
   if (!p) return null;
-  const base = p.computedFipRaw ?? p.fipRaw ?? p.eraRaw;
+  const base = p.blendedFipRaw ?? p.computedFipRaw ?? p.fipRaw ?? p.eraRaw;
   if (base == null) return null;
   return Math.round((4.50 - base) * 100) / 100;
 }
@@ -5188,11 +5220,36 @@ async function loadMLBPitchers(dateStr) {
       }
     }
 
+    // Step 2.5: fetch 2026 game logs for each pitcher in parallel
+    const gameLogById = {};
+    if (pitcherIds.size > 0) {
+      await Promise.allSettled([...pitcherIds].map(async id => {
+        try {
+          const gr = await fetch(
+            `https://statsapi.mlb.com/api/v1/people/${id}/stats?stats=gameLog&group=pitching&season=2026`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+          if (!gr.ok) return;
+          const gd = await gr.json();
+          // Keep only started games
+          gameLogById[id] = (gd.stats?.[0]?.splits || []).filter(s => (s.stat?.gamesStarted ?? 0) >= 1);
+        } catch {}
+      }));
+    }
+
     // Step 3: merge stats into pitcher objects and build map
     mlbPitcherMap = new Map();
     for (const { awayName, homeName, awayP, homeP } of gameStubs) {
-      if (awayP?.id) { awayP.stats = statsById[awayP.id]?.stats || []; awayP.pitchHand = awayP.pitchHand || statsById[awayP.id]?.pitchHand; }
-      if (homeP?.id) { homeP.stats = statsById[homeP.id]?.stats || []; homeP.pitchHand = homeP.pitchHand || statsById[homeP.id]?.pitchHand; }
+      if (awayP?.id) {
+        awayP.stats    = statsById[awayP.id]?.stats || [];
+        awayP.pitchHand = awayP.pitchHand || statsById[awayP.id]?.pitchHand;
+        awayP.gameLog  = gameLogById[awayP.id] || [];
+      }
+      if (homeP?.id) {
+        homeP.stats    = statsById[homeP.id]?.stats || [];
+        homeP.pitchHand = homeP.pitchHand || statsById[homeP.id]?.pitchHand;
+        homeP.gameLog  = gameLogById[homeP.id] || [];
+      }
       const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
       mlbPitcherMap.set(key, {
         away: parsePitcher(awayP),
