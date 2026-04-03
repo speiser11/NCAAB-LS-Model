@@ -997,6 +997,9 @@ input[type=date] {
 .mlb-opp-pos{color:var(--red);}   /* strong offense vs this pitcher — bad for pitcher */
 .mlb-opp-neg{color:var(--green);} /* weak offense vs this pitcher — good for pitcher */
 .mlb-pitcher-div{width:1px;background:var(--border);flex-shrink:0;align-self:stretch;}
+.mlb-weather{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);padding:.18rem .45rem;border-radius:3px;background:var(--surface2);border:1px solid var(--border);display:inline-flex;align-items:center;gap:.3rem;}
+.mlb-weather-adj-pos{color:var(--green);}
+.mlb-weather-adj-neg{color:var(--red);}
 .mlb-proj-score{display:flex;align-items:center;justify-content:center;padding:.5rem 1.15rem .2rem;border-top:1px solid var(--border);}
 .mlb-proj-line{display:flex;align-items:baseline;gap:.4rem;font-family:'DM Mono',monospace;font-size:.95rem;font-weight:600;color:var(--text);}
 .mlb-proj-team-score{color:var(--blue);}
@@ -4189,7 +4192,7 @@ async function mlbRefresh() {
   try {
     await loadModelConfig(); // ensure cfg.oddsGistId is set before odds fetch (mirrors NCAAB refresh())
     await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds()]);
-    await loadMLBPitchers(dateStr);
+    await Promise.all([loadMLBPitchers(dateStr), loadMLBWeather(mlbGameList)]);
     await loadMLBBullpens(isoDate, _lastTeamIdMap);
   } catch(e) {
     setSt('st-mlb-games', 'Games: error', 'err');
@@ -4293,6 +4296,7 @@ function renderMLB() {
   }
   el.innerHTML = mlbGameList.map(g => {
     g.parkFactor = getParkFactor(g.home);
+    g.weather = mlbWeatherMap.get(g.id) ?? null;
     const pitchKey = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
     const pitchers = mlbPitcherMap.get(pitchKey) || {};
     g.proj = calcMLBTotal(g, pitchers);
@@ -4484,6 +4488,20 @@ function renderMLB() {
         ? `<div class="mlb-bet-signal ${_best.tier}"><span class="mlb-bet-icon">${_best.tier === 'take' ? '🔥' : '📊'}</span><span class="mlb-bet-text">${esc(_best.text)}</span></div>`
         : '');
 
+    // Weather badge
+    const wx = g.weather;
+    let weatherHtml = '';
+    if (wx && !wx.indoors && wx.windMph != null) {
+      const adjNum = g.proj.windAdj ?? 0;
+      const adjStr = adjNum !== 0
+        ? ` <span class="mlb-weather-adj-${adjNum > 0 ? 'pos' : 'neg'}">${adjNum > 0 ? '+' : ''}${adjNum.toFixed(1)}r</span>`
+        : '';
+      weatherHtml = `<div class="mlb-weather" title="Wind: ${wx.windMph} mph from ${wx.windLabel}${adjNum !== 0 ? ' · affects total' : ''}">` +
+        `💨 ${wx.windMph} mph ${wx.windLabel}${adjStr}</div>`;
+    } else if (wx?.indoors) {
+      weatherHtml = `<div class="mlb-weather">🏟️ Dome/Retractable</div>`;
+    }
+
     // Store computed tiers on g so renderMLBTopPicks can read them without recomputing
     g._tiers = {
       mlTier, mlImpDiffSigned, mlImpDiffPct, mlDiffSignedFav, vegasFavIsHome, vegasFavVegasML, vegasFavModelML, mlValHome, mlSignalOk,
@@ -4514,6 +4532,7 @@ function renderMLB() {
             <span>${esc(g.home.split(' ').pop())}</span>
           </div>
         </div>
+        ${weatherHtml}
         ${betSignalHtml}
         ${!live && !final && g.mlbOdds == null ? '<div class="mlb-odds-pending">Odds not yet posted</div>' : ''}
         ${!(live || final) ? `<table class="mlb-diff-table">
@@ -5334,6 +5353,102 @@ async function loadMLBBullpens(isoDate, teamIdMap) {
   }));
 }
 
+// ── MLB stadium coordinates for weather fetch ─────────────────────────────────
+// lat/lon: stadium location. indoors: true = retractable/fixed dome — skip wind adj.
+const MLB_STADIUM_COORDS = {
+  coloradorockies:      { lat: 39.7559,  lon: -104.9942, indoors: false },
+  cincinnatireds:       { lat: 39.0979,  lon: -84.5082,  indoors: false },
+  newyorkyankees:       { lat: 40.8296,  lon: -73.9262,  indoors: false },
+  bostonredsox:         { lat: 42.3467,  lon: -71.0972,  indoors: false },
+  baltimoreorioles:     { lat: 39.2838,  lon: -76.6217,  indoors: false },
+  texasrangers:         { lat: 32.7512,  lon: -97.0832,  indoors: true  }, // Globe Life Field — retractable
+  chicagocubs:          { lat: 41.9484,  lon: -87.6553,  indoors: false },
+  philadelphiaphillies: { lat: 39.9058,  lon: -75.1665,  indoors: false },
+  atlantabraves:        { lat: 33.8908,  lon: -84.4678,  indoors: false },
+  arizonadiamondbacks:  { lat: 33.4453,  lon: -112.0667, indoors: true  }, // Chase Field — retractable
+  kansascityroyals:     { lat: 39.0517,  lon: -94.4803,  indoors: false },
+  clevelandguardians:   { lat: 41.4962,  lon: -81.6852,  indoors: false },
+  milwaukeebrewers:     { lat: 43.0280,  lon: -87.9712,  indoors: true  }, // American Family Field — retractable
+  detroittigers:        { lat: 42.3390,  lon: -83.0485,  indoors: false },
+  chicagowhitesox:      { lat: 41.8299,  lon: -87.6338,  indoors: false },
+  minnesotatwins:       { lat: 44.9817,  lon: -93.2777,  indoors: false },
+  torontobluejays:      { lat: 43.6414,  lon: -79.3894,  indoors: true  }, // Rogers Centre — fixed dome
+  houstonastros:        { lat: 29.7573,  lon: -95.3555,  indoors: true  }, // Minute Maid Park — retractable
+  losangelesangels:     { lat: 33.8003,  lon: -117.8827, indoors: false },
+  stlouiscardinals:     { lat: 38.6226,  lon: -90.1928,  indoors: false },
+  newyorkmets:          { lat: 40.7571,  lon: -73.8458,  indoors: false },
+  washingtonnationals:  { lat: 38.8730,  lon: -77.0074,  indoors: false },
+  losangelesdodgers:    { lat: 34.0739,  lon: -118.2400, indoors: false },
+  pittsburghpirates:    { lat: 40.4469,  lon: -80.0057,  indoors: false },
+  miamimarlins:         { lat: 25.7781,  lon: -80.2197,  indoors: true  }, // loanDepot Park — retractable
+  oaklandathletics:     { lat: 38.5957,  lon: -121.5014, indoors: false }, // Sutter Health Park (Sacramento)
+  athletics:            { lat: 38.5957,  lon: -121.5014, indoors: false },
+  seattlemariners:      { lat: 47.5914,  lon: -122.3325, indoors: true  }, // T-Mobile Park — retractable
+  tampabayrays:         { lat: 27.7682,  lon: -82.6534,  indoors: true  }, // Tropicana Field — fixed dome
+  sandiegopadres:       { lat: 32.7076,  lon: -117.1570, indoors: false },
+  sanfranciscogiants:   { lat: 37.7786,  lon: -122.3893, indoors: false },
+};
+
+// Wind direction → blowing out (hitter-friendly) or in (pitcher-friendly).
+// Convention: meteorological degrees (0° = from N, 90° = from E, 180° = from S, 270° = from W).
+// Most MLB parks have CF roughly to the N or NE of home plate, so:
+//   wind FROM the S/SW (135–270°) blows toward CF → out → hitter-friendly
+//   wind FROM the N/NE (315–90°)  blows toward home plate → in → pitcher-friendly
+function calcWindAdj(windMph, windDeg) {
+  if (windMph == null || windDeg == null) return 0;
+  // Determine blowing-out vs blowing-in based on wind direction
+  // Blowing out: from S–SW quadrant (135° to 270°)
+  const blowingOut = windDeg >= 135 && windDeg <= 270;
+  const sign = blowingOut ? 1 : -1;
+  let adj = 0;
+  if      (windMph >= 20) adj = 1.0;
+  else if (windMph >= 15) adj = 0.6;
+  else if (windMph >= 10) adj = 0.3;
+  return sign * adj;
+}
+
+// Returns a compass label from meteorological wind direction degrees
+function windDegToLabel(deg) {
+  if (deg == null) return '';
+  const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+
+let mlbWeatherMap = new Map(); // normKey → weather object
+
+async function loadMLBWeather(games) {
+  mlbWeatherMap.clear();
+  const fetches = games.map(async g => {
+    const coords = MLB_STADIUM_COORDS[normMLBTeam(g.home)];
+    if (!coords) return;
+    if (coords.indoors) {
+      mlbWeatherMap.set(g.id, { indoors: true, adj: 0 });
+      return;
+    }
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}` +
+                  `&current=temperature_2m,wind_speed_10m,wind_direction_10m&wind_speed_unit=mph&temperature_unit=fahrenheit`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return;
+      const d = await r.json();
+      const cur = d.current || {};
+      const windMph = Math.round(cur.wind_speed_10m ?? 0);
+      const windDeg = cur.wind_direction_10m ?? null;
+      const tempF   = Math.round(cur.temperature_2m ?? 70);
+      const adj     = calcWindAdj(windMph, windDeg);
+      mlbWeatherMap.set(g.id, {
+        indoors: false,
+        tempF,
+        windMph,
+        windDeg,
+        windLabel: windDegToLabel(windDeg),
+        adj,
+      });
+    } catch { /* weather is best-effort */ }
+  });
+  await Promise.allSettled(fetches);
+}
+
 // ── MLB park factors (Baseball Reference 2024) ───────────────────────────────
 // factor: run index relative to league average (1.00 = avg, 1.10 = +10% runs)
 // handAdj: LHB bonus relative to RHB (positive = more LHB-friendly). Update each spring.
@@ -5464,8 +5579,10 @@ function calcMLBTotal(g, pitchers) {
   total -= homeEffP + awayEffP;
   total += (ho + ao) * 2.0;
   total *= pf;
+  const windAdj = (!g.weather || g.weather.indoors) ? 0 : (g.weather.adj ?? 0);
+  total += windAdj;
   total = Math.max(6.0, Math.min(11.0, total));
-  return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf, homeBp, awayBp };
+  return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf, homeBp, awayBp, windAdj };
 }
 
 // ── MLB moneyline win probability (Sprint 5) ─────────────────────────────────
@@ -5716,6 +5833,7 @@ function showMLBGameModal(gameId) {
       <tr><td>${esc(g.away)} offense</td><td>${fmtScore(proj.ao * 2)}</td></tr>
       <tr><td>${esc(g.home)} offense</td><td>${fmtScore(proj.ho * 2)}</td></tr>
       <tr><td>Park factor</td><td style="color:var(--muted)">${proj.pf.toFixed(2)}×</td></tr>
+      ${proj.windAdj !== 0 ? `<tr><td>Wind (${g.weather?.windMph} mph ${g.weather?.windLabel})</td><td>${fmtAdj(proj.windAdj)}</td></tr>` : ''}
     </table>
     <div class="gd-summary-row" style="margin-top:.6rem;font-size:.85rem;border-top:1px solid var(--border);padding-top:.5rem">
       <span style="font-weight:600">Projected Total</span>
