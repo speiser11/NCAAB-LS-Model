@@ -4371,7 +4371,8 @@ function renderMLB() {
       const score = ratePitcher(p);
       const scoreBadge = score == null ? '' : (() => {
         const cls = score > 0.1 ? 'mlb-quality-pos' : score < -0.1 ? 'mlb-quality-neg' : 'mlb-quality-neu';
-        return `<span class="mlb-quality ${cls}">${score > 0 ? '+' : ''}${score.toFixed(2)}</span>`;
+        const src = p?.computedFipRaw != null ? 'cFIP' : p?.fipRaw != null ? 'FIP' : 'ERA';
+        return `<span class="mlb-quality ${cls}" title="${src} vs avg">${score > 0 ? '+' : ''}${score.toFixed(2)} <span style="font-size:.5rem;opacity:.6">${src}</span></span>`;
       })();
       const handBadge = p?.hand ? `<span class="mlb-hand">(${p.hand})</span>` : '';
       // Opposing offense vs this pitcher's hand
@@ -5069,6 +5070,12 @@ function normMLBTeam(name) {
   return name.toLowerCase().replace(/[^a-z]/g, '');
 }
 
+function computeFIP(so, bb, hr, ip) {
+  if (!ip || ip < 5) return null;
+  const FIP_CONSTANT = 3.10;
+  return ((13 * hr) + (3 * bb) - (2 * so)) / ip + FIP_CONSTANT;
+}
+
 function parsePitcher(p) {
   if (!p) return null;
   const full   = p.fullName || '';
@@ -5081,12 +5088,17 @@ function parsePitcher(p) {
   const ip     = parseFloat(season.inningsPitched) || 0;
   const eraRaw = season.era  != null ? parseFloat(season.era)  : null;
   const fipRaw = season.fip  != null ? parseFloat(season.fip)  : null;
+  const so     = season.strikeOuts  != null ? parseFloat(season.strikeOuts)  : 0;
+  const bb     = season.baseOnBalls != null ? parseFloat(season.baseOnBalls) : 0;
+  const hr     = season.homeRuns    != null ? parseFloat(season.homeRuns)    : 0;
+  const computedFipRaw = computeFIP(so, bb, hr, ip);
   return {
     name: short || 'TBD',
     hand: p.pitchHand?.code || null,
     era:  eraRaw != null ? eraRaw.toFixed(2) : null,
-    fip:  fipRaw != null ? fipRaw.toFixed(2) : null,
+    fip:  computedFipRaw != null ? computedFipRaw.toFixed(2) : (fipRaw != null ? fipRaw.toFixed(2) : null),
     fipRaw,
+    computedFipRaw,
     eraRaw,
     whip: season.whip != null ? parseFloat(season.whip).toFixed(2) : null,
     k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
@@ -5101,7 +5113,7 @@ function parsePitcher(p) {
 // Baseline 4.50 ≈ league-average FIP over recent MLB seasons
 function ratePitcher(p) {
   if (!p) return null;
-  const base = p.fipRaw ?? p.eraRaw;
+  const base = p.computedFipRaw ?? p.fipRaw ?? p.eraRaw;
   if (base == null) return null;
   return Math.round((4.50 - base) * 100) / 100;
 }
