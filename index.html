@@ -4450,7 +4450,7 @@ function renderMLB() {
     const rlDiffMLEquiv    = rlImpDiff != null ? Math.round(Math.abs(rlImpDiff) * Math.abs(_rlDp)) : null;
     // Direction: runDiff > 2.5 → take fav -1.5; < 2.5 → no signal
     const rlFavCvr         = rlMargin > 2.5;
-    const rlTier           = rlFavCvr && rlImpDiff != null ? 'take' : null;
+    const rlTier           = rlFavCvr && rlImpDiff != null && rlImpDiff > 0.02 ? 'take' : null;
     const rlDiffCls        = rlTier === 'take' ? 'diff-green' : 'diff-gray';
 
     const f5Diff    = g.f5TotalEdge;
