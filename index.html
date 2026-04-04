@@ -4611,6 +4611,8 @@ function calcKellyUnits(p) {
     const ml = p.mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
     if (ml == null) return null;
     b = ml > 0 ? ml / 100 : 100 / Math.abs(ml);
+    // Dogs (+odds) have higher variance and b>1 amplifies Kelly — use tighter scale + 2u cap
+    if (ml > 0) { scale = 0.06; cap = 2.0; }
   } else if (p.betType === 'Total') {
     const edge = g._tiers?.totalDiffAbs;
     if (!edge) return null;
