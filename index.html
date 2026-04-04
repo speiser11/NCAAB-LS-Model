@@ -4595,7 +4595,9 @@ function renderMLB() {
 let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
 
-// Returns half-Kelly in units (1u = 1.5% half-Kelly, capped at 3u)
+// Returns half-Kelly in units (1u = 5% half-Kelly, capped at 3u, rounded to 0.5u)
+// ML uses model win prob directly; Total/F5 use conservative edge-to-prob conversion
+// since run totals have high variance (σ ≈ 3.5 runs) relative to model edge size.
 function calcKellyUnits(p) {
   const g = p.g;
   if (!g || !g.mlbOdds) return null;
@@ -4608,7 +4610,8 @@ function calcKellyUnits(p) {
   } else if (p.betType === 'Total') {
     const edge = g._tiers?.totalDiffAbs;
     if (!edge) return null;
-    prob = Math.min(0.68, 0.50 + (edge / 3.5) * 0.35);
+    // ~3pp win prob per run of model edge (conservative — game variance is ~3.5 runs)
+    prob = Math.min(0.62, 0.50 + edge * 0.03);
     const overML = g.mlbOdds.totalOverML ?? -110;
     b = overML > 0 ? overML / 100 : 100 / Math.abs(overML);
   } else if (p.betType === 'Run Line') {
@@ -4619,14 +4622,16 @@ function calcKellyUnits(p) {
   } else if (p.betType === 'F5') {
     const edge = Math.abs(g.f5TotalEdge ?? 0);
     if (!edge) return null;
-    prob = Math.min(0.68, 0.50 + (edge / 2.0) * 0.35);
+    // Slightly higher than full-game total since F5 is more pitcher-driven
+    prob = Math.min(0.62, 0.50 + edge * 0.04);
     const overML = g.mlbOdds.f5TotalOverML ?? -110;
     b = overML > 0 ? overML / 100 : 100 / Math.abs(overML);
   }
   if (!prob || !b) return null;
   const halfKelly = ((b * prob - (1 - prob)) / b) / 2;
   if (halfKelly <= 0.005) return null;
-  return Math.max(0.5, Math.min(3.0, Math.round(halfKelly / 0.015 * 2) / 2));
+  // 1u = 5% half-Kelly: e.g. 60% win at -110 → ~6% half-Kelly → 1u
+  return Math.max(0.5, Math.min(3.0, Math.round(halfKelly / 0.05 * 2) / 2));
 }
 
 function _mlbSavePreGamePicks(picks) {
@@ -5070,6 +5075,7 @@ async function showMLBPicksModal() {
         }
         return ` · ${aShort} ${parseInt(p.g.awayScore)||0}, ${hShort} ${parseInt(p.g.homeScore)||0}`;
       })();
+      const kelly = calcKellyUnits(p);
       return `<div class="mlb-pick-row${isLocked ? ' locked' : ''}" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
@@ -5078,7 +5084,10 @@ async function showMLBPicksModal() {
           ${modelSubtitle ? `<div class="mlb-pick-row-model">${esc(modelSubtitle)}</div>` : ''}
           <div class="mlb-pick-row-why">${esc(p.text)}</div>
         </div>
-        <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
+          <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
+          ${kelly != null ? `<span class="pick-kelly">${kelly}u</span>` : ''}
+        </div>
       </div>`;
     };
 
