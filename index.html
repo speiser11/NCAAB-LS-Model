@@ -4858,9 +4858,11 @@ function renderMLBTopPicks(games) {
     })();
     const tierIcon = p.tier === 'take' ? '🔥' : '📊';
 
-    // Kelly units
+    // Kelly units — takes always show a number; null Kelly = price is thin, show 0.5u muted
     const kelly = calcKellyUnits(p);
-    const kellyBadge = kelly != null ? `<span class="pick-kelly">${kelly}u</span>` : '';
+    const kellyBadge = kelly != null
+      ? `<span class="pick-kelly">${kelly}u</span>`
+      : p.tier === 'take' ? `<span class="pick-kelly" style="opacity:.45" title="Price thin — model signal only">0.5u</span>` : '';
 
     // Pitcher change detection
     let pitcherWarn = '';
@@ -5082,6 +5084,9 @@ async function showMLBPicksModal() {
         return ` · ${aShort} ${parseInt(p.g.awayScore)||0}, ${hShort} ${parseInt(p.g.homeScore)||0}`;
       })();
       const kelly = calcKellyUnits(p);
+      const kellyTag = kelly != null
+        ? `<span class="pick-kelly">${kelly}u</span>`
+        : p.tier === 'take' ? `<span class="pick-kelly" style="opacity:.45" title="Price thin — model signal only">0.5u</span>` : '';
       return `<div class="mlb-pick-row${isLocked ? ' locked' : ''}" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
@@ -5092,7 +5097,7 @@ async function showMLBPicksModal() {
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
           <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
-          ${kelly != null ? `<span class="pick-kelly">${kelly}u</span>` : ''}
+          ${kellyTag}
         </div>
       </div>`;
     };
