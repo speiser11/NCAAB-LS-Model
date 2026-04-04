@@ -4595,13 +4595,17 @@ function renderMLB() {
 let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
 
-// Returns half-Kelly in units (1u = 5% half-Kelly, capped at 3u, rounded to 0.5u)
-// ML uses model win prob directly; Total/F5 use conservative edge-to-prob conversion
-// since run totals have high variance (σ ≈ 3.5 runs) relative to model edge size.
+// Returns half-Kelly in units, rounded to 0.5u.
+// Scale and cap vary by bet type — RL uses a looser scale and lower cap because:
+//   (a) cover prob is systematically high from the model's logistic curve
+//   (b) positive RL odds (+110/+120) aggressively amplify Kelly
+// ML:       1u = 5% half-Kelly, cap 3u
+// Total/F5: 1u = 5% half-Kelly, cap 3u (prob capped conservatively due to game variance)
+// Run Line: 1u = 10% half-Kelly, cap 2u
 function calcKellyUnits(p) {
   const g = p.g;
   if (!g || !g.mlbOdds) return null;
-  let prob, b;
+  let prob, b, scale = 0.05, cap = 3.0;
   if (p.betType === 'ML') {
     prob = ((p.mlValHome ? g.homeWinProb : g.awayWinProb) ?? 0) / 100;
     const ml = p.mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
@@ -4619,6 +4623,7 @@ function calcKellyUnits(p) {
     const ml = g.mlbOdds.rlFavML;
     if (!prob || ml == null) return null;
     b = ml > 0 ? ml / 100 : 100 / Math.abs(ml);
+    scale = 0.10; cap = 2.0;  // looser scale + lower cap for RL
   } else if (p.betType === 'F5') {
     const edge = Math.abs(g.f5TotalEdge ?? 0);
     if (!edge) return null;
@@ -4630,8 +4635,7 @@ function calcKellyUnits(p) {
   if (!prob || !b) return null;
   const halfKelly = ((b * prob - (1 - prob)) / b) / 2;
   if (halfKelly <= 0.005) return null;
-  // 1u = 5% half-Kelly: e.g. 60% win at -110 → ~6% half-Kelly → 1u
-  return Math.max(0.5, Math.min(3.0, Math.round(halfKelly / 0.05 * 2) / 2));
+  return Math.max(0.5, Math.min(cap, Math.round(halfKelly / scale * 2) / 2));
 }
 
 function _mlbSavePreGamePicks(picks) {
