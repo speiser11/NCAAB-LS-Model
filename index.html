@@ -310,6 +310,14 @@ input[type=date]{
 .pick-line-move{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted);margin-top:.25rem;line-height:1.3;}
 .pick-line-move .flagged{color:var(--yellow);}
 .pick-pitcher-warn{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--yellow);margin-top:.25rem;line-height:1.3;}
+.picks-scratch-banner{font-family:'DM Mono',monospace;font-size:.65rem;color:#1a1a1a;background:var(--yellow);border-radius:6px;padding:.35rem .7rem;margin:.25rem .25rem 0;line-height:1.5;font-weight:600;letter-spacing:.01em;}
+.picks-dropped-label{font-size:.62rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:.55rem .5rem .1rem;opacity:.7;}
+.dropped-pick{opacity:.45;cursor:default;}
+.dropped-pick:hover{opacity:.6;}
+.dropped-pick-text{font-size:.75rem;}
+.dropped-reason-pill{font-family:'DM Mono',monospace;font-size:.58rem;font-weight:700;border-radius:3px;padding:.05rem .28rem;margin-left:auto;border:1px solid currentColor;}
+.dropped-reason-warn{color:var(--yellow);}
+.dropped-reason-mute{color:var(--muted);}
 .picks-divider{flex-shrink:0;width:1px;background:var(--border);margin:0 .25rem;align-self:stretch;}
 
 /* ── Settings modal ── */
@@ -4594,6 +4602,7 @@ function renderMLB() {
 // ── MLB Top Picks bar ─────────────────────────────────────────────────────────
 let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
+let _mlbLastGames   = []; // full games array for modal dropped-picks lookup
 
 // Returns half-Kelly in units, rounded to 0.5u.
 // Scale and cap vary by bet type — RL uses a looser scale and lower cap because:
@@ -4686,9 +4695,63 @@ function _mlbLoadPreGamePicks(games) {
   } catch(e) { return []; }
 }
 
+// Returns picks that were in this morning's save but are no longer takes/leans
+function getDroppedPicks(games, activePicks) {
+  const dateStr = mlbGetDateStr();
+  let saved = [];
+  try {
+    const raw = localStorage.getItem(`mlb_pgp_${dateStr}`);
+    if (raw) saved = JSON.parse(raw);
+  } catch(e) {}
+  if (!saved.length) return [];
+
+  const activeSet = new Set(activePicks.map(p => `${p.g.id}|${p.betType}`));
+  const byId = Object.fromEntries(games.map(g => [g.id, g]));
+  const startedStatuses = new Set(['STATUS_IN_PROGRESS', 'STATUS_FINAL']);
+
+  const dropped = [];
+  for (const s of saved) {
+    const key = `${s.gameId}|${s.betType}`;
+    if (activeSet.has(key)) continue;
+    const game = byId[s.gameId];
+    if (!game) continue;
+    if (startedStatuses.has(game.statusName)) continue; // started = locked section, not dropped
+
+    let reason = 'edge_gone';
+
+    // Check pitcher change first
+    if (s.lockedPitchers) {
+      const pk = `${normMLBTeam(game.away)}|${normMLBTeam(game.home)}|${game._gameNumber || 1}`;
+      const cur = mlbPitcherMap.get(pk) || {};
+      if ((s.lockedPitchers.home && cur.home?.name && s.lockedPitchers.home !== cur.home.name) ||
+          (s.lockedPitchers.away && cur.away?.name && s.lockedPitchers.away !== cur.away.name))
+        reason = 'pitcher_change';
+    }
+
+    // Check line movement (lower threshold — any move that likely cost the edge)
+    if (reason === 'edge_gone' && s.lockedOdds && game.mlbOdds) {
+      let moved = false;
+      if (s.betType === 'ML' || s.betType === 'Run Line') {
+        const curML = s.betType === 'ML'
+          ? (s.mlValHome ? game.mlbOdds.homeML : game.mlbOdds.awayML)
+          : game.mlbOdds.rlFavML;
+        moved = curML != null && s.lockedOdds.ml != null && Math.abs(curML - s.lockedOdds.ml) >= 10;
+      } else {
+        const curLine = s.betType === 'Total' ? game.mlbOdds.totalLine : game.mlbOdds.f5TotalLine;
+        moved = curLine != null && s.lockedOdds.line != null && Math.abs(curLine - s.lockedOdds.line) >= 0.25;
+      }
+      if (moved) reason = 'line_moved';
+    }
+
+    dropped.push({ s, game, reason });
+  }
+  return dropped;
+}
+
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
   if (!bar) return;
+  _mlbLastGames = games;
 
   const takes = [], leans = [];
 
@@ -4919,6 +4982,44 @@ function renderMLBTopPicks(games) {
   const divider = topTakes.length && topLeans.length ? '<div class="picks-divider"></div>' : '';
   const cards   = [...topTakes.map(pickCard), divider, ...topLeans.map(pickCard)].join('');
 
+  // ── Dropped picks section ─────────────────────────────────────────────────
+  const droppedPicks = getDroppedPicks(games, [...takes, ...leans]);
+  const reasonLabel = { pitcher_change: 'Pitcher Changed', line_moved: 'Line Moved', edge_gone: 'Edge Gone' };
+  const reasonClass = { pitcher_change: 'dropped-reason-warn', line_moved: 'dropped-reason-warn', edge_gone: 'dropped-reason-mute' };
+  const droppedCards = droppedPicks.map(({ s, game, reason }) => {
+    const hShort = (game.home || '').split(' ').pop();
+    const aShort = (game.away || '').split(' ').pop();
+    return `<div class="pick-card dropped-pick">
+      <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
+      <div class="pick-main dropped-pick-text">${esc(s.text || s.betType)}</div>
+      <div class="pick-meta">
+        <span class="pick-type-tag">${esc(s.betType)}</span>
+        <span class="dropped-reason-pill ${reasonClass[reason] || 'dropped-reason-mute'}">${reasonLabel[reason] || 'Edge Gone'}</span>
+      </div>
+    </div>`;
+  }).join('');
+  const droppedSection = droppedPicks.length
+    ? `<div class="picks-dropped-label">No Longer Active</div><div class="picks-row">${droppedCards}</div>`
+    : '';
+
+  // ── Bar-level pitcher scratch banner ─────────────────────────────────────
+  const allPicks = [...takes, ...leans];
+  const scratchAlerts = [];
+  for (const p of allPicks) {
+    if (!p.lockedPitchers || !p.g) continue;
+    const pk = `${normMLBTeam(p.g.away)}|${normMLBTeam(p.g.home)}|${p.g._gameNumber || 1}`;
+    const cur = mlbPitcherMap.get(pk) || {};
+    const hShort = (p.g.home || '').split(' ').pop();
+    const aShort = (p.g.away || '').split(' ').pop();
+    if (p.lockedPitchers.home && cur.home?.name && p.lockedPitchers.home !== cur.home.name)
+      scratchAlerts.push(`${esc(aShort)}@${esc(hShort)}: ${esc(hShort)} now <strong>${esc(cur.home.name)}</strong> (was ${esc(p.lockedPitchers.home)})`);
+    if (p.lockedPitchers.away && cur.away?.name && p.lockedPitchers.away !== cur.away.name)
+      scratchAlerts.push(`${esc(aShort)}@${esc(hShort)}: ${esc(aShort)} now <strong>${esc(cur.away.name)}</strong> (was ${esc(p.lockedPitchers.away)})`);
+  }
+  const scratchBanner = scratchAlerts.length
+    ? `<div class="picks-scratch-banner">⚠ Pitcher change${scratchAlerts.length > 1 ? 's' : ''}: ${scratchAlerts.join(' &nbsp;·&nbsp; ')}</div>`
+    : '';
+
   bar.style.display = '';
   bar.innerHTML = `
     <div class="picks-header">
@@ -4933,7 +5034,9 @@ function renderMLBTopPicks(games) {
         </div>
       </div>
     </div>
-    <div class="picks-row">${cards}</div>`;
+    ${scratchBanner}
+    <div class="picks-row">${cards}</div>
+    ${droppedSection}`;
 
   loadMLBRecord();
 }
@@ -5140,6 +5243,31 @@ async function showMLBPicksModal() {
       return results.length ? ` · ${w}-${l}` : '';
     };
 
+    // ── Dropped picks ─────────────────────────────────────────────────────
+    const activePicks = _mlbAllPicks.filter(p => !p.locked);
+    const droppedPicks = getDroppedPicks(_mlbLastGames, activePicks);
+    const droppedReasonLabel = { pitcher_change: 'Pitcher Changed', line_moved: 'Line Moved', edge_gone: 'Edge Gone' };
+    const droppedReasonClass = { pitcher_change: 'dropped-reason-warn', line_moved: 'dropped-reason-warn', edge_gone: 'dropped-reason-mute' };
+
+    const droppedRow = ({ s, game, reason }) => {
+      const hShort = (game.home || '').split(' ').pop();
+      const aShort = (game.away || '').split(' ').pop();
+      const label  = droppedReasonLabel[reason] || 'Edge Gone';
+      const cls    = droppedReasonClass[reason] || 'dropped-reason-mute';
+      const origTierLabel = s.tier === 'take' ? 'TAKE' : 'LEAN';
+      return `<div class="mlb-pick-row" style="opacity:.45">
+        <span class="mlb-pick-row-icon">⬇</span>
+        <div class="mlb-pick-row-body">
+          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · <span style="opacity:.7">${origTierLabel}</span></div>
+          <div class="mlb-pick-row-action" style="opacity:.7">${esc(s.text || s.betType)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
+          <span class="dropped-reason-pill ${cls}">${label}</span>
+          <span class="mlb-pick-row-edge" style="opacity:.5">${esc(s.betType)}</span>
+        </div>
+      </div>`;
+    };
+
     let html = '';
     if (allTakes.length) {
       html += `<div class="mlb-picks-section-label">🔥 Takes (${allTakes.length})${record(allTakes)}</div>`;
@@ -5148,6 +5276,10 @@ async function showMLBPicksModal() {
     if (allLeans.length) {
       html += `<div class="mlb-picks-section-label">📊 Leans (${allLeans.length})${record(allLeans)}</div>`;
       html += allLeans.map(pickRow).join('');
+    }
+    if (droppedPicks.length) {
+      html += `<div class="mlb-picks-section-label" style="opacity:.6">⬇ No Longer Active (${droppedPicks.length})</div>`;
+      html += droppedPicks.map(droppedRow).join('');
     }
     body.innerHTML = html;
   }
