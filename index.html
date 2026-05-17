@@ -4406,7 +4406,7 @@ function renderMLB() {
       const oppCls = off ? (off.wrc > 105 ? ' mlb-opp-pos' : off.wrc < 95 ? ' mlb-opp-neg' : '') : '';
       return `
       <div class="mlb-pitcher">
-        <div class="mlb-pitcher-side">${side} SP${p?.isFallback ? ' <span style="font-size:.5rem;color:var(--yellow);opacity:.7">2025</span>' : ''}</div>
+        <div class="mlb-pitcher-side">${side} SP${p?.isFallback ? ' <span style="font-size:.5rem;color:var(--yellow);opacity:.7">ltd</span>' : ''}</div>
         <div class="mlb-pitcher-name${p ? '' : ' mnum-placeholder'}">${esc(p?.name ?? 'TBD')}${handBadge}${scoreBadge}</div>
         <div class="mlb-pitcher-stats">
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val${ph(p?.era)}">${sv(p?.era)}</span></div>
@@ -5468,7 +5468,7 @@ function parsePitcher(p) {
     k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
     bb9:  ip > 0 && season.baseOnBalls != null ? (season.baseOnBalls / ip * 9).toFixed(1) : null,
     ip:   season.inningsPitched ?? null,
-    isFallback: true,
+    isFallback: ip < 3,  // true when pitcher lacks meaningful 2026 season data
   };
 }
 
@@ -5515,13 +5515,13 @@ async function loadMLBPitchers(dateStr) {
       }
     }
 
-    // Step 2: batch fetch 2025 pitching stats for all pitchers in one request
+    // Step 2: batch fetch 2026 pitching stats for all pitchers in one request
     const statsById = {};
     if (pitcherIds.size > 0) {
       const ids = [...pitcherIds].join(',');
       const sr = await fetch(
         `https://statsapi.mlb.com/api/v1/people?personIds=${ids}` +
-        `&hydrate=stats(group=pitching,type=season,season=2025)`,
+        `&hydrate=stats(group=pitching,type=season,season=2026)`,
         { signal: AbortSignal.timeout(10000) }
       );
       if (sr.ok) {
@@ -5618,7 +5618,7 @@ async function loadMLBBullpens(isoDate, teamIdMap) {
 
   await Promise.all([...teamIdMap.entries()].map(async ([normName, { teamId }]) => {
     try {
-      const base = `https://statsapi.mlb.com/api/v1/stats?group=pitching&sportId=1&season=2025&teamId=${teamId}&playerPool=All&limit=60`;
+      const base = `https://statsapi.mlb.com/api/v1/stats?group=pitching&sportId=1&season=2026&teamId=${teamId}&playerPool=All&limit=60`;
       const [seasonData, recentData] = await Promise.all([
         fetch(`${base}&stats=season`,          { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null),
         fetch(`${base}&stats=byDateRange&startDate=${startDate}&endDate=${isoDate}`,
@@ -5783,11 +5783,11 @@ function getParkFactor(homeTeam) {
   return (homeTeam && MLB_PARK_FACTORS[normMLBTeam(homeTeam)]) || { name: 'Unknown', factor: 1.00, handAdj: 0 };
 }
 
-// ── MLB team offense splits vs pitcher handedness (static 2024-season wRC+) ──
+// ── MLB team offense splits vs pitcher handedness (static wRC+) ──────────────
 // FanGraphs blocks cross-origin requests; static table avoids CORS entirely.
-// wRC+ 100 = league average. vsL = vs LHP, vsR = vs RHP. Update each spring.
+// wRC+ 100 = league average. vsL = vs LHP, vsR = vs RHP. Update mid-season.
 // Source: FanGraphs 2025 final season team wRC+ splits by pitcher handedness
-// Best available proxy for 2026 — no public source publishes preseason team-level vsL/vsR splits
+// TODO: refresh with 2026 data from FanGraphs (~Memorial Day when 150+ PA/split)
 const MLB_WRC_STATIC = {
   losangelesdodgers:    { vsL: 111, vsR: 114 },
   newyorkyankees:       { vsL: 121, vsR: 118 },
