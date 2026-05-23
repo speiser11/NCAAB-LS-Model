@@ -4439,7 +4439,7 @@ function renderMLB() {
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : totalDiffAbs >= 2.0 ? 'lean' : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 3.0 ? 'take' : totalDiffAbs >= 2.0 ? 'lean' : null;
     const totalDiffCls = totalTier === 'take' ? 'diff-green' : totalTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // Run line — direct implied-prob diff (avoids _mlDiffNorm sign issues when RL fav has positive odds)
@@ -5313,7 +5313,7 @@ function _mlbLogSignal(entry) {
 
   const totalDiffAbs = v.totalLine != null && m.total != null
     ? Math.abs(Math.round((m.total - v.totalLine) * 10) / 10) : null;
-  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : null;
+  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 3.0 ? 'take' : null;
 
   const rlMargin = Math.abs(m.runDiff || 0);
   const rlTier   = rlMargin > 2.5 ? 'take' : null;
@@ -5873,6 +5873,7 @@ function calcMLBTotal(g, pitchers) {
   total *= pf;
   const windAdj = (!g.weather || g.weather.indoors) ? 0 : (g.weather.adj ?? 0);
   total += windAdj;
+  total -= 0.30; // calibration offset: model over-predicts by ~0.31 runs (2026 backtest)
   total = Math.max(6.0, Math.min(11.0, total));
   return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf, homeBp, awayBp, windAdj };
 }
@@ -5880,7 +5881,7 @@ function calcMLBTotal(g, pitchers) {
 // ── MLB moneyline win probability (Sprint 5) ─────────────────────────────────
 function predictMLBWinProb(g, pitchers) {
   const hp = ratePitcher(pitchers.home) ?? 0;
-  const ap = ratePitcher(pitchers.away) ?? 0;
+  const ap = (ratePitcher(pitchers.away) ?? 0) * 0.85; // dampened: regression showed away SP over-weighted
   const ho = rateOffense(g.home, pitchers.away?.hand)?.score ?? 0;
   const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0;
   const pf = (g.parkFactor || getParkFactor(g.home)).factor;
@@ -6016,7 +6017,8 @@ function calcMLBF5(g, pitchers) {
   total = Math.max(2.5, Math.min(7.5, Math.round(total * 10) / 10));
 
   // Win probability — starter differential only, smaller home bump
-  let homeRuns = ((9.0 / 2) - ap + ho * 2.0) * F5_SCALE * pf;
+  const apDamp = ap * 0.85; // dampened: away SP over-weighted in win prob (mirrors full-game fix)
+  let homeRuns = ((9.0 / 2) - apDamp + ho * 2.0) * F5_SCALE * pf;
   let awayRuns = ((9.0 / 2) - hp + ao * 2.0) * F5_SCALE * pf * 0.97;
   const runDiff = homeRuns - awayRuns;
   let homeWinProb = 1 / (1 + Math.exp(-runDiff * 0.45));

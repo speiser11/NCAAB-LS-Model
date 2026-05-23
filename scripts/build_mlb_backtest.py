@@ -39,10 +39,9 @@ ODDS_API_KEY = os.environ.get('ODDS_API_KEY', '')
 CACHE_DIR    = Path('.mlb_backtest_cache')
 OUTPUT_FILE  = 'mlb_backtest.csv'
 
-# 2024 regular season through end of 2025 regular season
-# Opening day 2024 was March 20 (Seoul), domestic March 28
-START_DATE = '2024-03-20'
-END_DATE   = '2025-09-28'   # adjust when 2025 season ends
+# 2026 regular season (Mar 27 opening day)
+START_DATE = '2026-03-27'
+END_DATE   = '2026-05-22'   # update to yesterday when re-running mid-season
 
 # Odds snapshot time: 13:00 UTC = 9am ET (safely pre-game morning lines)
 SNAPSHOT_HOUR = 'T13:00:00Z'
@@ -423,21 +422,21 @@ def fetch_bullpen_stats(team_id, season):
             if ip < 1:
                 continue
             try:
-                era = float(st.get('era') or 4.20)
+                era = float(st.get('era') or 3.70)
             except Exception:
-                era = 4.20
+                era = 3.70
             era_sum  += era * ip
             total_ip += ip
 
-        blended_era = round(era_sum / total_ip, 2) if total_ip >= 5 else 4.20
-        result = {'score': round(4.20 - blended_era, 2), 'era': blended_era}
+        blended_era = round(era_sum / total_ip, 2) if total_ip >= 5 else 3.70
+        result = {'score': round(3.70 - blended_era, 2), 'era': blended_era}
         _bullpen_mem[key] = result
         cache_write(key, result)
         time.sleep(0.2)
         return result
     except Exception as e:
         print(f'    Bullpen {team_id}/{season} failed: {e}')
-        result = {'score': 0, 'era': 4.20}
+        result = {'score': 0, 'era': 3.70}
         _bullpen_mem[key] = result
         return result
 
@@ -569,8 +568,8 @@ def main():
             away_p = fetch_pitcher_stats(away_pid, season) if away_pid else None
 
             # Bullpen
-            home_bp = fetch_bullpen_stats(home_id, season) if home_id else {'score': 0, 'era': 4.20}
-            away_bp = fetch_bullpen_stats(away_id, season) if away_id else {'score': 0, 'era': 4.20}
+            home_bp = fetch_bullpen_stats(home_id, season) if home_id else {'score': 0, 'era': 3.70}
+            away_bp = fetch_bullpen_stats(away_id, season) if away_id else {'score': 0, 'era': 3.70}
 
             # Model inputs
             hp = rate_pitcher(home_p)
@@ -651,7 +650,7 @@ def main():
                 f5_model_dir = 'over' if f5['total'] > f5_vegas_total else ('under' if f5['total'] < f5_vegas_total else 'push')
 
             f5_total_diff = round(f5['total'] - f5_vegas_total, 1) if f5_vegas_total is not None else None
-            f5_tier       = 'take' if f5_total_diff and abs(f5_total_diff) >= 1.5 else ('lean' if f5_total_diff and abs(f5_total_diff) >= 1.0 else None)
+            f5_tier       = 'take' if f5_total_diff and abs(f5_total_diff) >= 2.0 else ('lean' if f5_total_diff and abs(f5_total_diff) >= 1.5 else None)
 
             # ── Model edge flags (full-game) ──────────────────────────────────
             vegas_home_ml = odds.get('home_ml') if odds else None
@@ -668,8 +667,8 @@ def main():
 
             total_diff = round(model_total - vegas_total, 1) if vegas_total else None
             rl_margin  = abs(run_diff)
-            ml_tier    = 'take' if ml_imp_diff and ml_imp_diff >= 10 else ('lean' if ml_imp_diff and ml_imp_diff >= 7 else None)
-            total_tier = 'take' if total_diff and abs(total_diff) >= 2.0 else ('lean' if total_diff and abs(total_diff) >= 1.5 else None)
+            ml_tier    = 'take' if ml_imp_diff and ml_imp_diff >= 13 else ('lean' if ml_imp_diff and ml_imp_diff >= 9 else None)
+            total_tier = 'take' if total_diff and abs(total_diff) >= 2.5 else ('lean' if total_diff and abs(total_diff) >= 2.0 else None)
             rl_tier    = 'take' if rl_margin > 2.5 else None
 
             rows.append({
