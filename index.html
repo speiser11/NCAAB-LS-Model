@@ -5582,8 +5582,8 @@ async function loadMLBPitchers(dateStr) {
 let mlbBullpenMap = new Map();
 let _lastTeamIdMap = new Map();
 
-// Baseline league-average bullpen ERA (relievers run ~4.20 vs ~4.50 for starters)
-const BP_BASELINE_ERA = 4.20;
+// Baseline league-average bullpen ERA (IP-weighted avg from FanGraphs 2026 relievers, through May 23)
+const BP_BASELINE_ERA = 3.70;
 const BP_MIN_RECENT_IP = 10; // minimum IP in last-15 window to use blended weight
 
 // MLB Stats API team name → normalized ESPN display name (when they differ)
