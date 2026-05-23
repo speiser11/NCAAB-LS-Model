@@ -4904,10 +4904,11 @@ function buildMLBNuke(games) {
       const pickOdds = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       if (pickOdds != null && pickOdds > 0) {
         // Prefer dog -1.5 if available and positive (adds way more juice)
-        const altKey   = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
-        const altOdds  = mlbAltOddsMap.get(altKey);
+        const altKey     = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
+        const altOdds    = mlbAltOddsMap.get(altKey);
         const dogMinus15 = mlValHome ? altOdds?.homeMinus15 : altOdds?.awayMinus15;
-        const useAlt   = dogMinus15 != null && dogMinus15 > 0;
+        const dogRunDiff = mlValHome ? (g.runDiff ?? 0) : -(g.runDiff ?? 0); // positive = dog projected to win
+        const useAlt     = dogMinus15 != null && dogMinus15 > 0 && dogRunDiff >= 1.0;
         const legOdds  = useAlt ? dogMinus15 : pickOdds;
         legs.push({
           gameId:   g.id,
@@ -4918,7 +4919,7 @@ function buildMLBNuke(games) {
             : `${(mlValHome ? g.home : g.away).split(' ').pop()} ML`,
           odds:     legOdds,
           edge:     legOdds,
-          note:     useAlt ? `Dog wins by 2 · ML was +${pickOdds}` : `Dog at +${pickOdds}`,
+          note:     useAlt ? `Model: dog +${dogRunDiff.toFixed(1)}r · ML was +${pickOdds}` : `Dog at +${pickOdds}`,
         });
       }
     }
