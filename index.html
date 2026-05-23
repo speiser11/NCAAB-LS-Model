@@ -4236,7 +4236,7 @@ async function mlbRefresh() {
   const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
   try {
     await loadModelConfig(); // ensure cfg.oddsGistId is set before odds fetch (mirrors NCAAB refresh())
-    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds()]);
+    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds(), loadMLBAltOdds()]);
     await Promise.all([loadMLBPitchers(dateStr), loadMLBWeather(mlbGameList)]);
     await loadMLBBullpens(isoDate, _lastTeamIdMap);
   } catch(e) {
@@ -4899,18 +4899,26 @@ function buildMLBNuke(games) {
       });
     }
 
-    // ── Dog ML: model likes the Vegas underdog, no RL leg from this game ────
+    // ── Dog ML (or dog -1.5 alt RL): model likes the Vegas underdog ─────────
     if (!hasRL && mlSignalOk && mlValHome != null) {
       const pickOdds = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       if (pickOdds != null && pickOdds > 0) {
+        // Prefer dog -1.5 if available and positive (adds way more juice)
+        const altKey   = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
+        const altOdds  = mlbAltOddsMap.get(altKey);
+        const dogMinus15 = mlValHome ? altOdds?.homeMinus15 : altOdds?.awayMinus15;
+        const useAlt   = dogMinus15 != null && dogMinus15 > 0;
+        const legOdds  = useAlt ? dogMinus15 : pickOdds;
         legs.push({
           gameId:   g.id,
           matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
-          betType:  'ML',
-          betLabel: `${(mlValHome ? g.home : g.away).split(' ').pop()} ML`,
-          odds:     pickOdds,
-          edge:     pickOdds,
-          note:     `Dog at ${pickOdds > 0 ? '+' : ''}${pickOdds}`,
+          betType:  useAlt ? 'RL' : 'ML',
+          betLabel: useAlt
+            ? `${(mlValHome ? g.home : g.away).split(' ').pop()} -1.5`
+            : `${(mlValHome ? g.home : g.away).split(' ').pop()} ML`,
+          odds:     legOdds,
+          edge:     legOdds,
+          note:     useAlt ? `Dog wins by 2 · ML was +${pickOdds}` : `Dog at +${pickOdds}`,
         });
       }
     }
@@ -6272,6 +6280,30 @@ async function loadMLBOdds() {
   } catch(e) {
     console.warn('loadMLBOdds failed:', e.message);
     setSt('st-mlb-odds', 'Odds: fetch error', 'err');
+  }
+}
+
+// ── MLB alternate spreads (dog -1.5 odds, fetched once per day) ───────────────
+let mlbAltOddsMap = new Map(); // "normHome|normAway" → { homeMinus15, awayMinus15 }
+
+async function loadMLBAltOdds() {
+  if (!cfg.oddsGistId) return;
+  const dateStr = mlbGetDateStr();
+  const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/mlb-alt-odds-${isoDate}.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return;
+    const data = await r.json();
+    mlbAltOddsMap = new Map();
+    for (const g of (Array.isArray(data) ? data : [])) {
+      const key = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
+      mlbAltOddsMap.set(key, { homeMinus15: g.home_m15 ?? null, awayMinus15: g.away_m15 ?? null });
+    }
+  } catch(e) {
+    // Non-fatal — nuke parlay falls back to ML odds if alt odds unavailable
   }
 }
 

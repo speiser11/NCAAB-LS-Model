@@ -38,6 +38,15 @@ jobs:
           DATE=$(date -u +%Y-%m-%d)
           DATE=$DATE python3 .github/scripts/fetch_mlb_odds.py
 
+      - name: Fetch MLB alternate spreads (once per day)
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          DATE=$DATE python3 .github/scripts/fetch_alt_odds.py
+
       - name: Lock commenced games
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
