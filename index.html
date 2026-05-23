@@ -6249,9 +6249,27 @@ function showMLBGameModal(gameId) {
   </div>`;
 
   // ── Bullpen ──
+  const homeBpData = mlbBullpenMap.get(normMLBTeam(g.home));
+  const awayBpData = mlbBullpenMap.get(normMLBTeam(g.away));
+  const _bpCls  = s => s == null ? '' : s > 0.25 ? 'gd-edge-pos' : s < -0.25 ? 'gd-edge-neg' : 'gd-edge-neu';
+  const _bpFmt  = s => s == null ? '—' : `${s > 0 ? '+' : ''}${s.toFixed(2)}`;
+  const _eraCls = e => e == null ? '' : e < BP_BASELINE_ERA - 0.25 ? 'gd-edge-pos' : e > BP_BASELINE_ERA + 0.25 ? 'gd-edge-neg' : 'gd-edge-neu';
   html += `<div class="gd-section">
     <div class="gd-section-title">Bullpen</div>
-    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Bullpen data planned for a future sprint.</div>
+    <table class="gd-table">
+      <tr><th>Team</th><th>ERA</th><th>vs lg avg</th></tr>
+      <tr>
+        <td>${esc(g.away)}</td>
+        <td><span class="${_eraCls(awayBpData?.era ?? null)}">${awayBpData?.era != null ? awayBpData.era.toFixed(2) : '—'}</span></td>
+        <td><span class="${_bpCls(awayBpData?.score ?? null)}">${_bpFmt(awayBpData?.score ?? null)}</span></td>
+      </tr>
+      <tr>
+        <td>${esc(g.home)}</td>
+        <td><span class="${_eraCls(homeBpData?.era ?? null)}">${homeBpData?.era != null ? homeBpData.era.toFixed(2) : '—'}</span></td>
+        <td><span class="${_bpCls(homeBpData?.score ?? null)}">${_bpFmt(homeBpData?.score ?? null)}</span></td>
+      </tr>
+    </table>
+    <div style="color:var(--muted);font-size:.68rem;margin-top:.4rem">Lg avg ${BP_BASELINE_ERA.toFixed(2)} ERA · weighted 4/9 of effective pitching in total projection</div>
   </div>`;
 
   document.getElementById('gd-body').innerHTML = html;
