@@ -18,38 +18,38 @@ date_str = os.environ.get('DATE') or datetime.now(timezone.utc).strftime('%Y-%m-
 GIST_USER = 'loganthein'
 
 # ── Static model data (mirrors index.html) ───────────────────────────────────
-MLB_PARK_FACTORS = {
-    'coloradorockies':      1.18,
-    'cincinnatireds':       1.08,
-    'newyorkyankees':       1.07,
-    'bostonredsox':         1.06,
-    'baltimoreorioles':     1.05,
-    'texasrangers':         1.05,
-    'chicagocubs':          1.04,
-    'philadelphiaphillies': 1.04,
-    'atlantabraves':        1.03,
-    'arizonadiamondbacks':  1.02,
-    'kansascityroyals':     1.02,
-    'clevelandguardians':   1.01,
-    'milwaukeebrewers':     1.01,
-    'detroittigers':        1.01,
-    'chicagowhitesox':      1.01,
-    'minnesotatwins':       1.00,
-    'torontobluejays':      1.00,
-    'houstonastros':        1.00,
-    'losangelesangels':     1.00,
-    'stlouiscardinals':     0.99,
-    'newyorkmets':          0.98,
-    'washingtonnationals':  0.98,
-    'losangelesdodgers':    0.97,
-    'pittsburghpirates':    0.97,
-    'miamimarlins':         0.97,
-    'oaklandathletics':     0.97,
-    'athletics':            0.97,
-    'seattlemariners':      0.96,
-    'tampabayrays':         0.94,
-    'sandiegopadres':       0.94,
-    'sanfranciscogiants':   0.93,
+MLB_PARK_FACTORS = {  # FanGraphs 2025
+    'coloradorockies':      1.13,
+    'cincinnatireds':       1.05,
+    'bostonredsox':         1.04,
+    'kansascityroyals':     1.03,
+    'oaklandathletics':     1.03,
+    'athletics':            1.03,
+    'pittsburghpirates':    1.02,
+    'losangelesangels':     1.01,
+    'minnesotatwins':       1.01,
+    'tampabayrays':         1.01,
+    'arizonadiamondbacks':  1.01,
+    'miamimarlins':         1.01,
+    'philadelphiaphillies': 1.01,
+    'chicagowhitesox':      1.00,
+    'detroittigers':        1.00,
+    'atlantabraves':        1.00,
+    'washingtonnationals':  1.00,
+    'baltimoreorioles':     0.99,
+    'clevelandguardians':   0.99,
+    'newyorkyankees':       0.99,
+    'texasrangers':         0.99,
+    'torontobluejays':      0.99,
+    'houstonastros':        0.99,
+    'losangelesdodgers':    0.99,
+    'milwaukeebrewers':     0.99,
+    'chicagocubs':          0.98,
+    'stlouiscardinals':     0.98,
+    'sanfranciscogiants':   0.97,
+    'newyorkmets':          0.96,
+    'sandiegopadres':       0.96,
+    'seattlemariners':      0.94,
 }
 
 MLB_WRC = {
@@ -270,7 +270,7 @@ def fetch_pitchers(iso_date):
         ids_param = ','.join(str(i) for i in pitcher_ids)
         people_url = (
             f'https://statsapi.mlb.com/api/v1/people?personIds={ids_param}'
-            f'&hydrate=stats(group=pitching,type=season,season=2025)'
+            f'&hydrate=stats(group=pitching,type=season,season=2026)'
         )
         try:
             req2 = urllib.request.Request(people_url, headers={'User-Agent': 'mlb-log-script'})
