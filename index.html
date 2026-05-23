@@ -4439,7 +4439,7 @@ function renderMLB() {
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 3.0 ? 'take' : totalDiffAbs >= 2.0 ? 'lean' : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : totalDiffAbs >= 2.0 ? 'lean' : null;
     const totalDiffCls = totalTier === 'take' ? 'diff-green' : totalTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // Run line — direct implied-prob diff (avoids _mlDiffNorm sign issues when RL fav has positive odds)
@@ -5313,7 +5313,7 @@ function _mlbLogSignal(entry) {
 
   const totalDiffAbs = v.totalLine != null && m.total != null
     ? Math.abs(Math.round((m.total - v.totalLine) * 10) / 10) : null;
-  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 3.0 ? 'take' : null;
+  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : null;
 
   const rlMargin = Math.abs(m.runDiff || 0);
   const rlTier   = rlMargin > 2.5 ? 'take' : null;
