@@ -313,6 +313,17 @@ input[type=date]{
 .picks-scratch-banner{font-family:'DM Mono',monospace;font-size:.65rem;color:#1a1a1a;background:var(--yellow);border-radius:6px;padding:.35rem .7rem;margin:.25rem .25rem 0;line-height:1.5;font-weight:600;letter-spacing:.01em;}
 .picks-dropped-label{font-size:.62rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:.55rem .5rem .1rem;opacity:.7;}
 .dropped-pick{opacity:.45;cursor:default;}
+/* ── Parlay of the Day ── */
+.parlay-card{background:linear-gradient(135deg,#0d1a2e 0%,#1a2540 100%);border:1px solid #2a4a7f;border-radius:12px;padding:.7rem .9rem;margin:.55rem .25rem .1rem;}
+.parlay-header{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;}
+.parlay-title{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.06em;color:#FFD166;}
+.parlay-payout{font-family:'DM Mono',monospace;font-size:.7rem;font-weight:700;color:#FFD166;white-space:nowrap;}
+.parlay-leg{display:flex;align-items:baseline;gap:.5rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.parlay-leg:last-child{border-bottom:none;}
+.parlay-leg-matchup{font-family:'DM Mono',monospace;font-size:.58rem;color:rgba(255,255,255,.4);flex-shrink:0;min-width:7rem;}
+.parlay-leg-bet{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:700;color:rgba(255,255,255,.88);flex:1;}
+.parlay-leg-odds{font-family:'DM Mono',monospace;font-size:.6rem;color:rgba(255,255,255,.45);white-space:nowrap;}
+.parlay-note{font-family:'DM Mono',monospace;font-size:.57rem;color:rgba(255,255,255,.28);margin-top:.45rem;text-align:right;}
 .dropped-pick:hover{opacity:.6;}
 .dropped-pick-text{font-size:.75rem;}
 .dropped-reason-pill{font-family:'DM Mono',monospace;font-size:.58rem;font-weight:700;border-radius:3px;padding:.05rem .28rem;margin-left:auto;border:1px solid currentColor;}
@@ -4748,6 +4759,74 @@ function getDroppedPicks(games, activePicks) {
   return dropped;
 }
 
+function buildMLBParlay(takes, leans) {
+  const dateStr    = mlbGetDateStr();
+  const storageKey = `mlb_parlay_${dateStr}`;
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    if (saved?.legs?.length >= 2) return saved;
+  } catch(e) {}
+
+  const legs = [], usedGames = new Set();
+  for (const p of [...takes, ...leans]) {
+    if (legs.length >= 4) break;
+    if (usedGames.has(p.g.id)) continue;
+    let betLabel = '', legOdds = -110;
+    if (p.betType === 'ML') {
+      const mlOdds = p.mlValHome ? p.g.mlbOdds?.homeML : p.g.mlbOdds?.awayML;
+      if (mlOdds == null) continue;
+      legOdds  = mlOdds;
+      betLabel = `${(p.mlValHome ? p.g.home : p.g.away).split(' ').pop()} ML`;
+    } else if (p.betType === 'Total') {
+      if (p.g.mlbOdds?.totalLine == null) continue;
+      betLabel = `${(p.g.proj?.total ?? 0) > p.g.mlbOdds.totalLine ? 'Over' : 'Under'} ${p.g.mlbOdds.totalLine}`;
+    } else if (p.betType === 'F5') {
+      if (p.g.mlbOdds?.f5TotalLine == null) continue;
+      betLabel = `F5 ${(p.g.f5TotalEdge ?? 0) > 0 ? 'Over' : 'Under'} ${p.g.mlbOdds.f5TotalLine}`;
+    } else if (p.betType === 'Run Line') {
+      if (!p.g.mlbOdds?.rlFavTeam) continue;
+      legOdds  = p.g.mlbOdds?.rlFavML ?? -110;
+      betLabel = `${p.g.mlbOdds.rlFavTeam.split(' ').pop()} -1.5`;
+    }
+    legs.push({
+      gameId:  p.g.id,
+      matchup: `${p.g.away.split(' ').pop()} @ ${p.g.home.split(' ').pop()}`,
+      betType: p.betType, betLabel, odds: legOdds, tier: p.tier,
+    });
+    usedGames.add(p.g.id);
+  }
+  if (legs.length < 2) return null;
+
+  const combined = legs.reduce((acc, l) =>
+    acc * (l.odds < 0 ? (100 / Math.abs(l.odds) + 1) : (l.odds / 100 + 1)), 1);
+  const parlayML = combined >= 2 ? Math.round((combined - 1) * 100) : Math.round(-100 / (combined - 1));
+  const winsOn1u = Math.round((combined - 1) * 10) / 10;
+
+  const result = { legs, parlayML, winsOn1u };
+  try { localStorage.setItem(storageKey, JSON.stringify(result)); } catch(e) {}
+  return result;
+}
+
+function renderMLBParlay(parlay) {
+  if (!parlay || parlay.legs.length < 2) return '';
+  const fmt = ml => ml > 0 ? `+${ml}` : `${ml}`;
+  const legsHtml = parlay.legs.map(l =>
+    `<div class="parlay-leg">
+      <span class="parlay-leg-matchup">${esc(l.matchup)}</span>
+      <span class="parlay-leg-bet">${esc(l.betLabel)}</span>
+      <span class="parlay-leg-odds">${fmt(l.odds)}</span>
+    </div>`
+  ).join('');
+  return `<div class="parlay-card">
+    <div class="parlay-header">
+      <span class="parlay-title">Parlay of the Day</span>
+      <span class="parlay-payout">1u wins ${parlay.winsOn1u}u &nbsp;&middot;&nbsp; ${fmt(parlay.parlayML)}</span>
+    </div>
+    ${legsHtml}
+    <div class="parlay-note">Locked at open &middot; ${parlay.legs.length} legs</div>
+  </div>`;
+}
+
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
   if (!bar) return;
@@ -4857,6 +4936,8 @@ function renderMLBTopPicks(games) {
 
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
+
+  const parlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
 
   // Preserve pre-game picks so they survive re-renders and page reloads
   if (takes.length || leans.length) {
@@ -5036,6 +5117,7 @@ function renderMLBTopPicks(games) {
     </div>
     ${scratchBanner}
     <div class="picks-row">${cards}</div>
+    ${renderMLBParlay(parlay)}
     ${droppedSection}`;
 
   loadMLBRecord();
