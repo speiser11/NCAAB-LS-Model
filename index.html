@@ -1273,6 +1273,17 @@ input[type=date] {
   </div>
 </div>
 
+<!-- MLB Parlay Modal -->
+<div class="mlb-picks-overlay" id="mlb-parlay-overlay" onclick="if(event.target===this)closeMLBParlayModal()">
+  <div class="mlb-picks-modal" style="max-width:22rem">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title">🎰 Parlay of the Day</span>
+      <button class="mlb-picks-modal-close" onclick="closeMLBParlayModal()">✕</button>
+    </div>
+    <div id="mlb-parlay-modal-body"></div>
+  </div>
+</div>
+
 <!-- MLB Picks Summary Modal -->
 <div class="mlb-picks-overlay" id="mlb-picks-overlay" onclick="if(event.target===this)closeMLBPicksModal()">
   <div class="mlb-picks-modal">
@@ -4614,6 +4625,7 @@ function renderMLB() {
 let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
 let _mlbLastGames   = []; // full games array for modal dropped-picks lookup
+let _mlbParlay      = null; // today's locked parlay (read by parlay modal)
 
 // Returns half-Kelly in units, rounded to 0.5u.
 // Scale and cap vary by bet type — RL uses a looser scale and lower cap because:
@@ -4937,7 +4949,7 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
-  const parlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
+  _mlbParlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
 
   // Preserve pre-game picks so they survive re-renders and page reloads
   if (takes.length || leans.length) {
@@ -5107,6 +5119,7 @@ function renderMLBTopPicks(games) {
       <div style="display:flex;align-items:center;gap:.4rem;">
         <span class="top-picks-title">Today's MLB Picks</span>
         <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
+        ${_mlbParlay ? `<button class="mlb-legend-btn" onclick="showMLBParlayModal()" title="Parlay of the Day" style="font-size:.7rem">🎰</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${takes.length}T · ${leans.length}L)</button>
@@ -5117,7 +5130,6 @@ function renderMLBTopPicks(games) {
     </div>
     ${scratchBanner}
     <div class="picks-row">${cards}</div>
-    ${renderMLBParlay(parlay)}
     ${droppedSection}`;
 
   loadMLBRecord();
@@ -5377,6 +5389,42 @@ function showMLBLegend() {
 
 function closeMLBLegend() {
   document.getElementById('mlb-legend-overlay').classList.remove('open');
+}
+
+function showMLBParlayModal() {
+  const body = document.getElementById('mlb-parlay-modal-body');
+  if (!body) return;
+  const p = _mlbParlay;
+  if (!p || !p.legs?.length) {
+    body.innerHTML = '<div class="mlb-picks-empty">No parlay available — check back once picks are posted.</div>';
+  } else {
+    const fmt = ml => ml > 0 ? `+${ml}` : `${ml}`;
+    const legsHtml = p.legs.map(l => `
+      <div class="mlb-legend-section" style="padding:.6rem 1rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:.15rem">${esc(l.matchup)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:.78rem;font-weight:700;color:var(--text)">${esc(l.betLabel)}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);white-space:nowrap">${fmt(l.odds)}</div>
+        </div>
+      </div>`).join('');
+    body.innerHTML = `
+      ${legsHtml}
+      <div class="mlb-legend-section" style="background:var(--surface2);border-radius:0 0 10px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-family:'DM Mono',monospace;font-size:.72rem;font-weight:700;color:var(--text)">Combined odds</span>
+          <span style="font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:var(--green)">${fmt(p.parlayML)}</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:.3rem">1u wins ${p.winsOn1u}u profit &nbsp;·&nbsp; ${p.legs.length} legs</div>
+      </div>
+      <div class="mlb-legend-note">Legs locked at first odds pull of the day. One pick per game, highest-edge first.</div>`;
+  }
+  document.getElementById('mlb-parlay-overlay').classList.add('open');
+}
+
+function closeMLBParlayModal() {
+  document.getElementById('mlb-parlay-overlay').classList.remove('open');
 }
 
 // ── MLB historical record (Takes only, from mlb-log Gist files) ───────────────
