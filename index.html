@@ -1284,6 +1284,17 @@ input[type=date] {
   </div>
 </div>
 
+<!-- MLB Nuke Modal -->
+<div class="mlb-picks-overlay" id="mlb-nuke-overlay" onclick="if(event.target===this)closeMLBNukeModal()">
+  <div class="mlb-picks-modal" style="max-width:22rem">
+    <div class="mlb-picks-modal-hd" style="background:linear-gradient(135deg,#1a0a0a,#2d1010)">
+      <span class="mlb-picks-modal-title" style="color:#ff6b6b">💣 Nuke Parlay</span>
+      <button class="mlb-picks-modal-close" onclick="closeMLBNukeModal()">✕</button>
+    </div>
+    <div id="mlb-nuke-modal-body"></div>
+  </div>
+</div>
+
 <!-- MLB Picks Summary Modal -->
 <div class="mlb-picks-overlay" id="mlb-picks-overlay" onclick="if(event.target===this)closeMLBPicksModal()">
   <div class="mlb-picks-modal">
@@ -4626,6 +4637,7 @@ let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
 let _mlbLastGames   = []; // full games array for modal dropped-picks lookup
 let _mlbParlay      = null; // today's locked parlay (read by parlay modal)
+let _mlbNuke        = null; // today's locked nuke parlay (read by nuke modal)
 
 // Returns half-Kelly in units, rounded to 0.5u.
 // Scale and cap vary by bet type — RL uses a looser scale and lower cap because:
@@ -4839,6 +4851,91 @@ function renderMLBParlay(parlay) {
   </div>`;
 }
 
+function buildMLBNuke(games) {
+  const dateStr    = mlbGetDateStr();
+  const storageKey = `mlb_nuke_${dateStr}`;
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    if (saved?.legs?.length >= 2) return saved;
+  } catch(e) {}
+
+  const legs = [];
+
+  for (const g of games) {
+    if (!g.mlbOdds || !g._tiers || g.runDiff == null) continue;
+    if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
+
+    const absRD       = Math.abs(g.runDiff);
+    const modelFavHome = g.runDiff > 0;
+    const { totalDiff, totalDiffAbs, mlValHome, mlSignalOk, vegasFavIsHome } = g._tiers;
+    const rlFavTeam   = g.mlbOdds.rlFavTeam;
+    const rlFavML     = g.mlbOdds.rlFavML;
+
+    // ── RL leg: model projects 2+ run margin AND Vegas RL exists ────────────
+    const vegasRLFavHome = rlFavTeam ? normMLBTeam(rlFavTeam) === normMLBTeam(g.home) : null;
+    const hasRL = rlFavTeam && rlFavML != null && vegasRLFavHome === modelFavHome && absRD >= 2.0;
+    if (hasRL) {
+      legs.push({
+        gameId:   g.id,
+        matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
+        betType:  'RL',
+        betLabel: `${rlFavTeam.split(' ').pop()} -1.5`,
+        odds:     rlFavML,
+        edge:     absRD,
+        note:     `Model: ${g.runDiff > 0 ? '+' : ''}${g.runDiff.toFixed(1)}r`,
+      });
+    }
+
+    // ── Total leg: model edge ≥2.5r (stacks with RL from same game) ─────────
+    if (totalDiffAbs != null && totalDiffAbs >= 2.5 && g.mlbOdds.totalLine != null) {
+      legs.push({
+        gameId:   g.id + '_t',
+        matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
+        betType:  'Total',
+        betLabel: `${totalDiff > 0 ? 'Over' : 'Under'} ${g.mlbOdds.totalLine}`,
+        odds:     -110,
+        edge:     totalDiffAbs,
+        note:     `Model: ${g.proj?.total?.toFixed(1)}r`,
+      });
+    }
+
+    // ── Dog ML: model likes the Vegas underdog, no RL leg from this game ────
+    if (!hasRL && mlSignalOk && mlValHome != null) {
+      const pickOdds = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+      if (pickOdds != null && pickOdds > 0) {
+        legs.push({
+          gameId:   g.id,
+          matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
+          betType:  'ML',
+          betLabel: `${(mlValHome ? g.home : g.away).split(' ').pop()} ML`,
+          odds:     pickOdds,
+          edge:     pickOdds,
+          note:     `Dog at ${pickOdds > 0 ? '+' : ''}${pickOdds}`,
+        });
+      }
+    }
+  }
+
+  // Sort: RL first by margin, then totals by edge, then dogs by odds desc
+  legs.sort((a, b) => {
+    const rank = t => t === 'RL' ? 0 : t === 'Total' ? 1 : 2;
+    if (rank(a.betType) !== rank(b.betType)) return rank(a.betType) - rank(b.betType);
+    return b.edge - a.edge;
+  });
+
+  const capped = legs.slice(0, 10);
+  if (capped.length < 2) return null;
+
+  const combined = capped.reduce((acc, l) =>
+    acc * (l.odds < 0 ? (100 / Math.abs(l.odds) + 1) : (l.odds / 100 + 1)), 1);
+  const parlayML = combined >= 2 ? Math.round((combined - 1) * 100) : Math.round(-100 / (combined - 1));
+  const winsOn1u = Math.round((combined - 1) * 10) / 10;
+
+  const result = { legs: capped, parlayML, winsOn1u };
+  try { localStorage.setItem(storageKey, JSON.stringify(result)); } catch(e) {}
+  return result;
+}
+
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
   if (!bar) return;
@@ -4950,6 +5047,7 @@ function renderMLBTopPicks(games) {
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
   _mlbParlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
+  _mlbNuke   = buildMLBNuke(games);
 
   // Preserve pre-game picks so they survive re-renders and page reloads
   if (takes.length || leans.length) {
@@ -5120,6 +5218,7 @@ function renderMLBTopPicks(games) {
         <span class="top-picks-title">Today's MLB Picks</span>
         <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
         ${_mlbParlay ? `<button class="mlb-legend-btn" onclick="showMLBParlayModal()" title="Parlay of the Day" style="font-size:.7rem">🎰</button>` : ''}
+        ${_mlbNuke   ? `<button class="mlb-legend-btn" onclick="showMLBNukeModal()"   title="Nuke Parlay"        style="font-size:.7rem">💣</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${takes.length}T · ${leans.length}L)</button>
@@ -5425,6 +5524,51 @@ function showMLBParlayModal() {
 
 function closeMLBParlayModal() {
   document.getElementById('mlb-parlay-overlay').classList.remove('open');
+}
+
+function showMLBNukeModal() {
+  const body = document.getElementById('mlb-nuke-modal-body');
+  if (!body) return;
+  const n = _mlbNuke;
+  if (!n || !n.legs?.length) {
+    body.innerHTML = '<div class="mlb-picks-empty">No nuke available — needs RL or total edges on today\'s slate.</div>';
+  } else {
+    const fmt    = ml => ml > 0 ? `+${ml}` : `${ml}`;
+    const typeClr = t => t === 'RL' ? '#ff6b6b' : t === 'Total' ? '#FFD166' : '#a8d8a8';
+    const legsHtml = n.legs.map(l => `
+      <div class="mlb-legend-section" style="padding:.6rem 1rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem">
+          <div>
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.15rem">
+              <span style="font-family:'DM Mono',monospace;font-size:.55rem;font-weight:700;color:${typeClr(l.betType)};text-transform:uppercase;letter-spacing:.04em">${esc(l.betType)}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted)">${esc(l.matchup)}</span>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:.78rem;font-weight:700;color:var(--text)">${esc(l.betLabel)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);margin-top:.1rem">${esc(l.note)}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);white-space:nowrap">${fmt(l.odds)}</div>
+        </div>
+      </div>`).join('');
+    const rlCount    = n.legs.filter(l => l.betType === 'RL').length;
+    const totalCount = n.legs.filter(l => l.betType === 'Total').length;
+    const dogCount   = n.legs.filter(l => l.betType === 'ML').length;
+    const breakdown  = [rlCount && `${rlCount} RL`, totalCount && `${totalCount} total`, dogCount && `${dogCount} dog ML`].filter(Boolean).join(' · ');
+    body.innerHTML = `
+      ${legsHtml}
+      <div class="mlb-legend-section" style="background:linear-gradient(135deg,#1a0a0a,#2d1010);border-radius:0 0 10px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-family:'DM Mono',monospace;font-size:.72rem;font-weight:700;color:var(--text)">Combined odds</span>
+          <span style="font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:#ff6b6b">${fmt(n.parlayML)}</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:.3rem">1u wins ${n.winsOn1u}u profit &nbsp;·&nbsp; ${breakdown}</div>
+      </div>
+      <div class="mlb-legend-note">RL when model projects 2+ run margin. Locked at open.</div>`;
+  }
+  document.getElementById('mlb-nuke-overlay').classList.add('open');
+}
+
+function closeMLBNukeModal() {
+  document.getElementById('mlb-nuke-overlay').classList.remove('open');
 }
 
 // ── MLB historical record (Takes only, from mlb-log Gist files) ───────────────
