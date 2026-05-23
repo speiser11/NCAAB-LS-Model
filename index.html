@@ -4434,12 +4434,12 @@ function renderMLB() {
     // Signed imp diff: positive = model gives Vegas fav less prob = value on dog
     const mlImpDiffSigned = vegasFavVegasML != null ? ((_mlImpNum(vegasFavVegasML) ?? 0) - (_mlImpNum(vegasFavModelML) ?? 0)) * 100 : null;
     const mlImpDiffPct    = mlImpDiffSigned != null ? Math.abs(mlImpDiffSigned) : null;
-    const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
+    const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 13 ? 'take' : mlImpDiffPct >= 9 ? 'lean' : null;
     const mlDiffCls       = mlTier === 'take' ? 'diff-green' : mlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : totalDiffAbs >= 1.5 ? 'lean' : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : totalDiffAbs >= 2.0 ? 'lean' : null;
     const totalDiffCls = totalTier === 'take' ? 'diff-green' : totalTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // Run line — direct implied-prob diff (avoids _mlDiffNorm sign issues when RL fav has positive odds)
@@ -4463,7 +4463,7 @@ function renderMLB() {
 
     const f5Diff    = g.f5TotalEdge;
     const f5DiffAbs = f5Diff != null ? Math.abs(f5Diff) : null;
-    const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : f5DiffAbs >= 1.0 ? 'lean' : null;
+    const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 2.0 ? 'take' : f5DiffAbs >= 1.5 ? 'lean' : null;
     const f5DiffCls = f5Tier === 'take' ? 'diff-green' : f5Tier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // ML signal value side + consistency check (placed after all dependencies)
@@ -5309,18 +5309,18 @@ function _mlbLogSignal(entry) {
   const mlFavVegasML   = mlFavIsHome ? v.homeML : v.awayML;
   const mlFavModelML   = mlFavIsHome ? homeModelMLNum : (parseInt(String(m.awayModelML)) || 0);
   const mlImpDiffPct   = mlFavVegasML != null ? Math.abs((_mlImpNum(mlFavModelML) ?? 0) - (_mlImpNum(mlFavVegasML) ?? 0)) * 100 : null;
-  const mlTier         = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
+  const mlTier         = mlImpDiffPct == null ? null : mlImpDiffPct >= 13 ? 'take' : null;
 
   const totalDiffAbs = v.totalLine != null && m.total != null
     ? Math.abs(Math.round((m.total - v.totalLine) * 10) / 10) : null;
-  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : null;
+  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : null;
 
   const rlMargin = Math.abs(m.runDiff || 0);
   const rlTier   = rlMargin > 2.5 ? 'take' : null;
 
   const f5DiffAbs = m.f5Total != null && v.f5TotalLine != null
     ? Math.abs(Math.round((m.f5Total - v.f5TotalLine) * 10) / 10) : null;
-  const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : null;
+  const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 2.0 ? 'take' : null;
 
   const candidates = [];
   if (mlTier    === 'take') candidates.push({ type: 'ml',    diffSize: mlImpDiffPct ?? 0 });
