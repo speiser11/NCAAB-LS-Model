@@ -52,39 +52,6 @@ jobs:
               raise ValueError(f"Unexpected Torvik response: {r2.text[:200]}")
           print(f"Fetched {len(parsed)} teams from Torvik (season {YEAR})")
 
-          # ── Fetch NCAAB odds ──────────────────────────────────────
-          odds_key = "${{ secrets.ODDS_API_KEY }}"
-          odds_data = []
-          if odds_key:
-              try:
-                  odds_url = (
-                      f"https://api.the-odds-api.com/v4/sports/basketball_ncaab/odds/"
-                      f"?apiKey={odds_key}&regions=us&markets=spreads,totals&oddsFormat=american"
-                  )
-                  odds_resp = requests.get(odds_url, timeout=15)
-                  if odds_resp.ok:
-                      for game in odds_resp.json():
-                          home, away = game.get('home_team',''), game.get('away_team','')
-                          spread_pts, total_pts = [], []
-                          for bm in game.get('bookmakers', []):
-                              for mkt in bm.get('markets', []):
-                                  if mkt['key'] == 'spreads':
-                                      for o in mkt.get('outcomes', []):
-                                          if o['name'] == home:
-                                              spread_pts.append(o['point'])
-                                  elif mkt['key'] == 'totals':
-                                      for o in mkt.get('outcomes', []):
-                                          if o['name'] == 'Over':
-                                              total_pts.append(o['point'])
-                          odds_data.append({
-                              'home': home, 'away': away,
-                              'spread': round(sum(spread_pts)/len(spread_pts)*2)/2 if spread_pts else None,
-                              'total':  round(sum(total_pts) /len(total_pts) *2)/2 if total_pts  else None,
-                          })
-                      print(f"Fetched odds for {len(odds_data)} games")
-              except Exception as e:
-                  print(f"Odds fetch failed (non-fatal): {e}")
-
           # ── Build Gist files ──────────────────────────────────────
           meta = {
               "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -95,7 +62,6 @@ jobs:
           gist_files = {
               "torvik-ratings.json":      {"content": r2.text},
               f"torvik-{today_iso}.json": {"content": r2.text},
-              f"ncaab-odds-{today_iso}.json": {"content": json.dumps(odds_data)},
               "torvik-meta.json":         {"content": json.dumps(meta)},
           }
 
