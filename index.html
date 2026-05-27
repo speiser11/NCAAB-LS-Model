@@ -4684,7 +4684,7 @@ function calcKellyUnits(p) {
   return Math.max(0.5, Math.min(cap, Math.round(halfKelly / scale * 2) / 2));
 }
 
-function _mlbSavePreGamePicks(picks) {
+function _mlbSavePreGamePicks(picks, startedIds) {
   try {
     const dateStr = mlbGetDateStr();
     // Load existing saves to preserve lockedOdds/lockedPitchers across re-renders
@@ -4716,6 +4716,14 @@ function _mlbSavePreGamePicks(picks) {
         lockedOdds, lockedPitchers,
       };
     });
+    // Preserve picks for started games — once a game starts its pick is locked in storage
+    if (startedIds) {
+      for (const [key, entry] of existingMap) {
+        if (startedIds.has(entry.gameId) && !slim.some(s => `${s.gameId}|${s.betType}` === key)) {
+          slim.push(entry);
+        }
+      }
+    }
     localStorage.setItem(`mlb_pgp_${dateStr}`, JSON.stringify(slim));
   } catch(e) {}
 }
@@ -4950,13 +4958,21 @@ function renderMLBTopPicks(games) {
   if (!bar) return;
   _mlbLastGames = games;
 
+  // A game is "started" if ESPN says so OR its scheduled start time has passed (handles stale ESPN status)
+  const allStartedIds = new Set(
+    games.filter(g =>
+      g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL' ||
+      (g.time != null && Date.now() > new Date(g.time).getTime() + 5 * 60 * 1000)
+    ).map(g => g.id)
+  );
+
   const takes = [], leans = [];
 
   // Also collect locked picks (started/final games) for the modal
   const lockedPicks = [];
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
-    if (g.statusName !== 'STATUS_IN_PROGRESS' && g.statusName !== 'STATUS_FINAL') continue;
+    if (!allStartedIds.has(g.id)) continue;
     const { mlTier, mlImpDiffPct, mlValHome, mlSignalOk,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, f5Tier } = g._tiers;
@@ -4988,8 +5004,8 @@ function renderMLBTopPicks(games) {
 
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
-    // Skip games that have started — pre-game picks only in the top bar
-    if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
+    // Skip games that have started (ESPN status or past scheduled start time)
+    if (allStartedIds.has(g.id)) continue;
     const { mlTier, mlImpDiffPct, mlValHome, mlSignalOk, vegasFavVegasML, vegasFavModelML,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
@@ -5055,22 +5071,21 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
-  _mlbParlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
-  _mlbNuke   = buildMLBNuke(games);
+  _mlbNuke = buildMLBNuke(games);
 
-  // Preserve pre-game picks so they survive re-renders and page reloads
+  // Save current upcoming picks; pass allStartedIds so started-game picks survive in storage
   if (takes.length || leans.length) {
     _mlbPreGamePicks = [...takes, ...leans];
-    _mlbSavePreGamePicks(_mlbPreGamePicks);
+    _mlbSavePreGamePicks(_mlbPreGamePicks, allStartedIds);
   } else if (!_mlbPreGamePicks.length) {
     _mlbPreGamePicks = _mlbLoadPreGamePicks(games);
   }
 
-  // Locked picks: explicitly computed + any pre-game picks now started
-  const allStartedIds = new Set(
-    games.filter(g => g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL').map(g => g.id)
-  );
-  const preservedLocked = _mlbPreGamePicks
+  _mlbParlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
+
+  // Locked picks: explicitly computed + any pre-game picks now started (preserved in storage)
+  const storedPicks = _mlbLoadPreGamePicks(games);
+  const preservedLocked = storedPicks
     .filter(p => allStartedIds.has(p.g.id) && !lockedPicks.some(lp => lp.g.id === p.g.id && lp.betType === p.betType))
     .map(p => ({ ...p, locked: true }));
   const allLockedPicks = [...lockedPicks, ...preservedLocked];
