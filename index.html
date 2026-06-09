@@ -310,6 +310,22 @@ input[type=date]{
 .pick-line-move{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted);margin-top:.25rem;line-height:1.3;}
 .pick-line-move .flagged{color:var(--yellow);}
 .pick-pitcher-warn{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--yellow);margin-top:.25rem;line-height:1.3;}
+/* ── Pick History Modal ── */
+.mlb-hist-range-btn{font-family:'DM Mono',monospace;font-size:.6rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.18rem .5rem;border-radius:5px;cursor:pointer;transition:all .15s;}
+.mlb-hist-range-btn.active,.mlb-hist-range-btn:hover{border-color:var(--blue);color:var(--blue);}
+.mlb-history-day{border-bottom:1px solid var(--border);}
+.mlb-history-day:last-child{border-bottom:none;}
+.mlb-history-date{font-family:'DM Mono',monospace;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.5rem 1rem .3rem;display:flex;align-items:baseline;gap:.5rem;}
+.mlb-history-date-rec{font-size:.68rem;font-weight:700;}
+.mlb-hist-row{display:flex;align-items:center;gap:.6rem;padding:.42rem 1rem;transition:background .1s;}
+.mlb-hist-row:hover{background:var(--surface2);}
+.mlb-hist-badge{font-family:'DM Mono',monospace;font-size:.62rem;font-weight:700;width:16px;text-align:center;flex-shrink:0;}
+.mlb-hist-badge.win{color:var(--green);}
+.mlb-hist-badge.loss{color:var(--red);}
+.mlb-hist-badge.push,.mlb-hist-badge.pending{color:var(--muted);}
+.mlb-hist-game{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);flex-shrink:0;min-width:72px;}
+.mlb-hist-bet{font-family:'DM Mono',monospace;font-size:.63rem;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mlb-hist-score{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);white-space:nowrap;flex-shrink:0;}
 .picks-scratch-banner{font-family:'DM Mono',monospace;font-size:.65rem;color:#1a1a1a;background:var(--yellow);border-radius:6px;padding:.35rem .7rem;margin:.25rem .25rem 0;line-height:1.5;font-weight:600;letter-spacing:.01em;}
 .picks-dropped-label{font-size:.62rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:.55rem .5rem .1rem;opacity:.7;}
 .dropped-pick{opacity:.45;cursor:default;}
@@ -1303,6 +1319,21 @@ input[type=date] {
       <button class="mlb-picks-modal-close" onclick="closeMLBPicksModal()">✕</button>
     </div>
     <div id="mlb-picks-modal-body"></div>
+  </div>
+</div>
+
+<!-- MLB Pick History Modal -->
+<div class="mlb-picks-overlay" id="mlb-history-overlay" onclick="if(event.target===this)closeMLBHistoryModal()">
+  <div class="mlb-picks-modal" style="max-width:560px">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title">📅 Pick History</span>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <button class="mlb-hist-range-btn" id="hist-btn-week"  onclick="showMLBHistoryModal('week')">7 days</button>
+        <button class="mlb-hist-range-btn" id="hist-btn-month" onclick="showMLBHistoryModal('month')">30 days</button>
+        <button class="mlb-picks-modal-close" onclick="closeMLBHistoryModal()">✕</button>
+      </div>
+    </div>
+    <div id="mlb-history-body" style="max-height:72vh;overflow-y:auto;padding:.4rem 0"></div>
   </div>
 </div>
 
@@ -5685,14 +5716,135 @@ async function loadMLBRecord() {
 function _renderMLBRecordBadge({ wk, mo }) {
   const row = document.getElementById('mlb-picks-accuracy-row');
   if (!row) return;
-  const badge = (lbl, { w, l }) => {
+  const badge = (lbl, range, { w, l }) => {
     const tot = w + l;
-    if (!tot) return `<span class="acc-badge">${lbl}: <span class="acc-pct">—</span></span>`;
+    if (!tot) return `<button class="acc-badge" onclick="showMLBHistoryModal('${range}')" style="cursor:pointer;background:none;border:1px solid var(--border)">${lbl}: <span class="acc-pct">—</span></button>`;
     const pct = Math.round(w / tot * 100);
     const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
-    return `<span class="acc-badge ${cls}" title="Takes only">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></span>`;
+    return `<button class="acc-badge ${cls}" onclick="showMLBHistoryModal('${range}')" style="cursor:pointer" title="Click to see day-by-day breakdown">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></button>`;
   };
-  row.innerHTML = badge('Week', wk) + badge('Month', mo);
+  row.innerHTML = badge('Week', 'week', wk) + badge('Month', 'month', mo);
+}
+
+// ── MLB Pick History Modal ────────────────────────────────────────────────────
+function closeMLBHistoryModal() {
+  document.getElementById('mlb-history-overlay').classList.remove('open');
+}
+
+async function showMLBHistoryModal(range) {
+  range = range || 'week';
+  const overlay = document.getElementById('mlb-history-overlay');
+  const body    = document.getElementById('mlb-history-body');
+  overlay.classList.add('open');
+  body.innerHTML = '<div style="padding:2rem 1rem;font-size:.75rem;color:var(--muted);text-align:center">Loading…</div>';
+  document.getElementById('hist-btn-week').classList.toggle('active',  range === 'week');
+  document.getElementById('hist-btn-month').classList.toggle('active', range === 'month');
+
+  if (!cfg.oddsGistId) { body.innerHTML = '<div style="padding:1rem;color:var(--muted)">Not configured.</div>'; return; }
+
+  const pad   = n => String(n).padStart(2, '0');
+  const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today = new Date();
+  const days  = range === 'week' ? 7 : 30;
+  const dates = [];
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(today.getTime() - i * 86400000);
+    const s = toISO(d);
+    if (s >= MLB_ACC_START_DATE) dates.push(s);
+  }
+
+  const fetched = await Promise.all(dates.map(async dateStr => {
+    try {
+      const r = await fetch(
+        `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/mlb-log-${dateStr}.json`,
+        { cache: 'no-store', signal: AbortSignal.timeout(5000) }
+      );
+      if (!r.ok) return { dateStr, entries: [] };
+      const log = await r.json();
+      return { dateStr, entries: Array.isArray(log) ? log : [] };
+    } catch(e) { return { dateStr, entries: [] }; }
+  }));
+
+  let totalW = 0, totalL = 0;
+  const dayHtmls = [];
+
+  for (const { dateStr, entries } of fetched) {
+    const rows = [];
+    for (const entry of entries) {
+      const take  = _mlbLogSignal(entry);
+      if (!take) continue;
+      const score = entry.result ? _scoreMLBTake(entry, take) : null;
+      rows.push({ entry, take, score });
+    }
+    if (!rows.length) continue;
+
+    const dayW = rows.filter(r => r.score === 'W').length;
+    const dayL = rows.filter(r => r.score === 'L').length;
+    totalW += dayW; totalL += dayL;
+
+    const dt     = new Date(dateStr + 'T12:00:00');
+    const lbl    = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const recClr = dayW > dayL ? 'var(--green)' : dayL > dayW ? 'var(--red)' : 'var(--muted)';
+    const recStr = (dayW + dayL) ? `<span class="mlb-history-date-rec" style="color:${recClr}">${dayW}-${dayL}</span>` : '';
+
+    const rowHtmls = rows.map(({ entry, take, score }) => {
+      const m = entry.model, v = entry.vegas;
+      const aShort = entry.away.split(' ').pop();
+      const hShort = entry.home.split(' ').pop();
+
+      // Bet label
+      let betStr = '';
+      if (take.type === 'ml') {
+        const favIsHome = m.homeWinProb >= m.awayWinProb;
+        const side = (favIsHome ? entry.home : entry.away).split(' ').pop();
+        const ml   = favIsHome ? v.homeML : v.awayML;
+        betStr = `${side} ML${ml != null ? ' (' + (ml > 0 ? '+' : '') + ml + ')' : ''}`;
+      } else if (take.type === 'total') {
+        betStr = `${take.modelDir === 'over' ? 'Over' : 'Under'} ${v.totalLine ?? '—'}`;
+      } else if (take.type === 'rl') {
+        betStr = `${(m.rlFavTeam || '').split(' ').pop()} -1.5`;
+      } else if (take.type === 'f5') {
+        betStr = `F5 ${take.modelDir === 'over' ? 'Over' : 'Under'} ${v.f5TotalLine ?? '—'}`;
+      }
+
+      // Score label
+      const r = entry.result;
+      let scoreStr = r ? `${r.awayScore}-${r.homeScore}` : '—';
+      if (r && take.type === 'total') scoreStr += ` (${r.totalRuns}r)`;
+      if (r && take.type === 'f5' && r.f5TotalRuns != null) scoreStr += ` (F5:${r.f5TotalRuns}r)`;
+
+      const cls = score === 'W' ? 'win' : score === 'L' ? 'loss' : score === null ? 'pending' : 'push';
+      const txt = score ?? (r ? 'P' : '—');
+
+      return `<div class="mlb-hist-row">
+        <span class="mlb-hist-badge ${cls}">${txt}</span>
+        <span class="mlb-hist-game">${esc(aShort)} @ ${esc(hShort)}</span>
+        <span class="mlb-hist-bet">${esc(betStr)}</span>
+        <span class="mlb-hist-score">${esc(scoreStr)}</span>
+      </div>`;
+    }).join('');
+
+    dayHtmls.push(`<div class="mlb-history-day">
+      <div class="mlb-history-date">${esc(lbl)} ${recStr}</div>
+      ${rowHtmls}
+    </div>`);
+  }
+
+  if (!dayHtmls.length) {
+    body.innerHTML = '<div style="padding:2rem 1rem;font-size:.75rem;color:var(--muted);text-align:center">No takes found in this range.</div>';
+    return;
+  }
+
+  const tot    = totalW + totalL;
+  const pct    = tot ? Math.round(totalW / tot * 100) : 0;
+  const totClr = pct >= 60 ? 'var(--green)' : pct < 50 ? 'var(--red)' : 'var(--text)';
+  body.innerHTML = `
+    <div style="padding:.5rem 1rem .65rem;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:.5rem">
+      <span style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.92rem;font-weight:700;color:${totClr}">${totalW}-${totalL}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted)">${pct}%</span>
+    </div>
+    ${dayHtmls.join('')}`;
 }
 
 // ── MLB probable pitchers (MLB Stats API — free, no auth) ────────────────────
