@@ -39,6 +39,7 @@ jobs:
           DATE=$DATE python3 .github/scripts/fetch_mlb_odds.py
 
       - name: Fetch MLB alternate spreads (once per day)
+        continue-on-error: true
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           GIST_PAT: ${{ secrets.GIST_PAT }}
