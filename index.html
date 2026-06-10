@@ -5272,6 +5272,7 @@ function renderMLBTopPicks(games) {
       <div style="display:flex;align-items:center;gap:.4rem;">
         <span class="top-picks-title">Today's MLB Picks</span>
         <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
+        <button class="mlb-legend-btn" onclick="showMLBHistoryModal('month')" title="Pick history">📅</button>
         ${_mlbParlay ? `<button class="mlb-legend-btn" onclick="showMLBParlayModal()" title="Parlay of the Day" style="font-size:.7rem">🎰</button>` : ''}
         ${_mlbNuke   ? `<button class="mlb-legend-btn" onclick="showMLBNukeModal()"   title="Nuke Parlay"        style="font-size:.7rem">💣</button>` : ''}
       </div>
@@ -5831,7 +5832,13 @@ async function showMLBHistoryModal(range) {
   }
 
   if (!dayHtmls.length) {
-    body.innerHTML = '<div style="padding:2rem 1rem;font-size:.75rem;color:var(--muted);text-align:center">No takes found in this range.</div>';
+    const foundFiles = fetched.filter(f => f.entries.length > 0).length;
+    const totalEntries = fetched.reduce((s, f) => s + f.entries.length, 0);
+    const withResult   = fetched.reduce((s, f) => s + f.entries.filter(e => e.result).length, 0);
+    body.innerHTML = `<div style="padding:2rem 1rem;font-size:.72rem;color:var(--muted);text-align:center;line-height:1.7">
+      No takes found in this range.<br>
+      <span style="opacity:.6">Log files: ${foundFiles}/${dates.length} days · ${totalEntries} games · ${withResult} with results</span>
+    </div>`;
     return;
   }
 
