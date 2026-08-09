@@ -1060,6 +1060,7 @@ input[type=date] {
 .mlb-bet-icon{font-size:.8rem;line-height:1;}
 .mlb-proj-lbl{font-size:.5rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:.4rem;align-self:center;}
 .mlb-odds-pending{text-align:center;font-size:.6rem;color:var(--muted);padding:.25rem 1.15rem;font-style:italic;opacity:.7;}
+.nfl-record{font-size:.65rem;color:var(--muted);font-weight:400;}
 .mlb-opp-hot{color:var(--red)!important;} .mlb-opp-easy{color:var(--green)!important;}
 .mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
 .mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
@@ -1100,6 +1101,7 @@ input[type=date] {
 <div class="sport-nav" id="sport-nav">
   <button class="sp-tab" data-sport="ncaab">NCAAB</button>
   <button class="sp-tab active" data-sport="mlb">MLB</button>
+  <button class="sp-tab" data-sport="nfl">NFL</button>
 </div>
 
 <div id="ncaab-view" style="display:none">
@@ -1187,6 +1189,26 @@ input[type=date] {
     <div id="mlb-game-list" class="game-list"></div>
   </div>
 </div><!-- /#mlb-view -->
+
+<div id="nfl-view" style="display:none">
+  <div class="mlb-sub-nav">
+    <div class="mlb-sub-nav-left">
+      <button class="icon-btn" onclick="nflPrevWeek()" title="Previous week">‹</button>
+      <span class="mlb-season-tag" id="nfl-week-label">NFL</span>
+      <button class="icon-btn" onclick="nflNextWeek()" title="Next week">›</button>
+    </div>
+    <div class="mlb-sub-nav-right">
+      <button class="icon-btn" onclick="nflRefresh()" title="Refresh NFL data">↻</button>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span class="sc" id="st-nfl-games">Games: —</span>
+    <span class="sc" id="st-nfl-odds">Odds: —</span>
+  </div>
+  <div class="container">
+    <div id="nfl-game-list" class="game-list"></div>
+  </div>
+</div><!-- /#nfl-view -->
 
 <!-- Team stats panel -->
 <div class="tm-overlay" id="tm-overlay" onclick="if(event.target===this)closeTeamModal()">
@@ -4164,7 +4186,9 @@ function setSport(sport) {
   );
   document.getElementById('ncaab-view').style.display = sport === 'ncaab' ? '' : 'none';
   document.getElementById('mlb-view').style.display   = sport === 'mlb'   ? '' : 'none';
+  document.getElementById('nfl-view').style.display   = sport === 'nfl'   ? '' : 'none';
   if (sport === 'mlb' && !mlbLoaded) mlbRefresh();
+  if (sport === 'nfl' && !nflLoaded) nflRefresh();
 }
 window.setSport = setSport; // explicit global in case inline onclick has scope issues
 
@@ -5967,6 +5991,212 @@ function showMLBGameModal(gameId) {
 }
 
 async function loadMLBTeams() { /* TODO: fetch MLB team ratings */ }
+
+// ── NFL data (shell) ───────────────────────────────────────────────────────────
+// v1: ESPN schedule/scores + Vegas odds only, no proprietary model yet.
+const NFL_ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
+const NFL_SEASONTYPE_LABEL = { 1: 'Preseason', 2: 'Week', 3: 'Playoffs' };
+let nflGameList = [];
+let nflLoaded = false;
+let nflState = { year: null, seasontype: null, week: null }; // filled from ESPN's auto-detected current week
+
+function nflWeekLabel() {
+  if (!nflState.week) return 'NFL';
+  const tag = NFL_SEASONTYPE_LABEL[nflState.seasontype] || 'Week';
+  return tag === 'Week' ? `Week ${nflState.week}` : `${tag} ${nflState.week}`;
+}
+
+function nflPrevWeek() {
+  if (!nflState.week) return;
+  nflState.week = Math.max(1, nflState.week - 1);
+  nflRefresh();
+}
+function nflNextWeek() {
+  if (!nflState.week) return;
+  nflState.week += 1;
+  nflRefresh();
+}
+
+async function nflRefresh() {
+  const el = document.getElementById('nfl-game-list');
+  if (el) el.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    await loadModelConfig();
+    await loadNFLESPN();
+    await loadNFLOdds();
+  } catch(e) {
+    setSt('st-nfl-games', 'Games: error', 'err');
+  }
+  renderNFL();
+  nflLoaded = true;
+}
+
+async function loadNFLESPN() {
+  try {
+    const qs = (nflState.year && nflState.seasontype && nflState.week)
+      ? `?year=${nflState.year}&seasontype=${nflState.seasontype}&week=${nflState.week}`
+      : '';
+    const r = await fetch(`${NFL_ESPN_URL}${qs}`, { signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error(`ESPN NFL ${r.status}`);
+    const d = await r.json();
+    if (d.season && d.week) {
+      nflState = { year: d.season.year, seasontype: d.season.type, week: d.week.number };
+    }
+    const lbl = document.getElementById('nfl-week-label');
+    if (lbl) lbl.textContent = nflWeekLabel();
+    nflGameList = (d.events || []).map(ev => {
+      const comp = ev.competitions?.[0];
+      const cs   = comp?.competitors || [];
+      const home = cs.find(c => c.homeAway === 'home');
+      const away = cs.find(c => c.homeAway === 'away');
+      return {
+        id:          ev.id,
+        home:        home?.team?.displayName || '',
+        away:        away?.team?.displayName || '',
+        homeRecord:  home?.records?.find(x => x.type === 'total')?.summary || home?.records?.[0]?.summary || '',
+        awayRecord:  away?.records?.find(x => x.type === 'total')?.summary || away?.records?.[0]?.summary || '',
+        homeScore:   home?.score ?? '',
+        awayScore:   away?.score ?? '',
+        time:        ev.date,
+        statusName:  comp?.status?.type?.name || '',
+        shortDetail: comp?.status?.type?.shortDetail || '',
+        venue:       comp?.venue?.fullName || '',
+      };
+    });
+    setSt('st-nfl-games', `Games: ${nflGameList.length}`, nflGameList.length ? 'ok' : 'warn');
+  } catch(e) {
+    setSt('st-nfl-games', 'Games: fetch error', 'err');
+    console.warn('loadNFLESPN failed:', e.message);
+  }
+}
+
+function normNFLTeam(name) {
+  return (name || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
+// "normHome|normAway" → { homeML, awayML, homeSpread, homeSpreadML, awaySpread, awaySpreadML, totalLine, totalOverML }
+let nflOddsMap = new Map();
+
+async function loadNFLOdds() {
+  nflOddsMap = new Map();
+  if (!cfg.oddsGistId) return;
+  try {
+    // NFL games span multiple days per week, so odds live in one evergreen file
+    // (unlike MLB's per-date files) — kept fresh by the fetch-odds workflow.
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/nfl-odds.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) { setSt('st-nfl-odds', 'Odds: none yet', 'warn'); return; }
+    const data = await r.json();
+    for (const game of (Array.isArray(data) ? data : [])) {
+      const markets = game.bookmakers?.[0]?.markets ?? [];
+      const h2h     = markets.find(m => m.key === 'h2h');
+      const spreads = markets.find(m => m.key === 'spreads');
+      const totals  = markets.find(m => m.key === 'totals');
+      if (!h2h && !spreads && !totals) continue;
+      const homeSp = spreads?.outcomes?.find(o => o.name === game.home_team);
+      const awaySp = spreads?.outcomes?.find(o => o.name === game.away_team);
+      const over   = totals?.outcomes?.find(o => o.name === 'Over');
+      const key = `${normNFLTeam(game.home_team)}|${normNFLTeam(game.away_team)}`;
+      nflOddsMap.set(key, {
+        homeML:       h2h?.outcomes?.find(o => o.name === game.home_team)?.price ?? null,
+        awayML:       h2h?.outcomes?.find(o => o.name === game.away_team)?.price ?? null,
+        homeSpread:   homeSp?.point ?? null,
+        homeSpreadML: homeSp?.price ?? null,
+        awaySpread:   awaySp?.point ?? null,
+        awaySpreadML: awaySp?.price ?? null,
+        totalLine:    over?.point   ?? null,
+        totalOverML:  over?.price   ?? null,
+      });
+    }
+    setSt('st-nfl-odds', `Odds: ${nflOddsMap.size} games`, nflOddsMap.size ? 'ok' : 'warn');
+  } catch(e) {
+    console.warn('loadNFLOdds failed:', e.message);
+    setSt('st-nfl-odds', 'Odds: fetch error', 'err');
+  }
+}
+
+function renderNFL() {
+  const el = document.getElementById('nfl-game-list');
+  if (!el) return;
+  if (!nflGameList.length) {
+    el.innerHTML = '<div class="loading">No games found for this week.</div>';
+    return;
+  }
+  el.innerHTML = nflGameList.map(g => {
+    const oddsKey = `${normNFLTeam(g.home)}|${normNFLTeam(g.away)}`;
+    const odds = nflOddsMap.get(oddsKey) || null;
+    const live  = g.statusName === 'STATUS_IN_PROGRESS';
+    const final = g.statusName === 'STATUS_FINAL';
+    const gameTime = g.time
+      ? new Date(g.time).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+      : '';
+
+    let statusBadge;
+    if (live) {
+      statusBadge = `<span class="status-badge badge-live">● LIVE · ${g.shortDetail}</span>`;
+    } else if (final) {
+      statusBadge = `<span class="status-badge badge-final">Final · ${g.awayScore}–${g.homeScore}</span>`;
+    } else {
+      statusBadge = `<span class="status-badge badge-upcoming">${gameTime}</span>`;
+    }
+
+    let scoreHtml = '';
+    if (live || final) {
+      const hs = parseInt(g.homeScore) || 0;
+      const as = parseInt(g.awayScore) || 0;
+      const homeUp = hs > as, awayUp = as > hs;
+      scoreHtml = `
+        <div class="live-score-widget">
+          <div class="live-score-row">
+            <div class="live-score-team">
+              <span class="live-score-name">${esc(g.away)}</span>
+              <span class="live-score-pts${awayUp ? ' winning' : homeUp ? ' losing' : ''}">${as}</span>
+            </div>
+            <span class="live-score-sep">—</span>
+            <div class="live-score-team live-score-team-home">
+              <span class="live-score-name">${esc(g.home)}</span>
+              <span class="live-score-pts${homeUp ? ' winning' : awayUp ? ' losing' : ''}">${hs}</span>
+            </div>
+          </div>
+          ${live ? `<div class="live-score-clock">${g.shortDetail}</div>` : ''}
+        </div>`;
+    }
+
+    const fmtSigned = (n) => n == null ? '—' : `${n > 0 ? '+' : ''}${n}`;
+    const oddsHtml = odds
+      ? `<table class="mlb-diff-table">
+          <tr><th></th><th>Spread</th><th>ML</th><th>Total</th></tr>
+          <tr>
+            <td>${esc(g.away.split(' ').pop())}</td>
+            <td>${fmtSigned(odds.awaySpread)}</td>
+            <td>${fmtSigned(odds.awayML)}</td>
+            <td rowspan="2" style="vertical-align:middle">${odds.totalLine != null ? `o/u ${odds.totalLine}` : '—'}</td>
+          </tr>
+          <tr>
+            <td>${esc(g.home.split(' ').pop())}</td>
+            <td>${fmtSigned(odds.homeSpread)}</td>
+            <td>${fmtSigned(odds.homeML)}</td>
+          </tr>
+        </table>`
+      : '<div class="mlb-odds-pending">Odds not yet posted</div>';
+
+    return `
+      <div class="card" id="nfl-game-${g.id}">
+        <div class="card-hd">
+          <div class="card-hd-teams">
+            <span class="team-away">${esc(g.away)}${g.awayRecord ? ` <span class="nfl-record">(${esc(g.awayRecord)})</span>` : ''}</span>
+            <span class="card-vs">@</span>
+            <span class="team-home">${esc(g.home)}${g.homeRecord ? ` <span class="nfl-record">(${esc(g.homeRecord)})</span>` : ''}</span>
+          </div>
+          <div>${statusBadge}</div>
+        </div>
+        ${scoreHtml}
+        ${!live && !final ? oddsHtml : ''}
+      </div>`;
+  }).join('');
+}
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers
 (function() {
