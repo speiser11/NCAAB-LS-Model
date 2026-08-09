@@ -306,6 +306,45 @@ input[type=date]{
 .pick-card.warm .pick-edge{color:var(--yellow);}
 .pick-type-tag{font-family:'DM Mono',monospace;font-size:.57rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:.06rem .3rem;}
 .pick-why{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);line-height:1.4;}
+.pick-kelly{font-family:'DM Mono',monospace;font-size:.6rem;font-weight:700;color:var(--blue);background:var(--surface-blue);border:1px solid var(--border-blue);border-radius:4px;padding:.06rem .3rem;margin-left:auto;}
+.pick-line-move{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--muted);margin-top:.25rem;line-height:1.3;}
+.pick-line-move .flagged{color:var(--yellow);}
+.pick-pitcher-warn{font-family:'DM Mono',monospace;font-size:.57rem;color:var(--yellow);margin-top:.25rem;line-height:1.3;}
+/* ── Pick History Modal ── */
+.mlb-hist-range-btn{font-family:'DM Mono',monospace;font-size:.6rem;background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:.18rem .5rem;border-radius:5px;cursor:pointer;transition:all .15s;}
+.mlb-hist-range-btn.active,.mlb-hist-range-btn:hover{border-color:var(--blue);color:var(--blue);}
+.mlb-history-day{border-bottom:1px solid var(--border);}
+.mlb-history-day:last-child{border-bottom:none;}
+.mlb-history-date{font-family:'DM Mono',monospace;font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:.5rem 1rem .3rem;display:flex;align-items:baseline;gap:.5rem;}
+.mlb-history-date-rec{font-size:.68rem;font-weight:700;}
+.mlb-hist-row{display:flex;align-items:center;gap:.6rem;padding:.42rem 1rem;transition:background .1s;}
+.mlb-hist-row:hover{background:var(--surface2);}
+.mlb-hist-badge{font-family:'DM Mono',monospace;font-size:.62rem;font-weight:700;width:16px;text-align:center;flex-shrink:0;}
+.mlb-hist-badge.win{color:var(--green);}
+.mlb-hist-badge.loss{color:var(--red);}
+.mlb-hist-badge.push,.mlb-hist-badge.pending{color:var(--muted);}
+.mlb-hist-game{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);flex-shrink:0;min-width:72px;}
+.mlb-hist-bet{font-family:'DM Mono',monospace;font-size:.63rem;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mlb-hist-score{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.picks-scratch-banner{font-family:'DM Mono',monospace;font-size:.65rem;color:#1a1a1a;background:var(--yellow);border-radius:6px;padding:.35rem .7rem;margin:.25rem .25rem 0;line-height:1.5;font-weight:600;letter-spacing:.01em;}
+.picks-dropped-label{font-size:.62rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:.55rem .5rem .1rem;opacity:.7;}
+.dropped-pick{opacity:.45;cursor:default;}
+/* ── Parlay of the Day ── */
+.parlay-card{background:linear-gradient(135deg,#0d1a2e 0%,#1a2540 100%);border:1px solid #2a4a7f;border-radius:12px;padding:.7rem .9rem;margin:.55rem .25rem .1rem;}
+.parlay-header{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;}
+.parlay-title{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:.06em;color:#FFD166;}
+.parlay-payout{font-family:'DM Mono',monospace;font-size:.7rem;font-weight:700;color:#FFD166;white-space:nowrap;}
+.parlay-leg{display:flex;align-items:baseline;gap:.5rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.parlay-leg:last-child{border-bottom:none;}
+.parlay-leg-matchup{font-family:'DM Mono',monospace;font-size:.58rem;color:rgba(255,255,255,.4);flex-shrink:0;min-width:7rem;}
+.parlay-leg-bet{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:700;color:rgba(255,255,255,.88);flex:1;}
+.parlay-leg-odds{font-family:'DM Mono',monospace;font-size:.6rem;color:rgba(255,255,255,.45);white-space:nowrap;}
+.parlay-note{font-family:'DM Mono',monospace;font-size:.57rem;color:rgba(255,255,255,.28);margin-top:.45rem;text-align:right;}
+.dropped-pick:hover{opacity:.6;}
+.dropped-pick-text{font-size:.75rem;}
+.dropped-reason-pill{font-family:'DM Mono',monospace;font-size:.58rem;font-weight:700;border-radius:3px;padding:.05rem .28rem;margin-left:auto;border:1px solid currentColor;}
+.dropped-reason-warn{color:var(--yellow);}
+.dropped-reason-mute{color:var(--muted);}
 .picks-divider{flex-shrink:0;width:1px;background:var(--border);margin:0 .25rem;align-self:stretch;}
 
 /* ── Settings modal ── */
@@ -1272,6 +1311,28 @@ input[type=date] {
   </div>
 </div>
 
+<!-- MLB Parlay Modal -->
+<div class="mlb-picks-overlay" id="mlb-parlay-overlay" onclick="if(event.target===this)closeMLBParlayModal()">
+  <div class="mlb-picks-modal" style="max-width:22rem">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title">🎰 Parlay of the Day</span>
+      <button class="mlb-picks-modal-close" onclick="closeMLBParlayModal()">✕</button>
+    </div>
+    <div id="mlb-parlay-modal-body"></div>
+  </div>
+</div>
+
+<!-- MLB Nuke Modal -->
+<div class="mlb-picks-overlay" id="mlb-nuke-overlay" onclick="if(event.target===this)closeMLBNukeModal()">
+  <div class="mlb-picks-modal" style="max-width:22rem">
+    <div class="mlb-picks-modal-hd" style="background:linear-gradient(135deg,#1a0a0a,#2d1010)">
+      <span class="mlb-picks-modal-title" style="color:#ff6b6b">💣 Nuke Parlay</span>
+      <button class="mlb-picks-modal-close" onclick="closeMLBNukeModal()">✕</button>
+    </div>
+    <div id="mlb-nuke-modal-body"></div>
+  </div>
+</div>
+
 <!-- MLB Picks Summary Modal -->
 <div class="mlb-picks-overlay" id="mlb-picks-overlay" onclick="if(event.target===this)closeMLBPicksModal()">
   <div class="mlb-picks-modal">
@@ -1280,6 +1341,21 @@ input[type=date] {
       <button class="mlb-picks-modal-close" onclick="closeMLBPicksModal()">✕</button>
     </div>
     <div id="mlb-picks-modal-body"></div>
+  </div>
+</div>
+
+<!-- MLB Pick History Modal -->
+<div class="mlb-picks-overlay" id="mlb-history-overlay" onclick="if(event.target===this)closeMLBHistoryModal()">
+  <div class="mlb-picks-modal" style="max-width:560px">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title">📅 Pick History</span>
+      <div style="display:flex;align-items:center;gap:.4rem">
+        <button class="mlb-hist-range-btn" id="hist-btn-week"  onclick="showMLBHistoryModal('week')">7 days</button>
+        <button class="mlb-hist-range-btn" id="hist-btn-month" onclick="showMLBHistoryModal('month')">30 days</button>
+        <button class="mlb-picks-modal-close" onclick="closeMLBHistoryModal()">✕</button>
+      </div>
+    </div>
+    <div id="mlb-history-body" style="max-height:72vh;overflow-y:auto;padding:.4rem 0"></div>
   </div>
 </div>
 
@@ -4215,7 +4291,7 @@ async function mlbRefresh() {
   const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
   try {
     await loadModelConfig(); // ensure cfg.oddsGistId is set before odds fetch (mirrors NCAAB refresh())
-    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds()]);
+    await Promise.all([loadMLBESPN(dateStr), loadMLBOffense(), loadMLBOdds(), loadMLBAltOdds()]);
     await Promise.all([loadMLBPitchers(dateStr), loadMLBWeather(mlbGameList)]);
     await loadMLBBullpens(isoDate, _lastTeamIdMap);
   } catch(e) {
@@ -4318,10 +4394,19 @@ function renderMLB() {
     el.innerHTML = '<div class="loading">No games found for this date.</div>';
     return;
   }
+  // Assign doubleheader game numbers by ordering same-matchup games by start time
+  const _dhCount = {};
+  const _sortedByTime = [...mlbGameList].sort((a, b) => new Date(a.time||0) - new Date(b.time||0));
+  for (const g of _sortedByTime) {
+    const mk = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
+    _dhCount[mk] = (_dhCount[mk] || 0) + 1;
+    g._gameNumber = _dhCount[mk];
+  }
+
   el.innerHTML = mlbGameList.map(g => {
     g.parkFactor = getParkFactor(g.home);
     g.weather = mlbWeatherMap.get(g.id) ?? null;
-    const pitchKey = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`;
+    const pitchKey = `${normMLBTeam(g.away)}|${normMLBTeam(g.home)}|${g._gameNumber || 1}`;
     const pitchers = mlbPitcherMap.get(pitchKey) || {};
     g.proj = calcMLBTotal(g, pitchers);
     const wp = predictMLBWinProb(g, pitchers);
@@ -4409,7 +4494,7 @@ function renderMLB() {
       const oppCls = off ? (off.wrc > 105 ? ' mlb-opp-pos' : off.wrc < 95 ? ' mlb-opp-neg' : '') : '';
       return `
       <div class="mlb-pitcher">
-        <div class="mlb-pitcher-side">${side} SP${p?.isFallback ? ' <span style="font-size:.5rem;color:var(--yellow);opacity:.7">2025</span>' : ''}</div>
+        <div class="mlb-pitcher-side">${side} SP${p?.isFallback ? ' <span style="font-size:.5rem;color:var(--yellow);opacity:.7">ltd</span>' : ''}</div>
         <div class="mlb-pitcher-name${p ? '' : ' mnum-placeholder'}">${esc(p?.name ?? 'TBD')}${handBadge}${scoreBadge}</div>
         <div class="mlb-pitcher-stats">
           <div class="mlb-pitcher-stat"><span class="mlb-pitcher-stat-lbl">ERA</span><span class="mlb-pitcher-stat-val${ph(p?.era)}">${sv(p?.era)}</span></div>
@@ -4437,12 +4522,12 @@ function renderMLB() {
     // Signed imp diff: positive = model gives Vegas fav less prob = value on dog
     const mlImpDiffSigned = vegasFavVegasML != null ? ((_mlImpNum(vegasFavVegasML) ?? 0) - (_mlImpNum(vegasFavModelML) ?? 0)) * 100 : null;
     const mlImpDiffPct    = mlImpDiffSigned != null ? Math.abs(mlImpDiffSigned) : null;
-    const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
+    const mlTier          = mlImpDiffPct == null ? null : mlImpDiffPct >= 13 ? 'take' : mlImpDiffPct >= 9 ? 'lean' : null;
     const mlDiffCls       = mlTier === 'take' ? 'diff-green' : mlTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     const totalDiff    = g.mlbOdds?.totalLine != null ? Math.round((g.proj.total - g.mlbOdds.totalLine) * 10) / 10 : null;
     const totalDiffAbs = totalDiff != null ? Math.abs(totalDiff) : null;
-    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : totalDiffAbs >= 1.5 ? 'lean' : null;
+    const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : totalDiffAbs >= 2.0 ? 'lean' : null;
     const totalDiffCls = totalTier === 'take' ? 'diff-green' : totalTier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // Run line — direct implied-prob diff (avoids _mlDiffNorm sign issues when RL fav has positive odds)
@@ -4461,12 +4546,12 @@ function renderMLB() {
     const rlDiffMLEquiv    = rlImpDiff != null ? Math.round(Math.abs(rlImpDiff) * Math.abs(_rlDp)) : null;
     // Direction: runDiff > 2.5 → take fav -1.5; < 2.5 → no signal
     const rlFavCvr         = rlMargin > 2.5;
-    const rlTier           = rlFavCvr && rlImpDiff != null ? 'take' : null;
+    const rlTier           = rlFavCvr && rlImpDiff != null && rlImpDiff > 0.02 ? 'take' : null;
     const rlDiffCls        = rlTier === 'take' ? 'diff-green' : 'diff-gray';
 
     const f5Diff    = g.f5TotalEdge;
     const f5DiffAbs = f5Diff != null ? Math.abs(f5Diff) : null;
-    const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : f5DiffAbs >= 1.0 ? 'lean' : null;
+    const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 2.0 ? 'take' : f5DiffAbs >= 1.5 ? 'lean' : null;
     const f5DiffCls = f5Tier === 'take' ? 'diff-green' : f5Tier === 'lean' ? 'diff-yellow' : 'diff-gray';
 
     // ML signal value side + consistency check (placed after all dependencies)
@@ -4605,10 +4690,336 @@ function renderMLB() {
 // ── MLB Top Picks bar ─────────────────────────────────────────────────────────
 let _mlbAllPicks    = []; // stored for the picks modal
 let _mlbPreGamePicks = []; // pre-game picks preserved across renders
+let _mlbLastGames   = []; // full games array for modal dropped-picks lookup
+let _mlbParlay      = null; // today's locked parlay (read by parlay modal)
+let _mlbNuke        = null; // today's locked nuke parlay (read by nuke modal)
+
+// Returns half-Kelly in units, rounded to 0.5u.
+// Scale and cap vary by bet type — RL uses a looser scale and lower cap because:
+//   (a) cover prob is systematically high from the model's logistic curve
+//   (b) positive RL odds (+110/+120) aggressively amplify Kelly
+// ML:       1u = 5% half-Kelly, cap 3u
+// Total/F5: 1u = 5% half-Kelly, cap 3u (prob capped conservatively due to game variance)
+// Run Line: 1u = 10% half-Kelly, cap 2u
+function calcKellyUnits(p) {
+  const g = p.g;
+  if (!g || !g.mlbOdds) return null;
+  let prob, b, scale = 0.05, cap = 3.0;
+  if (p.betType === 'ML') {
+    prob = ((p.mlValHome ? g.homeWinProb : g.awayWinProb) ?? 0) / 100;
+    const ml = p.mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+    if (ml == null) return null;
+    b = ml > 0 ? ml / 100 : 100 / Math.abs(ml);
+    // Dogs (+odds) have higher variance and b>1 amplifies Kelly — use tighter scale + 2u cap
+    if (ml > 0) { scale = 0.06; cap = 2.0; }
+  } else if (p.betType === 'Total') {
+    const edge = g._tiers?.totalDiffAbs;
+    if (!edge) return null;
+    // ~3pp win prob per run of model edge (conservative — game variance is ~3.5 runs)
+    prob = Math.min(0.62, 0.50 + edge * 0.03);
+    const overML = g.mlbOdds.totalOverML ?? -110;
+    b = overML > 0 ? overML / 100 : 100 / Math.abs(overML);
+  } else if (p.betType === 'Run Line') {
+    prob = g._tiers?.rlCoverProb;
+    const ml = g.mlbOdds.rlFavML;
+    if (!prob || ml == null) return null;
+    b = ml > 0 ? ml / 100 : 100 / Math.abs(ml);
+    scale = 0.10; cap = 2.0;  // looser scale + lower cap for RL
+  } else if (p.betType === 'F5') {
+    const edge = Math.abs(g.f5TotalEdge ?? 0);
+    if (!edge) return null;
+    // Slightly higher than full-game total since F5 is more pitcher-driven
+    prob = Math.min(0.62, 0.50 + edge * 0.04);
+    const overML = g.mlbOdds.f5TotalOverML ?? -110;
+    b = overML > 0 ? overML / 100 : 100 / Math.abs(overML);
+  }
+  if (!prob || !b) return null;
+  const halfKelly = ((b * prob - (1 - prob)) / b) / 2;
+  if (halfKelly <= 0.005) return null;
+  return Math.max(0.5, Math.min(cap, Math.round(halfKelly / scale * 2) / 2));
+}
+
+function _mlbSavePreGamePicks(picks, startedIds) {
+  try {
+    const dateStr = mlbGetDateStr();
+    // Load existing saves to preserve lockedOdds/lockedPitchers across re-renders
+    let existingMap = new Map();
+    try {
+      const raw = localStorage.getItem(`mlb_pgp_${dateStr}`);
+      if (raw) JSON.parse(raw).forEach(e => existingMap.set(`${e.gameId}|${e.betType}`, e));
+    } catch(e) {}
+    const slim = picks.map(p => {
+      const ex = existingMap.get(`${p.g.id}|${p.betType}`);
+      // Preserve locked odds from first save — don't overwrite on re-renders
+      let lockedOdds = ex?.lockedOdds ?? null;
+      if (!lockedOdds) {
+        if      (p.betType === 'ML')       lockedOdds = { ml: p.mlValHome ? p.g.mlbOdds?.homeML : p.g.mlbOdds?.awayML };
+        else if (p.betType === 'Total')    lockedOdds = { line: p.g.mlbOdds?.totalLine, overML: p.g.mlbOdds?.totalOverML };
+        else if (p.betType === 'Run Line') lockedOdds = { ml: p.g.mlbOdds?.rlFavML };
+        else if (p.betType === 'F5')       lockedOdds = { line: p.g.mlbOdds?.f5TotalLine, overML: p.g.mlbOdds?.f5TotalOverML };
+      }
+      // Preserve locked pitchers from first save
+      let lockedPitchers = ex?.lockedPitchers ?? null;
+      if (!lockedPitchers) {
+        const pk = `${normMLBTeam(p.g.away)}|${normMLBTeam(p.g.home)}|${p.g._gameNumber || 1}`;
+        const pp = mlbPitcherMap.get(pk) || {};
+        lockedPitchers = { home: pp.home?.name ?? null, away: pp.away?.name ?? null };
+      }
+      return {
+        gameId: p.g.id, betType: p.betType, tier: p.tier,
+        text: p.text, diffSize: p.diffSize, mlValHome: p.mlValHome ?? null,
+        lockedOdds, lockedPitchers,
+      };
+    });
+    // Preserve picks for started games — once a game starts its pick is locked in storage
+    if (startedIds) {
+      for (const [key, entry] of existingMap) {
+        if (startedIds.has(entry.gameId) && !slim.some(s => `${s.gameId}|${s.betType}` === key)) {
+          slim.push(entry);
+        }
+      }
+    }
+    localStorage.setItem(`mlb_pgp_${dateStr}`, JSON.stringify(slim));
+  } catch(e) {}
+}
+
+function _mlbLoadPreGamePicks(games) {
+  try {
+    const dateStr = mlbGetDateStr();
+    const raw = localStorage.getItem(`mlb_pgp_${dateStr}`);
+    if (!raw) return [];
+    const byId = Object.fromEntries(games.map(g => [g.id, g]));
+    return JSON.parse(raw).map(p => ({ ...p, g: byId[p.gameId], locked: true })).filter(p => p.g);
+  } catch(e) { return []; }
+}
+
+// Returns picks that were in this morning's save but are no longer takes/leans
+function getDroppedPicks(games, activePicks) {
+  const dateStr = mlbGetDateStr();
+  let saved = [];
+  try {
+    const raw = localStorage.getItem(`mlb_pgp_${dateStr}`);
+    if (raw) saved = JSON.parse(raw);
+  } catch(e) {}
+  if (!saved.length) return [];
+
+  const activeSet = new Set(activePicks.map(p => `${p.g.id}|${p.betType}`));
+  const byId = Object.fromEntries(games.map(g => [g.id, g]));
+  const startedStatuses = new Set(['STATUS_IN_PROGRESS', 'STATUS_FINAL']);
+
+  const dropped = [];
+  for (const s of saved) {
+    const key = `${s.gameId}|${s.betType}`;
+    if (activeSet.has(key)) continue;
+    const game = byId[s.gameId];
+    if (!game) continue;
+    if (startedStatuses.has(game.statusName)) continue; // started = locked section, not dropped
+
+    let reason = 'edge_gone';
+
+    // Check pitcher change first
+    if (s.lockedPitchers) {
+      const pk = `${normMLBTeam(game.away)}|${normMLBTeam(game.home)}|${game._gameNumber || 1}`;
+      const cur = mlbPitcherMap.get(pk) || {};
+      if ((s.lockedPitchers.home && cur.home?.name && s.lockedPitchers.home !== cur.home.name) ||
+          (s.lockedPitchers.away && cur.away?.name && s.lockedPitchers.away !== cur.away.name))
+        reason = 'pitcher_change';
+    }
+
+    // Check line movement (lower threshold — any move that likely cost the edge)
+    if (reason === 'edge_gone' && s.lockedOdds && game.mlbOdds) {
+      let moved = false;
+      if (s.betType === 'ML' || s.betType === 'Run Line') {
+        const curML = s.betType === 'ML'
+          ? (s.mlValHome ? game.mlbOdds.homeML : game.mlbOdds.awayML)
+          : game.mlbOdds.rlFavML;
+        moved = curML != null && s.lockedOdds.ml != null && Math.abs(curML - s.lockedOdds.ml) >= 10;
+      } else {
+        const curLine = s.betType === 'Total' ? game.mlbOdds.totalLine : game.mlbOdds.f5TotalLine;
+        moved = curLine != null && s.lockedOdds.line != null && Math.abs(curLine - s.lockedOdds.line) >= 0.25;
+      }
+      if (moved) reason = 'line_moved';
+    }
+
+    dropped.push({ s, game, reason });
+  }
+  return dropped;
+}
+
+function buildMLBParlay(takes, leans) {
+  const dateStr    = mlbGetDateStr();
+  const storageKey = `mlb_parlay_${dateStr}`;
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    if (saved?.legs?.length >= 2) return saved;
+  } catch(e) {}
+
+  const legs = [], usedGames = new Set();
+  for (const p of [...takes, ...leans]) {
+    if (legs.length >= 4) break;
+    if (usedGames.has(p.g.id)) continue;
+    let betLabel = '', legOdds = -110;
+    if (p.betType === 'ML') {
+      const mlOdds = p.mlValHome ? p.g.mlbOdds?.homeML : p.g.mlbOdds?.awayML;
+      if (mlOdds == null) continue;
+      legOdds  = mlOdds;
+      betLabel = `${(p.mlValHome ? p.g.home : p.g.away).split(' ').pop()} ML`;
+    } else if (p.betType === 'Total') {
+      if (p.g.mlbOdds?.totalLine == null) continue;
+      betLabel = `${(p.g.proj?.total ?? 0) > p.g.mlbOdds.totalLine ? 'Over' : 'Under'} ${p.g.mlbOdds.totalLine}`;
+    } else if (p.betType === 'F5') {
+      if (p.g.mlbOdds?.f5TotalLine == null) continue;
+      betLabel = `F5 ${(p.g.f5TotalEdge ?? 0) > 0 ? 'Over' : 'Under'} ${p.g.mlbOdds.f5TotalLine}`;
+    } else if (p.betType === 'Run Line') {
+      if (!p.g.mlbOdds?.rlFavTeam) continue;
+      legOdds  = p.g.mlbOdds?.rlFavML ?? -110;
+      betLabel = `${p.g.mlbOdds.rlFavTeam.split(' ').pop()} -1.5`;
+    }
+    legs.push({
+      gameId:  p.g.id,
+      matchup: `${p.g.away.split(' ').pop()} @ ${p.g.home.split(' ').pop()}`,
+      betType: p.betType, betLabel, odds: legOdds, tier: p.tier,
+    });
+    usedGames.add(p.g.id);
+  }
+  if (legs.length < 2) return null;
+
+  const combined = legs.reduce((acc, l) =>
+    acc * (l.odds < 0 ? (100 / Math.abs(l.odds) + 1) : (l.odds / 100 + 1)), 1);
+  const parlayML = combined >= 2 ? Math.round((combined - 1) * 100) : Math.round(-100 / (combined - 1));
+  const winsOn1u = Math.round((combined - 1) * 10) / 10;
+
+  const result = { legs, parlayML, winsOn1u };
+  try { localStorage.setItem(storageKey, JSON.stringify(result)); } catch(e) {}
+  return result;
+}
+
+function renderMLBParlay(parlay) {
+  if (!parlay || parlay.legs.length < 2) return '';
+  const fmt = ml => ml > 0 ? `+${ml}` : `${ml}`;
+  const legsHtml = parlay.legs.map(l =>
+    `<div class="parlay-leg">
+      <span class="parlay-leg-matchup">${esc(l.matchup)}</span>
+      <span class="parlay-leg-bet">${esc(l.betLabel)}</span>
+      <span class="parlay-leg-odds">${fmt(l.odds)}</span>
+    </div>`
+  ).join('');
+  return `<div class="parlay-card">
+    <div class="parlay-header">
+      <span class="parlay-title">Parlay of the Day</span>
+      <span class="parlay-payout">1u wins ${parlay.winsOn1u}u &nbsp;&middot;&nbsp; ${fmt(parlay.parlayML)}</span>
+    </div>
+    ${legsHtml}
+    <div class="parlay-note">Locked at open &middot; ${parlay.legs.length} legs</div>
+  </div>`;
+}
+
+function buildMLBNuke(games) {
+  const dateStr    = mlbGetDateStr();
+  const storageKey = `mlb_nuke_${dateStr}`;
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    if (saved?.legs?.length >= 2) return saved;
+  } catch(e) {}
+
+  const legs = [];
+
+  for (const g of games) {
+    if (!g.mlbOdds || !g._tiers || g.runDiff == null) continue;
+    if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
+
+    const absRD       = Math.abs(g.runDiff);
+    const modelFavHome = g.runDiff > 0;
+    const { totalDiff, totalDiffAbs, mlValHome, mlSignalOk, vegasFavIsHome } = g._tiers;
+    const rlFavTeam   = g.mlbOdds.rlFavTeam;
+    const rlFavML     = g.mlbOdds.rlFavML;
+
+    // ── RL leg: model projects 2+ run margin AND Vegas RL exists ────────────
+    const vegasRLFavHome = rlFavTeam ? normMLBTeam(rlFavTeam) === normMLBTeam(g.home) : null;
+    const hasRL = rlFavTeam && rlFavML != null && vegasRLFavHome === modelFavHome && absRD >= 2.0;
+    if (hasRL) {
+      legs.push({
+        gameId:   g.id,
+        matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
+        betType:  'RL',
+        betLabel: `${rlFavTeam.split(' ').pop()} -1.5`,
+        odds:     rlFavML,
+        edge:     absRD,
+        note:     `Model: ${g.runDiff > 0 ? '+' : ''}${g.runDiff.toFixed(1)}r`,
+      });
+    }
+
+    // ── Total leg: model edge ≥2.5r (stacks with RL from same game) ─────────
+    if (totalDiffAbs != null && totalDiffAbs >= 2.5 && g.mlbOdds.totalLine != null) {
+      legs.push({
+        gameId:   g.id + '_t',
+        matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
+        betType:  'Total',
+        betLabel: `${totalDiff > 0 ? 'Over' : 'Under'} ${g.mlbOdds.totalLine}`,
+        odds:     -110,
+        edge:     totalDiffAbs,
+        note:     `Model: ${g.proj?.total?.toFixed(1)}r`,
+      });
+    }
+
+    // ── Dog ML (or dog -1.5 alt RL): model likes the Vegas underdog ─────────
+    if (!hasRL && mlSignalOk && mlValHome != null) {
+      const pickOdds = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
+      if (pickOdds != null && pickOdds > 0) {
+        // Prefer dog -1.5 if available and positive (adds way more juice)
+        const altKey     = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
+        const altOdds    = mlbAltOddsMap.get(altKey);
+        const dogMinus15 = mlValHome ? altOdds?.homeMinus15 : altOdds?.awayMinus15;
+        const dogRunDiff = mlValHome ? (g.runDiff ?? 0) : -(g.runDiff ?? 0); // positive = dog projected to win
+        const useAlt     = dogMinus15 != null && dogMinus15 > 0 && dogRunDiff >= 1.0;
+        const legOdds  = useAlt ? dogMinus15 : pickOdds;
+        legs.push({
+          gameId:   g.id,
+          matchup:  `${g.away.split(' ').pop()} @ ${g.home.split(' ').pop()}`,
+          betType:  useAlt ? 'RL' : 'ML',
+          betLabel: useAlt
+            ? `${(mlValHome ? g.home : g.away).split(' ').pop()} -1.5`
+            : `${(mlValHome ? g.home : g.away).split(' ').pop()} ML`,
+          odds:     legOdds,
+          edge:     legOdds,
+          note:     useAlt ? `Model: dog +${dogRunDiff.toFixed(1)}r · ML was +${pickOdds}` : `Dog at +${pickOdds}`,
+        });
+      }
+    }
+  }
+
+  // Sort: RL first by margin, then totals by edge, then dogs by odds desc
+  legs.sort((a, b) => {
+    const rank = t => t === 'RL' ? 0 : t === 'Total' ? 1 : 2;
+    if (rank(a.betType) !== rank(b.betType)) return rank(a.betType) - rank(b.betType);
+    return b.edge - a.edge;
+  });
+
+  const capped = legs.slice(0, 10);
+  if (capped.length < 2) return null;
+
+  const combined = capped.reduce((acc, l) =>
+    acc * (l.odds < 0 ? (100 / Math.abs(l.odds) + 1) : (l.odds / 100 + 1)), 1);
+  const parlayML = combined >= 2 ? Math.round((combined - 1) * 100) : Math.round(-100 / (combined - 1));
+  const winsOn1u = Math.round((combined - 1) * 10) / 10;
+
+  const result = { legs: capped, parlayML, winsOn1u };
+  try { localStorage.setItem(storageKey, JSON.stringify(result)); } catch(e) {}
+  return result;
+}
 
 function renderMLBTopPicks(games) {
   const bar = document.getElementById('mlb-top-picks');
   if (!bar) return;
+  _mlbLastGames = games;
+
+  // A game is "started" if ESPN says so OR its scheduled start time has passed (handles stale ESPN status)
+  const allStartedIds = new Set(
+    games.filter(g =>
+      g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL' ||
+      (g.time != null && Date.now() > new Date(g.time).getTime() + 5 * 60 * 1000)
+    ).map(g => g.id)
+  );
 
   const takes = [], leans = [];
 
@@ -4616,12 +5027,11 @@ function renderMLBTopPicks(games) {
   const lockedPicks = [];
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
-    if (g.statusName !== 'STATUS_IN_PROGRESS' && g.statusName !== 'STATUS_FINAL') continue;
+    if (!allStartedIds.has(g.id)) continue;
     const { mlTier, mlImpDiffPct, mlValHome, mlSignalOk,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, f5Tier } = g._tiers;
     if (mlTier && mlSignalOk && g.mlbOdds?.homeML != null) {
-      const mlValHome = mlDiffSignedFav != null && (mlDiffSignedFav <= 0) === vegasFavIsHome;
       const mlValVegasML = mlValHome ? g.mlbOdds.homeML : g.mlbOdds.awayML;
       const mlValFmt = `${mlValVegasML > 0 ? '+' : ''}${mlValVegasML}`;
       const side = (mlValHome ? g.home : g.away).split(' ').pop();
@@ -4649,8 +5059,8 @@ function renderMLBTopPicks(games) {
 
   for (const g of games) {
     if (g.homeWinProb == null || !g._tiers) continue;
-    // Skip games that have started — pre-game picks only in the top bar
-    if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL') continue;
+    // Skip games that have started (ESPN status or past scheduled start time)
+    if (allStartedIds.has(g.id)) continue;
     const { mlTier, mlImpDiffPct, mlValHome, mlSignalOk, vegasFavVegasML, vegasFavModelML,
             totalTier, totalDiff, totalDiffAbs,
             rlTier, rlDiffMLEquiv, rlCoverProb, vegasCoverImp, vegasRLFavML,
@@ -4716,16 +5126,21 @@ function renderMLBTopPicks(games) {
   takes.sort((a, b) => b.diffSize - a.diffSize);
   leans.sort((a, b) => b.diffSize - a.diffSize);
 
-  // Preserve pre-game picks so they survive re-renders after games start
+  _mlbNuke = buildMLBNuke(games);
+
+  // Save current upcoming picks; pass allStartedIds so started-game picks survive in storage
   if (takes.length || leans.length) {
     _mlbPreGamePicks = [...takes, ...leans];
+    _mlbSavePreGamePicks(_mlbPreGamePicks, allStartedIds);
+  } else if (!_mlbPreGamePicks.length) {
+    _mlbPreGamePicks = _mlbLoadPreGamePicks(games);
   }
 
-  // Locked picks: explicitly computed + any pre-game picks now started
-  const allStartedIds = new Set(
-    games.filter(g => g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_FINAL').map(g => g.id)
-  );
-  const preservedLocked = _mlbPreGamePicks
+  _mlbParlay = (takes.length || leans.length) ? buildMLBParlay(takes, leans) : null;
+
+  // Locked picks: explicitly computed + any pre-game picks now started (preserved in storage)
+  const storedPicks = _mlbLoadPreGamePicks(games);
+  const preservedLocked = storedPicks
     .filter(p => allStartedIds.has(p.g.id) && !lockedPicks.some(lp => lp.g.id === p.g.id && lp.betType === p.betType))
     .map(p => ({ ...p, locked: true }));
   const allLockedPicks = [...lockedPicks, ...preservedLocked];
@@ -4775,19 +5190,105 @@ function renderMLBTopPicks(games) {
       return p.betType;
     })();
     const tierIcon = p.tier === 'take' ? '🔥' : '📊';
+
+    // Kelly units — takes always show a number; null Kelly = price is thin, show 0.5u muted
+    const kelly = calcKellyUnits(p);
+    const kellyBadge = kelly != null
+      ? `<span class="pick-kelly">${kelly}u</span>`
+      : p.tier === 'take' ? `<span class="pick-kelly" style="opacity:.45" title="Price thin — model signal only">0.5u</span>` : '';
+
+    // Pitcher change detection
+    let pitcherWarn = '';
+    if (p.lockedPitchers) {
+      const pk = `${normMLBTeam(p.g.away)}|${normMLBTeam(p.g.home)}|${p.g._gameNumber || 1}`;
+      const cur = mlbPitcherMap.get(pk) || {};
+      const chg = [];
+      if (p.lockedPitchers.home && cur.home?.name && p.lockedPitchers.home !== cur.home.name)
+        chg.push(`${esc(hShort)}: ${esc(cur.home.name)}`);
+      if (p.lockedPitchers.away && cur.away?.name && p.lockedPitchers.away !== cur.away.name)
+        chg.push(`${esc(aShort)}: ${esc(cur.away.name)}`);
+      if (chg.length) pitcherWarn = `<div class="pick-pitcher-warn">⚠ Pitcher change: ${chg.join(', ')}</div>`;
+    }
+
+    // Line movement (locked odds vs current)
+    let lineMove = '';
+    if (p.lockedOdds) {
+      if (p.betType === 'ML' || p.betType === 'Run Line') {
+        const lockedML = p.lockedOdds.ml;
+        const curML = p.betType === 'ML'
+          ? (p.mlValHome ? p.g.mlbOdds?.homeML : p.g.mlbOdds?.awayML)
+          : p.g.mlbOdds?.rlFavML;
+        if (lockedML != null && curML != null && lockedML !== curML) {
+          const dir = curML < lockedML ? '▼' : '▲';
+          const big = Math.abs(curML - lockedML) >= 15;
+          const fmtML = ml => `${ml > 0 ? '+' : ''}${ml}`;
+          lineMove = `<div class="pick-line-move${big ? ' flagged' : ''}">Locked ${fmtML(lockedML)} · now ${fmtML(curML)} ${dir}${big ? ' ⚑' : ''}</div>`;
+        }
+      } else if (p.betType === 'Total' || p.betType === 'F5') {
+        const lockedLine = p.lockedOdds.line;
+        const curLine = p.betType === 'Total' ? p.g.mlbOdds?.totalLine : p.g.mlbOdds?.f5TotalLine;
+        if (lockedLine != null && curLine != null && lockedLine !== curLine) {
+          const delta = Math.round((curLine - lockedLine) * 10) / 10;
+          const dir = delta > 0 ? '▲' : '▼';
+          const big = Math.abs(delta) >= 0.5;
+          lineMove = `<div class="pick-line-move${big ? ' flagged' : ''}">Locked ${lockedLine} · now ${curLine} ${dir}${big ? ' ⚑' : ''}</div>`;
+        }
+      }
+    }
+
     return `<div class="pick-card ${p.tier === 'take' ? 'hot' : 'warm'}" onclick="document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
       <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
       <div class="pick-main">${esc(mainText)}</div>
       <div class="pick-meta">
         <span class="pick-edge" style="font-size:.85rem;line-height:1.2">${tierIcon}</span>
         <span class="pick-type-tag">${esc(p.betType)}</span>
+        ${kellyBadge}
       </div>
       <div class="pick-why">${esc(p.text)}</div>
+      ${pitcherWarn}${lineMove}
     </div>`;
   };
 
   const divider = topTakes.length && topLeans.length ? '<div class="picks-divider"></div>' : '';
   const cards   = [...topTakes.map(pickCard), divider, ...topLeans.map(pickCard)].join('');
+
+  // ── Dropped picks section ─────────────────────────────────────────────────
+  const droppedPicks = getDroppedPicks(games, [...takes, ...leans]);
+  const reasonLabel = { pitcher_change: 'Pitcher Changed', line_moved: 'Line Moved', edge_gone: 'Edge Gone' };
+  const reasonClass = { pitcher_change: 'dropped-reason-warn', line_moved: 'dropped-reason-warn', edge_gone: 'dropped-reason-mute' };
+  const droppedCards = droppedPicks.map(({ s, game, reason }) => {
+    const hShort = (game.home || '').split(' ').pop();
+    const aShort = (game.away || '').split(' ').pop();
+    return `<div class="pick-card dropped-pick">
+      <div class="pick-matchup">${esc(aShort)} @ ${esc(hShort)}</div>
+      <div class="pick-main dropped-pick-text">${esc(s.text || s.betType)}</div>
+      <div class="pick-meta">
+        <span class="pick-type-tag">${esc(s.betType)}</span>
+        <span class="dropped-reason-pill ${reasonClass[reason] || 'dropped-reason-mute'}">${reasonLabel[reason] || 'Edge Gone'}</span>
+      </div>
+    </div>`;
+  }).join('');
+  const droppedSection = droppedPicks.length
+    ? `<div class="picks-dropped-label">No Longer Active</div><div class="picks-row">${droppedCards}</div>`
+    : '';
+
+  // ── Bar-level pitcher scratch banner ─────────────────────────────────────
+  const allPicks = [...takes, ...leans];
+  const scratchAlerts = [];
+  for (const p of allPicks) {
+    if (!p.lockedPitchers || !p.g) continue;
+    const pk = `${normMLBTeam(p.g.away)}|${normMLBTeam(p.g.home)}|${p.g._gameNumber || 1}`;
+    const cur = mlbPitcherMap.get(pk) || {};
+    const hShort = (p.g.home || '').split(' ').pop();
+    const aShort = (p.g.away || '').split(' ').pop();
+    if (p.lockedPitchers.home && cur.home?.name && p.lockedPitchers.home !== cur.home.name)
+      scratchAlerts.push(`${esc(aShort)}@${esc(hShort)}: ${esc(hShort)} now <strong>${esc(cur.home.name)}</strong> (was ${esc(p.lockedPitchers.home)})`);
+    if (p.lockedPitchers.away && cur.away?.name && p.lockedPitchers.away !== cur.away.name)
+      scratchAlerts.push(`${esc(aShort)}@${esc(hShort)}: ${esc(aShort)} now <strong>${esc(cur.away.name)}</strong> (was ${esc(p.lockedPitchers.away)})`);
+  }
+  const scratchBanner = scratchAlerts.length
+    ? `<div class="picks-scratch-banner">⚠ Pitcher change${scratchAlerts.length > 1 ? 's' : ''}: ${scratchAlerts.join(' &nbsp;·&nbsp; ')}</div>`
+    : '';
 
   bar.style.display = '';
   bar.innerHTML = `
@@ -4795,6 +5296,9 @@ function renderMLBTopPicks(games) {
       <div style="display:flex;align-items:center;gap:.4rem;">
         <span class="top-picks-title">Today's MLB Picks</span>
         <button class="mlb-legend-btn" onclick="showMLBLegend()" title="How picks are graded">ℹ</button>
+        <button class="mlb-legend-btn" onclick="showMLBHistoryModal('month')" title="Pick history">📅</button>
+        ${_mlbParlay ? `<button class="mlb-legend-btn" onclick="showMLBParlayModal()" title="Parlay of the Day" style="font-size:.7rem">🎰</button>` : ''}
+        ${_mlbNuke   ? `<button class="mlb-legend-btn" onclick="showMLBNukeModal()"   title="Nuke Parlay"        style="font-size:.7rem">💣</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;">
         <button class="picks-view-all" onclick="showMLBPicksModal()">📋 View All (${takes.length}T · ${leans.length}L)</button>
@@ -4803,7 +5307,9 @@ function renderMLBTopPicks(games) {
         </div>
       </div>
     </div>
-    <div class="picks-row">${cards}</div>`;
+    ${scratchBanner}
+    <div class="picks-row">${cards}</div>
+    ${droppedSection}`;
 
   loadMLBRecord();
 }
@@ -4953,6 +5459,10 @@ async function showMLBPicksModal() {
         }
         return ` · ${aShort} ${parseInt(p.g.awayScore)||0}, ${hShort} ${parseInt(p.g.homeScore)||0}`;
       })();
+      const kelly = calcKellyUnits(p);
+      const kellyTag = kelly != null
+        ? `<span class="pick-kelly">${kelly}u</span>`
+        : p.tier === 'take' ? `<span class="pick-kelly" style="opacity:.45" title="Price thin — model signal only">0.5u</span>` : '';
       return `<div class="mlb-pick-row${isLocked ? ' locked' : ''}" onclick="closeMLBPicksModal();document.getElementById('mlb-game-${p.g.id}')?.scrollIntoView({behavior:'smooth',block:'center'})">
         <span class="mlb-pick-row-icon">${icon}</span>
         <div class="mlb-pick-row-body">
@@ -4961,7 +5471,10 @@ async function showMLBPicksModal() {
           ${modelSubtitle ? `<div class="mlb-pick-row-model">${esc(modelSubtitle)}</div>` : ''}
           <div class="mlb-pick-row-why">${esc(p.text)}</div>
         </div>
-        <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
+          <span class="mlb-pick-row-edge">${edgeLabel(p)}</span>
+          ${kellyTag}
+        </div>
       </div>`;
     };
 
@@ -5003,6 +5516,31 @@ async function showMLBPicksModal() {
       return results.length ? ` · ${w}-${l}` : '';
     };
 
+    // ── Dropped picks ─────────────────────────────────────────────────────
+    const activePicks = _mlbAllPicks.filter(p => !p.locked);
+    const droppedPicks = getDroppedPicks(_mlbLastGames, activePicks);
+    const droppedReasonLabel = { pitcher_change: 'Pitcher Changed', line_moved: 'Line Moved', edge_gone: 'Edge Gone' };
+    const droppedReasonClass = { pitcher_change: 'dropped-reason-warn', line_moved: 'dropped-reason-warn', edge_gone: 'dropped-reason-mute' };
+
+    const droppedRow = ({ s, game, reason }) => {
+      const hShort = (game.home || '').split(' ').pop();
+      const aShort = (game.away || '').split(' ').pop();
+      const label  = droppedReasonLabel[reason] || 'Edge Gone';
+      const cls    = droppedReasonClass[reason] || 'dropped-reason-mute';
+      const origTierLabel = s.tier === 'take' ? 'TAKE' : 'LEAN';
+      return `<div class="mlb-pick-row" style="opacity:.45">
+        <span class="mlb-pick-row-icon">⬇</span>
+        <div class="mlb-pick-row-body">
+          <div class="mlb-pick-row-matchup">${esc(aShort)} @ ${esc(hShort)} · <span style="opacity:.7">${origTierLabel}</span></div>
+          <div class="mlb-pick-row-action" style="opacity:.7">${esc(s.text || s.betType)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
+          <span class="dropped-reason-pill ${cls}">${label}</span>
+          <span class="mlb-pick-row-edge" style="opacity:.5">${esc(s.betType)}</span>
+        </div>
+      </div>`;
+    };
+
     let html = '';
     if (allTakes.length) {
       html += `<div class="mlb-picks-section-label">🔥 Takes (${allTakes.length})${record(allTakes)}</div>`;
@@ -5011,6 +5549,10 @@ async function showMLBPicksModal() {
     if (allLeans.length) {
       html += `<div class="mlb-picks-section-label">📊 Leans (${allLeans.length})${record(allLeans)}</div>`;
       html += allLeans.map(pickRow).join('');
+    }
+    if (droppedPicks.length) {
+      html += `<div class="mlb-picks-section-label" style="opacity:.6">⬇ No Longer Active (${droppedPicks.length})</div>`;
+      html += droppedPicks.map(droppedRow).join('');
     }
     body.innerHTML = html;
   }
@@ -5028,6 +5570,87 @@ function closeMLBLegend() {
   document.getElementById('mlb-legend-overlay').classList.remove('open');
 }
 
+function showMLBParlayModal() {
+  const body = document.getElementById('mlb-parlay-modal-body');
+  if (!body) return;
+  const p = _mlbParlay;
+  if (!p || !p.legs?.length) {
+    body.innerHTML = '<div class="mlb-picks-empty">No parlay available — check back once picks are posted.</div>';
+  } else {
+    const fmt = ml => ml > 0 ? `+${ml}` : `${ml}`;
+    const legsHtml = p.legs.map(l => `
+      <div class="mlb-legend-section" style="padding:.6rem 1rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:.15rem">${esc(l.matchup)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:.78rem;font-weight:700;color:var(--text)">${esc(l.betLabel)}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);white-space:nowrap">${fmt(l.odds)}</div>
+        </div>
+      </div>`).join('');
+    body.innerHTML = `
+      ${legsHtml}
+      <div class="mlb-legend-section" style="background:var(--surface2);border-radius:0 0 10px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-family:'DM Mono',monospace;font-size:.72rem;font-weight:700;color:var(--text)">Combined odds</span>
+          <span style="font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:var(--green)">${fmt(p.parlayML)}</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:.3rem">1u wins ${p.winsOn1u}u profit &nbsp;·&nbsp; ${p.legs.length} legs</div>
+      </div>
+      <div class="mlb-legend-note">Legs locked at first odds pull of the day. One pick per game, highest-edge first.</div>`;
+  }
+  document.getElementById('mlb-parlay-overlay').classList.add('open');
+}
+
+function closeMLBParlayModal() {
+  document.getElementById('mlb-parlay-overlay').classList.remove('open');
+}
+
+function showMLBNukeModal() {
+  const body = document.getElementById('mlb-nuke-modal-body');
+  if (!body) return;
+  const n = _mlbNuke;
+  if (!n || !n.legs?.length) {
+    body.innerHTML = '<div class="mlb-picks-empty">No nuke available — needs RL or total edges on today\'s slate.</div>';
+  } else {
+    const fmt    = ml => ml > 0 ? `+${ml}` : `${ml}`;
+    const typeClr = t => t === 'RL' ? '#ff6b6b' : t === 'Total' ? '#FFD166' : '#a8d8a8';
+    const legsHtml = n.legs.map(l => `
+      <div class="mlb-legend-section" style="padding:.6rem 1rem">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.5rem">
+          <div>
+            <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.15rem">
+              <span style="font-family:'DM Mono',monospace;font-size:.55rem;font-weight:700;color:${typeClr(l.betType)};text-transform:uppercase;letter-spacing:.04em">${esc(l.betType)}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted)">${esc(l.matchup)}</span>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:.78rem;font-weight:700;color:var(--text)">${esc(l.betLabel)}</div>
+            <div style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);margin-top:.1rem">${esc(l.note)}</div>
+          </div>
+          <div style="font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);white-space:nowrap">${fmt(l.odds)}</div>
+        </div>
+      </div>`).join('');
+    const rlCount    = n.legs.filter(l => l.betType === 'RL').length;
+    const totalCount = n.legs.filter(l => l.betType === 'Total').length;
+    const dogCount   = n.legs.filter(l => l.betType === 'ML').length;
+    const breakdown  = [rlCount && `${rlCount} RL`, totalCount && `${totalCount} total`, dogCount && `${dogCount} dog ML`].filter(Boolean).join(' · ');
+    body.innerHTML = `
+      ${legsHtml}
+      <div class="mlb-legend-section" style="background:linear-gradient(135deg,#1a0a0a,#2d1010);border-radius:0 0 10px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-family:'DM Mono',monospace;font-size:.72rem;font-weight:700;color:var(--text)">Combined odds</span>
+          <span style="font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:#ff6b6b">${fmt(n.parlayML)}</span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-top:.3rem">1u wins ${n.winsOn1u}u profit &nbsp;·&nbsp; ${breakdown}</div>
+      </div>
+      <div class="mlb-legend-note">RL when model projects 2+ run margin. Locked at open.</div>`;
+  }
+  document.getElementById('mlb-nuke-overlay').classList.add('open');
+}
+
+function closeMLBNukeModal() {
+  document.getElementById('mlb-nuke-overlay').classList.remove('open');
+}
+
 // ── MLB historical record (Takes only, from mlb-log Gist files) ───────────────
 const MLB_ACC_START_DATE = '2026-03-27';
 let _mlbAccCache = null, _mlbAccCacheTs = 0;
@@ -5040,18 +5663,18 @@ function _mlbLogSignal(entry) {
   const mlFavVegasML   = mlFavIsHome ? v.homeML : v.awayML;
   const mlFavModelML   = mlFavIsHome ? homeModelMLNum : (parseInt(String(m.awayModelML)) || 0);
   const mlImpDiffPct   = mlFavVegasML != null ? Math.abs((_mlImpNum(mlFavModelML) ?? 0) - (_mlImpNum(mlFavVegasML) ?? 0)) * 100 : null;
-  const mlTier         = mlImpDiffPct == null ? null : mlImpDiffPct >= 10 ? 'take' : mlImpDiffPct >= 7 ? 'lean' : null;
+  const mlTier         = mlImpDiffPct == null ? null : mlImpDiffPct >= 13 ? 'take' : null;
 
   const totalDiffAbs = v.totalLine != null && m.total != null
     ? Math.abs(Math.round((m.total - v.totalLine) * 10) / 10) : null;
-  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.0 ? 'take' : null;
+  const totalTier    = totalDiffAbs == null ? null : totalDiffAbs >= 2.5 ? 'take' : null;
 
   const rlMargin = Math.abs(m.runDiff || 0);
   const rlTier   = rlMargin > 2.5 ? 'take' : null;
 
   const f5DiffAbs = m.f5Total != null && v.f5TotalLine != null
     ? Math.abs(Math.round((m.f5Total - v.f5TotalLine) * 10) / 10) : null;
-  const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 1.5 ? 'take' : null;
+  const f5Tier    = f5DiffAbs == null ? null : f5DiffAbs >= 2.0 ? 'take' : null;
 
   const candidates = [];
   if (mlTier    === 'take') candidates.push({ type: 'ml',    diffSize: mlImpDiffPct ?? 0 });
@@ -5118,14 +5741,141 @@ async function loadMLBRecord() {
 function _renderMLBRecordBadge({ wk, mo }) {
   const row = document.getElementById('mlb-picks-accuracy-row');
   if (!row) return;
-  const badge = (lbl, { w, l }) => {
+  const badge = (lbl, range, { w, l }) => {
     const tot = w + l;
-    if (!tot) return `<span class="acc-badge">${lbl}: <span class="acc-pct">—</span></span>`;
+    if (!tot) return `<button class="acc-badge" onclick="showMLBHistoryModal('${range}')" style="cursor:pointer;background:none;border:1px solid var(--border)">${lbl}: <span class="acc-pct">—</span></button>`;
     const pct = Math.round(w / tot * 100);
     const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
-    return `<span class="acc-badge ${cls}" title="Takes only">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></span>`;
+    return `<button class="acc-badge ${cls}" onclick="showMLBHistoryModal('${range}')" style="cursor:pointer" title="Click to see day-by-day breakdown">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">${pct}%</span></button>`;
   };
-  row.innerHTML = badge('Week', wk) + badge('Month', mo);
+  row.innerHTML = badge('Week', 'week', wk) + badge('Month', 'month', mo);
+}
+
+// ── MLB Pick History Modal ────────────────────────────────────────────────────
+function closeMLBHistoryModal() {
+  document.getElementById('mlb-history-overlay').classList.remove('open');
+}
+
+async function showMLBHistoryModal(range) {
+  range = range || 'week';
+  const overlay = document.getElementById('mlb-history-overlay');
+  const body    = document.getElementById('mlb-history-body');
+  overlay.classList.add('open');
+  body.innerHTML = '<div style="padding:2rem 1rem;font-size:.75rem;color:var(--muted);text-align:center">Loading…</div>';
+  document.getElementById('hist-btn-week').classList.toggle('active',  range === 'week');
+  document.getElementById('hist-btn-month').classList.toggle('active', range === 'month');
+
+  if (!cfg.oddsGistId) { body.innerHTML = '<div style="padding:1rem;color:var(--muted)">Not configured.</div>'; return; }
+
+  const pad   = n => String(n).padStart(2, '0');
+  const toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today = new Date();
+  const days  = range === 'week' ? 7 : 30;
+  const dates = [];
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(today.getTime() - i * 86400000);
+    const s = toISO(d);
+    if (s >= MLB_ACC_START_DATE) dates.push(s);
+  }
+
+  const fetched = await Promise.all(dates.map(async dateStr => {
+    try {
+      const r = await fetch(
+        `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/mlb-log-${dateStr}.json`,
+        { cache: 'no-store', signal: AbortSignal.timeout(5000) }
+      );
+      if (!r.ok) return { dateStr, entries: [] };
+      const log = await r.json();
+      return { dateStr, entries: Array.isArray(log) ? log : [] };
+    } catch(e) { return { dateStr, entries: [] }; }
+  }));
+
+  let totalW = 0, totalL = 0;
+  const dayHtmls = [];
+
+  for (const { dateStr, entries } of fetched) {
+    const rows = [];
+    for (const entry of entries) {
+      const take  = _mlbLogSignal(entry);
+      if (!take) continue;
+      const score = entry.result ? _scoreMLBTake(entry, take) : null;
+      rows.push({ entry, take, score });
+    }
+    if (!rows.length) continue;
+
+    const dayW = rows.filter(r => r.score === 'W').length;
+    const dayL = rows.filter(r => r.score === 'L').length;
+    totalW += dayW; totalL += dayL;
+
+    const dt     = new Date(dateStr + 'T12:00:00');
+    const lbl    = dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+    const recClr = dayW > dayL ? 'var(--green)' : dayL > dayW ? 'var(--red)' : 'var(--muted)';
+    const recStr = (dayW + dayL) ? `<span class="mlb-history-date-rec" style="color:${recClr}">${dayW}-${dayL}</span>` : '';
+
+    const rowHtmls = rows.map(({ entry, take, score }) => {
+      const m = entry.model, v = entry.vegas;
+      const aShort = entry.away.split(' ').pop();
+      const hShort = entry.home.split(' ').pop();
+
+      // Bet label
+      let betStr = '';
+      if (take.type === 'ml') {
+        const favIsHome = m.homeWinProb >= m.awayWinProb;
+        const side = (favIsHome ? entry.home : entry.away).split(' ').pop();
+        const ml   = favIsHome ? v.homeML : v.awayML;
+        betStr = `${side} ML${ml != null ? ' (' + (ml > 0 ? '+' : '') + ml + ')' : ''}`;
+      } else if (take.type === 'total') {
+        betStr = `${take.modelDir === 'over' ? 'Over' : 'Under'} ${v.totalLine ?? '—'}`;
+      } else if (take.type === 'rl') {
+        betStr = `${(m.rlFavTeam || '').split(' ').pop()} -1.5`;
+      } else if (take.type === 'f5') {
+        betStr = `F5 ${take.modelDir === 'over' ? 'Over' : 'Under'} ${v.f5TotalLine ?? '—'}`;
+      }
+
+      // Score label
+      const r = entry.result;
+      let scoreStr = r ? `${r.awayScore}-${r.homeScore}` : '—';
+      if (r && take.type === 'total') scoreStr += ` (${r.totalRuns}r)`;
+      if (r && take.type === 'f5' && r.f5TotalRuns != null) scoreStr += ` (F5:${r.f5TotalRuns}r)`;
+
+      const cls = score === 'W' ? 'win' : score === 'L' ? 'loss' : score === null ? 'pending' : 'push';
+      const txt = score ?? (r ? 'P' : '—');
+
+      return `<div class="mlb-hist-row">
+        <span class="mlb-hist-badge ${cls}">${txt}</span>
+        <span class="mlb-hist-game">${esc(aShort)} @ ${esc(hShort)}</span>
+        <span class="mlb-hist-bet">${esc(betStr)}</span>
+        <span class="mlb-hist-score">${esc(scoreStr)}</span>
+      </div>`;
+    }).join('');
+
+    dayHtmls.push(`<div class="mlb-history-day">
+      <div class="mlb-history-date">${esc(lbl)} ${recStr}</div>
+      ${rowHtmls}
+    </div>`);
+  }
+
+  if (!dayHtmls.length) {
+    const foundFiles = fetched.filter(f => f.entries.length > 0).length;
+    const totalEntries = fetched.reduce((s, f) => s + f.entries.length, 0);
+    const withResult   = fetched.reduce((s, f) => s + f.entries.filter(e => e.result).length, 0);
+    body.innerHTML = `<div style="padding:2rem 1rem;font-size:.72rem;color:var(--muted);text-align:center;line-height:1.7">
+      No takes found in this range.<br>
+      <span style="opacity:.6">Log files: ${foundFiles}/${dates.length} days · ${totalEntries} games · ${withResult} with results</span>
+    </div>`;
+    return;
+  }
+
+  const tot    = totalW + totalL;
+  const pct    = tot ? Math.round(totalW / tot * 100) : 0;
+  const totClr = pct >= 60 ? 'var(--green)' : pct < 50 ? 'var(--red)' : 'var(--text)';
+  body.innerHTML = `
+    <div style="padding:.5rem 1rem .65rem;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:.5rem">
+      <span style="font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Total</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.92rem;font-weight:700;color:${totClr}">${totalW}-${totalL}</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.68rem;color:var(--muted)">${pct}%</span>
+    </div>
+    ${dayHtmls.join('')}`;
 }
 
 // ── MLB probable pitchers (MLB Stats API — free, no auth) ────────────────────
@@ -5199,7 +5949,7 @@ function parsePitcher(p) {
     k9:   ip > 0 && season.strikeOuts  != null ? (season.strikeOuts  / ip * 9).toFixed(1) : null,
     bb9:  ip > 0 && season.baseOnBalls != null ? (season.baseOnBalls / ip * 9).toFixed(1) : null,
     ip:   season.inningsPitched ?? null,
-    isFallback: true,
+    isFallback: ip < 3,  // true when pitcher lacks meaningful 2026 season data
   };
 }
 
@@ -5242,17 +5992,17 @@ async function loadMLBPitchers(dateStr) {
         if (awayId) teamIdMap.set(normMLBTeam(awayName), { teamId: awayId, teamName: awayName });
         if (homeId) teamIdMap.set(normMLBTeam(homeName), { teamId: homeId, teamName: homeName });
 
-        gameStubs.push({ awayName, homeName, awayP, homeP });
+        gameStubs.push({ awayName, homeName, awayP, homeP, gameNumber: game.gameNumber || 1 });
       }
     }
 
-    // Step 2: batch fetch 2025 pitching stats for all pitchers in one request
+    // Step 2: batch fetch 2026 pitching stats for all pitchers in one request
     const statsById = {};
     if (pitcherIds.size > 0) {
       const ids = [...pitcherIds].join(',');
       const sr = await fetch(
         `https://statsapi.mlb.com/api/v1/people?personIds=${ids}` +
-        `&hydrate=stats(group=pitching,type=season,season=2025)`,
+        `&hydrate=stats(group=pitching,type=season,season=2026)`,
         { signal: AbortSignal.timeout(10000) }
       );
       if (sr.ok) {
@@ -5282,7 +6032,7 @@ async function loadMLBPitchers(dateStr) {
 
     // Step 3: merge stats into pitcher objects and build map
     mlbPitcherMap = new Map();
-    for (const { awayName, homeName, awayP, homeP } of gameStubs) {
+    for (const { awayName, homeName, awayP, homeP, gameNumber } of gameStubs) {
       if (awayP?.id) {
         awayP.stats    = statsById[awayP.id]?.stats || [];
         awayP.pitchHand = awayP.pitchHand || statsById[awayP.id]?.pitchHand;
@@ -5293,7 +6043,7 @@ async function loadMLBPitchers(dateStr) {
         homeP.pitchHand = homeP.pitchHand || statsById[homeP.id]?.pitchHand;
         homeP.gameLog  = gameLogById[homeP.id] || [];
       }
-      const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}`;
+      const key = `${normMLBTeam(awayName)}|${normMLBTeam(homeName)}|${gameNumber}`;
       mlbPitcherMap.set(key, {
         away: parsePitcher(awayP),
         home: parsePitcher(homeP),
@@ -5313,8 +6063,8 @@ async function loadMLBPitchers(dateStr) {
 let mlbBullpenMap = new Map();
 let _lastTeamIdMap = new Map();
 
-// Baseline league-average bullpen ERA (relievers run ~4.20 vs ~4.50 for starters)
-const BP_BASELINE_ERA = 4.20;
+// Baseline league-average bullpen ERA (IP-weighted avg from FanGraphs 2026 relievers, through May 23)
+const BP_BASELINE_ERA = 3.70;
 const BP_MIN_RECENT_IP = 10; // minimum IP in last-15 window to use blended weight
 
 // MLB Stats API team name → normalized ESPN display name (when they differ)
@@ -5349,7 +6099,7 @@ async function loadMLBBullpens(isoDate, teamIdMap) {
 
   await Promise.all([...teamIdMap.entries()].map(async ([normName, { teamId }]) => {
     try {
-      const base = `https://statsapi.mlb.com/api/v1/stats?group=pitching&sportId=1&season=2025&teamId=${teamId}&playerPool=All&limit=60`;
+      const base = `https://statsapi.mlb.com/api/v1/stats?group=pitching&sportId=1&season=2026&teamId=${teamId}&playerPool=All&limit=60`;
       const [seasonData, recentData] = await Promise.all([
         fetch(`${base}&stats=season`,          { signal: AbortSignal.timeout(8000) }).then(r => r.ok ? r.json() : null),
         fetch(`${base}&stats=byDateRange&startDate=${startDate}&endDate=${isoDate}`,
@@ -5473,84 +6223,83 @@ async function loadMLBWeather(games) {
   await Promise.allSettled(fetches);
 }
 
-// ── MLB park factors (Baseball Reference 2024) ───────────────────────────────
+// ── MLB park factors (FanGraphs 2025) ────────────────────────────────────────
 // factor: run index relative to league average (1.00 = avg, 1.10 = +10% runs)
 // handAdj: LHB bonus relative to RHB (positive = more LHB-friendly). Update each spring.
 const MLB_PARK_FACTORS = {
-  coloradorockies:      { name: 'Coors Field',                 factor: 1.18, handAdj:  0.00 },
-  cincinnatireds:       { name: 'Great American Ball Park',    factor: 1.08, handAdj:  0.00 },
-  newyorkyankees:       { name: 'Yankee Stadium',              factor: 1.07, handAdj:  0.04 },
-  bostonredsox:         { name: 'Fenway Park',                 factor: 1.06, handAdj:  0.02 },
-  baltimoreorioles:     { name: 'Oriole Park at Camden Yards', factor: 1.05, handAdj:  0.00 },
-  texasrangers:         { name: 'Globe Life Field',            factor: 1.05, handAdj:  0.00 },
-  chicagocubs:          { name: 'Wrigley Field',               factor: 1.04, handAdj:  0.00 },
-  philadelphiaphillies: { name: 'Citizens Bank Park',          factor: 1.04, handAdj:  0.00 },
-  atlantabraves:        { name: 'Truist Park',                 factor: 1.03, handAdj:  0.00 },
-  arizonadiamondbacks:  { name: 'Chase Field',                 factor: 1.02, handAdj:  0.00 },
-  kansascityroyals:     { name: 'Kauffman Stadium',            factor: 1.02, handAdj:  0.00 },
-  clevelandguardians:   { name: 'Progressive Field',           factor: 1.01, handAdj:  0.00 },
-  milwaukeebrewers:     { name: 'American Family Field',       factor: 1.01, handAdj:  0.00 },
-  detroittigers:        { name: 'Comerica Park',               factor: 1.01, handAdj:  0.00 },
-  chicagowhitesox:      { name: 'Guaranteed Rate Field',       factor: 1.01, handAdj:  0.00 },
-  minnesotatwins:       { name: 'Target Field',                factor: 1.00, handAdj:  0.00 },
-  torontobluejays:      { name: 'Rogers Centre',               factor: 1.00, handAdj:  0.00 },
-  houstonastros:        { name: 'Minute Maid Park',            factor: 1.00, handAdj:  0.00 },
-  losangelesangels:     { name: 'Angel Stadium',               factor: 1.00, handAdj:  0.00 },
-  stlouiscardinals:     { name: 'Busch Stadium',               factor: 0.99, handAdj:  0.00 },
-  newyorkmets:          { name: 'Citi Field',                  factor: 0.98, handAdj:  0.00 },
-  washingtonnationals:  { name: 'Nationals Park',              factor: 0.98, handAdj:  0.00 },
-  losangelesdodgers:    { name: 'Dodger Stadium',              factor: 0.97, handAdj:  0.00 },
-  pittsburghpirates:    { name: 'PNC Park',                    factor: 0.97, handAdj:  0.00 },
-  miamimarlins:         { name: 'loanDepot Park',              factor: 0.97, handAdj:  0.00 },
-  oaklandathletics:     { name: 'Sutter Health Park',          factor: 0.97, handAdj:  0.00 },
-  athletics:            { name: 'Sutter Health Park',          factor: 0.97, handAdj:  0.00 },
-  seattlemariners:      { name: 'T-Mobile Park',               factor: 0.96, handAdj:  0.00 },
-  tampabayrays:         { name: 'Tropicana Field',             factor: 0.94, handAdj:  0.00 },
-  sandiegopadres:       { name: 'Petco Park',                  factor: 0.94, handAdj:  0.00 },
-  sanfranciscogiants:   { name: 'Oracle Park',                 factor: 0.93, handAdj: -0.02 },
+  coloradorockies:      { name: 'Coors Field',                 factor: 1.13, handAdj:  0.00 },
+  cincinnatireds:       { name: 'Great American Ball Park',    factor: 1.05, handAdj:  0.00 },
+  bostonredsox:         { name: 'Fenway Park',                 factor: 1.04, handAdj:  0.02 },
+  kansascityroyals:     { name: 'Kauffman Stadium',            factor: 1.03, handAdj:  0.00 },
+  oaklandathletics:     { name: 'Sutter Health Park',          factor: 1.03, handAdj:  0.00 },
+  athletics:            { name: 'Sutter Health Park',          factor: 1.03, handAdj:  0.00 },
+  pittsburghpirates:    { name: 'PNC Park',                    factor: 1.02, handAdj:  0.00 },
+  losangelesangels:     { name: 'Angel Stadium',               factor: 1.01, handAdj:  0.00 },
+  minnesotatwins:       { name: 'Target Field',                factor: 1.01, handAdj:  0.00 },
+  tampabayrays:         { name: 'Steinbrenner Field',          factor: 1.01, handAdj:  0.00 },
+  arizonadiamondbacks:  { name: 'Chase Field',                 factor: 1.01, handAdj:  0.00 },
+  miamimarlins:         { name: 'loanDepot Park',              factor: 1.01, handAdj:  0.00 },
+  philadelphiaphillies: { name: 'Citizens Bank Park',          factor: 1.01, handAdj:  0.00 },
+  chicagowhitesox:      { name: 'Guaranteed Rate Field',       factor: 1.00, handAdj:  0.00 },
+  detroittigers:        { name: 'Comerica Park',               factor: 1.00, handAdj:  0.00 },
+  atlantabraves:        { name: 'Truist Park',                 factor: 1.00, handAdj:  0.00 },
+  washingtonnationals:  { name: 'Nationals Park',              factor: 1.00, handAdj:  0.00 },
+  baltimoreorioles:     { name: 'Oriole Park at Camden Yards', factor: 0.99, handAdj:  0.00 },
+  clevelandguardians:   { name: 'Progressive Field',           factor: 0.99, handAdj:  0.00 },
+  newyorkyankees:       { name: 'Yankee Stadium',              factor: 0.99, handAdj:  0.04 },
+  texasrangers:         { name: 'Globe Life Field',            factor: 0.99, handAdj:  0.00 },
+  torontobluejays:      { name: 'Rogers Centre',               factor: 0.99, handAdj:  0.00 },
+  houstonastros:        { name: 'Minute Maid Park',            factor: 0.99, handAdj:  0.00 },
+  losangelesdodgers:    { name: 'Dodger Stadium',              factor: 0.99, handAdj:  0.00 },
+  milwaukeebrewers:     { name: 'American Family Field',       factor: 0.99, handAdj:  0.00 },
+  chicagocubs:          { name: 'Wrigley Field',               factor: 0.98, handAdj:  0.00 },
+  stlouiscardinals:     { name: 'Busch Stadium',               factor: 0.98, handAdj:  0.00 },
+  sanfranciscogiants:   { name: 'Oracle Park',                 factor: 0.97, handAdj: -0.02 },
+  newyorkmets:          { name: 'Citi Field',                  factor: 0.96, handAdj:  0.00 },
+  sandiegopadres:       { name: 'Petco Park',                  factor: 0.96, handAdj:  0.00 },
+  seattlemariners:      { name: 'T-Mobile Park',               factor: 0.94, handAdj:  0.00 },
 };
 
 function getParkFactor(homeTeam) {
   return (homeTeam && MLB_PARK_FACTORS[normMLBTeam(homeTeam)]) || { name: 'Unknown', factor: 1.00, handAdj: 0 };
 }
 
-// ── MLB team offense splits vs pitcher handedness (static 2024-season wRC+) ──
+// ── MLB team offense splits vs pitcher handedness (static wRC+) ──────────────
 // FanGraphs blocks cross-origin requests; static table avoids CORS entirely.
-// wRC+ 100 = league average. vsL = vs LHP, vsR = vs RHP. Update each spring.
-// Source: FanGraphs 2025 final season team wRC+ splits by pitcher handedness
-// Best available proxy for 2026 — no public source publishes preseason team-level vsL/vsR splits
+// wRC+ 100 = league average. vsL = vs LHP, vsR = vs RHP. Update mid-season.
+// Source: FanGraphs 2026 season team wRC+ splits by pitcher handedness (through May 23)
 const MLB_WRC_STATIC = {
-  losangelesdodgers:    { vsL: 111, vsR: 114 },
-  newyorkyankees:       { vsL: 121, vsR: 118 },
-  philadelphiaphillies: { vsL: 106, vsR: 110 },
-  atlantabraves:        { vsL:  99, vsR: 101 },
-  baltimoreorioles:     { vsL:  87, vsR: 100 },
-  minnesotatwins:       { vsL:  97, vsR:  97 },
-  bostonredsox:         { vsL: 103, vsR: 103 },
-  clevelandguardians:   { vsL:  81, vsR:  90 },
-  houstonastros:        { vsL: 107, vsR:  98 },
-  arizonadiamondbacks:  { vsL: 105, vsR: 110 },
-  sandiegopadres:       { vsL:  96, vsR: 105 },
-  milwaukeebrewers:     { vsL: 107, vsR: 107 },
-  torontobluejays:      { vsL: 111, vsR: 113 },
-  newyorkmets:          { vsL:  98, vsR: 118 },
-  chicagocubs:          { vsL: 110, vsR: 110 },
-  texasrangers:         { vsL:  83, vsR:  95 },
-  tampabayrays:         { vsL:  85, vsR: 104 },
-  cincinnatireds:       { vsL:  79, vsR:  97 },
-  kansascityroyals:     { vsL:  80, vsR:  97 },
-  seattlemariners:      { vsL: 108, vsR: 114 },
-  detroittigers:        { vsL: 114, vsR:  98 },
-  sanfranciscogiants:   { vsL:  78, vsR: 104 },
-  stlouiscardinals:     { vsL:  97, vsR:  96 },
-  coloradorockies:      { vsL:  75, vsR:  74 },
-  washingtonnationals:  { vsL:  78, vsR:  99 },
-  pittsburghpirates:    { vsL:  76, vsR:  84 },
-  losangelesangels:     { vsL:  91, vsR:  92 },
-  oaklandathletics:     { vsL: 102, vsR: 106 },
-  athletics:            { vsL: 102, vsR: 106 }, // Sacramento alias
-  miamimarlins:         { vsL:  82, vsR: 102 },
-  chicagowhitesox:      { vsL:  93, vsR:  87 },
+  losangelesdodgers:    { vsL: 115, vsR: 119 },
+  newyorkyankees:       { vsL: 122, vsR: 109 },
+  philadelphiaphillies: { vsL:  91, vsR:  92 },
+  atlantabraves:        { vsL: 110, vsR: 120 },
+  baltimoreorioles:     { vsL:  93, vsR: 106 },
+  minnesotatwins:       { vsL: 105, vsR: 100 },
+  bostonredsox:         { vsL: 109, vsR:  83 },
+  clevelandguardians:   { vsL: 106, vsR:  98 },
+  houstonastros:        { vsL: 103, vsR: 105 },
+  arizonadiamondbacks:  { vsL: 118, vsR:  90 },
+  sandiegopadres:       { vsL:  73, vsR:  95 },
+  milwaukeebrewers:     { vsL:  82, vsR: 110 },
+  torontobluejays:      { vsL:  88, vsR:  92 },
+  newyorkmets:          { vsL:  85, vsR:  88 },
+  chicagocubs:          { vsL: 117, vsR: 108 },
+  texasrangers:         { vsL:  81, vsR: 105 },
+  tampabayrays:         { vsL:  97, vsR: 108 },
+  cincinnatireds:       { vsL: 103, vsR:  93 },
+  kansascityroyals:     { vsL:  86, vsR:  94 },
+  seattlemariners:      { vsL:  76, vsR: 116 },
+  detroittigers:        { vsL:  98, vsR:  95 },
+  sanfranciscogiants:   { vsL:  86, vsR:  90 },
+  stlouiscardinals:     { vsL: 103, vsR: 103 },
+  coloradorockies:      { vsL:  68, vsR:  88 },
+  washingtonnationals:  { vsL: 124, vsR: 102 },
+  pittsburghpirates:    { vsL:  87, vsR: 111 },
+  losangelesangels:     { vsL: 108, vsR:  90 },
+  oaklandathletics:     { vsL:  88, vsR: 108 },
+  athletics:            { vsL:  88, vsR: 108 }, // Sacramento alias
+  miamimarlins:         { vsL:  96, vsR:  96 },
+  chicagowhitesox:      { vsL: 119, vsR:  99 },
 };
 
 let mlbOffenseMap = new Map(); // normalized team name → { wrcVsL, wrcVsR }
@@ -5605,6 +6354,7 @@ function calcMLBTotal(g, pitchers) {
   total *= pf;
   const windAdj = (!g.weather || g.weather.indoors) ? 0 : (g.weather.adj ?? 0);
   total += windAdj;
+  total -= 0.30; // calibration offset: model over-predicts by ~0.31 runs (2026 backtest)
   total = Math.max(6.0, Math.min(11.0, total));
   return { total: Math.round(total * 10) / 10, hp, ap, ho, ao, pf, homeBp, awayBp, windAdj };
 }
@@ -5612,7 +6362,7 @@ function calcMLBTotal(g, pitchers) {
 // ── MLB moneyline win probability (Sprint 5) ─────────────────────────────────
 function predictMLBWinProb(g, pitchers) {
   const hp = ratePitcher(pitchers.home) ?? 0;
-  const ap = ratePitcher(pitchers.away) ?? 0;
+  const ap = (ratePitcher(pitchers.away) ?? 0) * 0.85; // dampened: regression showed away SP over-weighted
   const ho = rateOffense(g.home, pitchers.away?.hand)?.score ?? 0;
   const ao = rateOffense(g.away, pitchers.home?.hand)?.score ?? 0;
   const pf = (g.parkFactor || getParkFactor(g.home)).factor;
@@ -5732,6 +6482,30 @@ async function loadMLBOdds() {
   }
 }
 
+// ── MLB alternate spreads (dog -1.5 odds, fetched once per day) ───────────────
+let mlbAltOddsMap = new Map(); // "normHome|normAway" → { homeMinus15, awayMinus15 }
+
+async function loadMLBAltOdds() {
+  if (!cfg.oddsGistId) return;
+  const dateStr = mlbGetDateStr();
+  const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/mlb-alt-odds-${isoDate}.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return;
+    const data = await r.json();
+    mlbAltOddsMap = new Map();
+    for (const g of (Array.isArray(data) ? data : [])) {
+      const key = `${normMLBTeam(g.home)}|${normMLBTeam(g.away)}`;
+      mlbAltOddsMap.set(key, { homeMinus15: g.home_m15 ?? null, awayMinus15: g.away_m15 ?? null });
+    }
+  } catch(e) {
+    // Non-fatal — nuke parlay falls back to ML odds if alt odds unavailable
+  }
+}
+
 // ── MLB First 5 innings model ─────────────────────────────────────────────────
 // F5 = starter-only slice: same pitcher quality + offense signals, scaled 5/9.
 // Bullpen excluded by design — that's the entire point of F5 betting.
@@ -5748,7 +6522,8 @@ function calcMLBF5(g, pitchers) {
   total = Math.max(2.5, Math.min(7.5, Math.round(total * 10) / 10));
 
   // Win probability — starter differential only, smaller home bump
-  let homeRuns = ((9.0 / 2) - ap + ho * 2.0) * F5_SCALE * pf;
+  const apDamp = ap * 0.85; // dampened: away SP over-weighted in win prob (mirrors full-game fix)
+  let homeRuns = ((9.0 / 2) - apDamp + ho * 2.0) * F5_SCALE * pf;
   let awayRuns = ((9.0 / 2) - hp + ao * 2.0) * F5_SCALE * pf * 0.97;
   const runDiff = homeRuns - awayRuns;
   let homeWinProb = 1 / (1 + Math.exp(-runDiff * 0.45));
@@ -5769,7 +6544,7 @@ function showMLBGameModal(gameId) {
   const g = mlbGameList.find(x => x.id === gameId);
   if (!g) return;
 
-  const pitchers = mlbPitcherMap.get(`${normMLBTeam(g.away)}|${normMLBTeam(g.home)}`) || {};
+  const pitchers = mlbPitcherMap.get(`${normMLBTeam(g.away)}|${normMLBTeam(g.home)}|${g._gameNumber || 1}`) || {};
   const ap = pitchers.away;
   const hp = pitchers.home;
 
@@ -5981,9 +6756,27 @@ function showMLBGameModal(gameId) {
   </div>`;
 
   // ── Bullpen ──
+  const homeBpData = mlbBullpenMap.get(normMLBTeam(g.home));
+  const awayBpData = mlbBullpenMap.get(normMLBTeam(g.away));
+  const _bpCls  = s => s == null ? '' : s > 0.25 ? 'gd-edge-pos' : s < -0.25 ? 'gd-edge-neg' : 'gd-edge-neu';
+  const _bpFmt  = s => s == null ? '—' : `${s > 0 ? '+' : ''}${s.toFixed(2)}`;
+  const _eraCls = e => e == null ? '' : e < BP_BASELINE_ERA - 0.25 ? 'gd-edge-pos' : e > BP_BASELINE_ERA + 0.25 ? 'gd-edge-neg' : 'gd-edge-neu';
   html += `<div class="gd-section">
     <div class="gd-section-title">Bullpen</div>
-    <div style="color:var(--muted);font-size:.82rem;padding:.25rem 0">Bullpen data planned for a future sprint.</div>
+    <table class="gd-table">
+      <tr><th>Team</th><th>ERA</th><th>vs lg avg</th></tr>
+      <tr>
+        <td>${esc(g.away)}</td>
+        <td><span class="${_eraCls(awayBpData?.era ?? null)}">${awayBpData?.era != null ? awayBpData.era.toFixed(2) : '—'}</span></td>
+        <td><span class="${_bpCls(awayBpData?.score ?? null)}">${_bpFmt(awayBpData?.score ?? null)}</span></td>
+      </tr>
+      <tr>
+        <td>${esc(g.home)}</td>
+        <td><span class="${_eraCls(homeBpData?.era ?? null)}">${homeBpData?.era != null ? homeBpData.era.toFixed(2) : '—'}</span></td>
+        <td><span class="${_bpCls(homeBpData?.score ?? null)}">${_bpFmt(homeBpData?.score ?? null)}</span></td>
+      </tr>
+    </table>
+    <div style="color:var(--muted);font-size:.68rem;margin-top:.4rem">Lg avg ${BP_BASELINE_ERA.toFixed(2)} ERA · weighted 4/9 of effective pitching in total projection</div>
   </div>`;
 
   document.getElementById('gd-body').innerHTML = html;
