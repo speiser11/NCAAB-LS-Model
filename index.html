@@ -7043,15 +7043,32 @@ let cfbState = { year: null, seasontype: null, week: null };
 // in the selected conference, so cross-conference games appear under both.
 let cfbFilters = { conference: '' };
 
-// Conference resolution mirrors the NCAAB tab: ESPN's groups API is the source
-// of truth (one call per session, cached), because it returns real conference
-// names keyed by team id. The static id map below is only the last-resort
-// fallback, exactly as CONF_ID_MAP is for basketball — ESPN's conference ids
-// are per-sport, so basketball's map does not carry over.
+// ESPN conferenceId → display name. Verified against live ESPN data rather than
+// guessed: every id below was confirmed by joining scoreboard conferenceIds to
+// the conference each of those teams is listed under in ESPN's own standings,
+// across six weeks of the 2026 schedule for both FBS and FCS.
+//
+// Regenerate with:
+//   cdn.espn.com/core/college-football/standings?xhr=1&group=80  (and 81)
+//     → content.standings.groups[].name + .standings.entries[].team.id
+//   cdn.espn.com/core/college-football/schedule?xhr=1&year=YYYY&week=N&group=80
+//     → competitions[].competitors[].team.{id,conferenceId}
+//   then join team.id to get conferenceId → conference name.
+//
+// FCS ids matter here even though the board is FBS-only: week 1 is full of
+// FBS-vs-FCS games, and the FCS side carries its own conferenceId.
 const CFB_CONF_ID_MAP = {
-  '1':'ACC','4':'Big 12','5':'Big Ten','8':'SEC','9':'Pac-12',
-  '12':'Conference USA','15':'Mid-American','17':'Mountain West',
-  '18':'FBS Independents','20':'American','37':'Sun Belt',
+  // FBS
+  '1':'ACC', '4':'Big 12', '5':'Big Ten', '8':'SEC', '9':'Pac-12',
+  '12':'Conference USA', '15':'Mid-American', '17':'Mountain West',
+  '18':'FBS Independents', '37':'Sun Belt', '151':'American',
+  // FCS
+  '20':'Big Sky', '21':'Missouri Valley', '22':'Ivy League', '24':'MEAC',
+  '25':'Northeast', '27':'Patriot League', '28':'Pioneer', '29':'Southern',
+  '30':'Southland', '31':'SWAC', '32':'FCS Independents', '48':'CAA',
+  '177':'United Athletic', '179':'Ohio Valley',
+  // Division II opponents that occasionally appear
+  '104':'CIAA', '136':'SIAC', '139':'South Atlantic',
 };
 
 let cfbTeamIdToConf = {};   // ESPN team id → conference name (from groups API)
@@ -7066,18 +7083,26 @@ async function loadCFBConferences() {
     );
     const d = await r.json();
     const map = {};
-    // groups[] = divisions (FBS/FCS) → children[] = conferences → teams[]
-    (d.groups || []).forEach(division => {
-      (division.children || []).forEach(conf => {
-        const confName = _cleanConfName(conf.name);
-        (conf.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
-        (conf.children || []).forEach(sub => {
-          (sub.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
-        });
-      });
-    });
-    cfbTeamIdToConf = map;
-    sessionStorage.setItem('espn_cfb_team_confs_v1', JSON.stringify(map));
+    // Football nests differently from basketball (and ESPN has changed the shape
+    // before), so walk for any node that carries teams rather than assuming a
+    // fixed groups → children → teams depth. `inherited` is the nearest
+    // enclosing conference name, so teams under a division sub-group still get
+    // the conference above them.
+    const walk = (node, inherited) => {
+      if (!node || typeof node !== 'object') return;
+      const name = node.name ? _cleanConfName(node.name) : inherited;
+      (node.teams || []).forEach(t => { if (t && t.id) map[String(t.id)] = name; });
+      (node.children || []).forEach(child => walk(child, name));
+    };
+    (d.groups || []).forEach(g => walk(g, null));
+    // Only trust it if it actually resolved something; an empty or malformed
+    // response must not overwrite a good cache or mask the static map.
+    if (Object.keys(map).length) {
+      cfbTeamIdToConf = map;
+      sessionStorage.setItem('espn_cfb_team_confs_v1', JSON.stringify(map));
+    } else {
+      console.info('[CFB] groups API returned no teams — using the static conference map');
+    }
   } catch(e) {
     cfbTeamIdToConf = {};   // falls back to the payload name, then the static map
     console.warn('loadCFBConferences failed:', e.message);
