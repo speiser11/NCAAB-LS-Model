@@ -7043,32 +7043,57 @@ let cfbState = { year: null, seasontype: null, week: null };
 // in the selected conference, so cross-conference games appear under both.
 let cfbFilters = { conference: '' };
 
-// ESPN tags college competitors with a numeric conferenceId rather than a name.
-// These are ESPN's FBS group ids. Anything not listed falls through to a
-// literal "Conf <id>" label — visibly unresolved, so a wrong or new id shows up
-// as something to fix instead of silently mislabelling a team's conference.
-const CFB_CONF_NAMES = {
-  1:  'ACC',
-  4:  'Big 12',
-  5:  'Big Ten',
-  8:  'SEC',
-  9:  'Pac-12',
-  12: 'Conference USA',
-  15: 'Mid-American',
-  17: 'Mountain West',
-  18: 'FBS Independents',
-  20: 'American',
-  37: 'Sun Belt',
+// Conference resolution mirrors the NCAAB tab: ESPN's groups API is the source
+// of truth (one call per session, cached), because it returns real conference
+// names keyed by team id. The static id map below is only the last-resort
+// fallback, exactly as CONF_ID_MAP is for basketball — ESPN's conference ids
+// are per-sport, so basketball's map does not carry over.
+const CFB_CONF_ID_MAP = {
+  '1':'ACC','4':'Big 12','5':'Big Ten','8':'SEC','9':'Pac-12',
+  '12':'Conference USA','15':'Mid-American','17':'Mountain West',
+  '18':'FBS Independents','20':'American','37':'Sun Belt',
 };
+
+let cfbTeamIdToConf = {};   // ESPN team id → conference name (from groups API)
+
+async function loadCFBConferences() {
+  const cached = sessionStorage.getItem('espn_cfb_team_confs_v1');
+  if (cached) { cfbTeamIdToConf = JSON.parse(cached); return; }
+  try {
+    const r = await fetch(
+      'https://site.api.espn.com/apis/site/v2/sports/football/college-football/groups?limit=100',
+      { signal: AbortSignal.timeout(6000) }
+    );
+    const d = await r.json();
+    const map = {};
+    // groups[] = divisions (FBS/FCS) → children[] = conferences → teams[]
+    (d.groups || []).forEach(division => {
+      (division.children || []).forEach(conf => {
+        const confName = _cleanConfName(conf.name);
+        (conf.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
+        (conf.children || []).forEach(sub => {
+          (sub.teams || []).forEach(t => { if (t.id) map[String(t.id)] = confName; });
+        });
+      });
+    });
+    cfbTeamIdToConf = map;
+    sessionStorage.setItem('espn_cfb_team_confs_v1', JSON.stringify(map));
+  } catch(e) {
+    cfbTeamIdToConf = {};   // falls back to the payload name, then the static map
+    console.warn('loadCFBConferences failed:', e.message);
+  }
+}
 
 function cfbConfOf(competitor) {
   const t = competitor?.team || {};
-  // Prefer a name if ESPN supplies one — always correct, no mapping needed.
+  const byTeamId = t.id && cfbTeamIdToConf[String(t.id)];
+  if (byTeamId) return byTeamId;
+  // Some payloads carry a name inline — also authoritative, no mapping needed.
   const named = t.conferenceName || t.conference?.name || t.conference?.shortName;
-  if (named) return String(named);
+  if (named) return _cleanConfName(String(named));
   const id = t.conferenceId ?? competitor?.conferenceId;
   if (id == null || id === '') return '';
-  return CFB_CONF_NAMES[Number(id)] || `Conf ${id}`;
+  return CFB_CONF_ID_MAP[String(id)] || `Conf ${id}`;
 }
 
 function setCFBConference(c) {
@@ -7098,6 +7123,7 @@ async function cfbRefresh() {
   if (el) el.innerHTML = '<div class="loading">Loading…</div>';
   try {
     await loadModelConfig();
+    await loadCFBConferences();   // before the board, so conferences resolve on first paint
     await loadCFBESPN();
     await loadCFBOdds();
   } catch(e) {
