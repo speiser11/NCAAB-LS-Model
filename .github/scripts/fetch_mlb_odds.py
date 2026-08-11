@@ -9,6 +9,8 @@ Fetches MLB odds from The Odds API and pushes to Gist.
 import json, urllib.request, urllib.parse, os, sys
 from datetime import datetime, timezone
 
+import gist_api
+
 # ── Env ───────────────────────────────────────────────────────────────────────
 api_key  = os.environ['ODDS_API_KEY']
 gist_id  = os.environ['GIST_ID']
@@ -29,19 +31,7 @@ def gist_fetch(filename):
         return None
 
 def gist_patch(filename, data):
-    body = json.dumps({'files': {filename: {'content': json.dumps(data)}}}).encode()
-    req  = urllib.request.Request(
-        f'https://api.github.com/gists/{gist_id}',
-        data=body, method='PATCH',
-        headers={
-            'Authorization': f'token {gist_pat}',
-            'Content-Type':  'application/json',
-            'Accept':        'application/vnd.github.v3+json',
-            'User-Agent':    'fetch-mlb-odds',
-        }
-    )
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return r.status
+    return gist_api.patch(gist_id, gist_pat, filename, json.dumps(data), 'fetch-mlb-odds')
 
 def odds_get(path, params):
     params['apiKey'] = api_key

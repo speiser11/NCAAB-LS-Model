@@ -1,6 +1,8 @@
 import json, urllib.request, os, sys
 from datetime import datetime, timezone
 
+import gist_api
+
 gist_id  = os.environ['GIST_ID']
 gist_pat = os.environ['GIST_PAT']
 date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -16,19 +18,7 @@ def gist_fetch(filename):
         return None
 
 def gist_patch(filename, data):
-    body = json.dumps({'files': {filename: {'content': json.dumps(data)}}}).encode()
-    req = urllib.request.Request(
-        f'https://api.github.com/gists/{gist_id}',
-        data=body, method='PATCH',
-        headers={
-            'Authorization': f'token {gist_pat}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'lock-odds-workflow',
-        }
-    )
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return r.status
+    return gist_api.patch(gist_id, gist_pat, filename, json.dumps(data), 'lock-odds-workflow')
 
 live_raw = gist_fetch(f'odds-{date_str}.json')
 if live_raw is None:
