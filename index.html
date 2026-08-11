@@ -1108,6 +1108,7 @@ input[type=date] {
   padding:.3rem 1.15rem;display:flex;justify-content:space-between;align-items:center;
 }
 .cfb-day-count{opacity:.6;}
+.cfb-conf-select{max-width:11rem;}
 .mlb-opp-hot{color:var(--red)!important;} .mlb-opp-easy{color:var(--green)!important;}
 .mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
 .mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
@@ -1266,6 +1267,10 @@ input[type=date] {
       <button class="icon-btn" onclick="cfbNextWeek()" title="Next week">›</button>
     </div>
     <div class="mlb-sub-nav-right">
+      <select class="mobile-select cfb-conf-select" id="cfb-conf"
+              onchange="setCFBConference(this.value)" title="Filter by conference">
+        <option value="">All Conferences</option>
+      </select>
       <button class="icon-btn" onclick="cfbRefresh()" title="Refresh CFB data">↻</button>
     </div>
   </div>
@@ -7034,6 +7039,42 @@ const CFB_LIMIT = 300;
 let cfbGameList = [];
 let cfbLoaded = false;
 let cfbState = { year: null, seasontype: null, week: null };
+// Mirrors the NCAAB tab's filters.conference — a game shows if either side is
+// in the selected conference, so cross-conference games appear under both.
+let cfbFilters = { conference: '' };
+
+// ESPN tags college competitors with a numeric conferenceId rather than a name.
+// These are ESPN's FBS group ids. Anything not listed falls through to a
+// literal "Conf <id>" label — visibly unresolved, so a wrong or new id shows up
+// as something to fix instead of silently mislabelling a team's conference.
+const CFB_CONF_NAMES = {
+  1:  'ACC',
+  4:  'Big 12',
+  5:  'Big Ten',
+  8:  'SEC',
+  9:  'Pac-12',
+  12: 'Conference USA',
+  15: 'Mid-American',
+  17: 'Mountain West',
+  18: 'FBS Independents',
+  20: 'American',
+  37: 'Sun Belt',
+};
+
+function cfbConfOf(competitor) {
+  const t = competitor?.team || {};
+  // Prefer a name if ESPN supplies one — always correct, no mapping needed.
+  const named = t.conferenceName || t.conference?.name || t.conference?.shortName;
+  if (named) return String(named);
+  const id = t.conferenceId ?? competitor?.conferenceId;
+  if (id == null || id === '') return '';
+  return CFB_CONF_NAMES[Number(id)] || `Conf ${id}`;
+}
+
+function setCFBConference(c) {
+  cfbFilters.conference = c || '';
+  renderCFB();
+}
 
 function cfbWeekLabel() {
   if (!cfbState.week) return 'CFB';
@@ -7093,6 +7134,8 @@ async function loadCFBESPN() {
         awayShort:   away?.team?.shortDisplayName || away?.team?.abbreviation || '',
         homeRank:    parseInt(home?.curatedRank?.current) || 99,
         awayRank:    parseInt(away?.curatedRank?.current) || 99,
+        homeConf:    cfbConfOf(home),
+        awayConf:    cfbConfOf(away),
         homeRecord:  home?.records?.find(x => x.type === 'total')?.summary || home?.records?.[0]?.summary || '',
         awayRecord:  away?.records?.find(x => x.type === 'total')?.summary || away?.records?.[0]?.summary || '',
         homeScore:   home?.score ?? '',
@@ -7105,6 +7148,7 @@ async function loadCFBESPN() {
     });
     // Sort by kickoff so the day grouping below comes out in order.
     cfbGameList.sort((a, b) => new Date(a.time) - new Date(b.time));
+    updateCFBConferenceFilter();
     setSt('st-cfb-games', `Games: ${cfbGameList.length}`, cfbGameList.length ? 'ok' : 'warn');
   } catch(e) {
     setSt('st-cfb-games', 'Games: fetch error', 'err');
@@ -7257,6 +7301,25 @@ function cfbFindOdds(g) {
   return best;
 }
 
+// Rebuilds the dropdown from whatever conferences are actually on this week's
+// board, keeping the current selection if it still has games.
+function updateCFBConferenceFilter() {
+  const sel = document.getElementById('cfb-conf');
+  if (!sel) return;
+  const confs = [...new Set(
+    cfbGameList.flatMap(g => [g.homeConf, g.awayConf]).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+  if (cfbFilters.conference && !confs.includes(cfbFilters.conference)) {
+    cfbFilters.conference = '';   // selection has no games this week
+  }
+  sel.innerHTML =
+    `<option value="">All Conferences</option>` +
+    confs.map(c =>
+      `<option value="${esc(c)}"${cfbFilters.conference === c ? ' selected' : ''}>${esc(c)}</option>`
+    ).join('');
+  sel.style.display = confs.length ? '' : 'none';
+}
+
 function renderCFB() {
   const el = document.getElementById('cfb-game-list');
   if (!el) return;
@@ -7265,9 +7328,23 @@ function renderCFB() {
     return;
   }
 
+  const conf = cfbFilters.conference;
+  const games = conf
+    ? cfbGameList.filter(g => g.homeConf === conf || g.awayConf === conf)
+    : cfbGameList;
+
+  setSt('st-cfb-games',
+    conf ? `Games: ${games.length}/${cfbGameList.length}` : `Games: ${cfbGameList.length}`,
+    games.length ? 'ok' : 'warn');
+
+  if (!games.length) {
+    el.innerHTML = `<div class="loading">No ${esc(conf)} games this week.</div>`;
+    return;
+  }
+
   let matched = 0;
   const byDay = new Map();
-  for (const g of cfbGameList) {
+  for (const g of games) {
     const d   = g.time ? new Date(g.time) : null;
     const key = d ? d.toLocaleDateString([], { weekday:'long', month:'short', day:'numeric' }) : 'TBD';
     if (!byDay.has(key)) byDay.set(key, []);
@@ -7368,8 +7445,8 @@ function renderCFB() {
   // Surface match rate — if the two feeds drift on team names this is where
   // it shows up first, rather than as silently missing lines.
   if (cfbOddsList.length) {
-    const cls = matched === 0 ? 'err' : matched < cfbGameList.length * 0.8 ? 'warn' : 'ok';
-    setSt('st-cfb-odds', `Odds: ${matched}/${cfbGameList.length} matched`, cls);
+    const cls = matched === 0 ? 'err' : matched < games.length * 0.8 ? 'warn' : 'ok';
+    setSt('st-cfb-odds', `Odds: ${matched}/${games.length} matched`, cls);
   }
 }
 
