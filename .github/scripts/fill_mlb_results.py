@@ -8,6 +8,8 @@ Also computes F5 runs from per-inning linescores.
 import json, re, urllib.request, os, sys
 from datetime import datetime, timezone
 
+import gist_api
+
 # ── Env ───────────────────────────────────────────────────────────────────────
 gist_id  = os.environ['GIST_ID']
 gist_pat = os.environ['GIST_PAT']
@@ -31,19 +33,7 @@ def gist_fetch(filename):
         return None
 
 def gist_patch(filename, data):
-    body = json.dumps({'files': {filename: {'content': json.dumps(data, indent=2)}}}).encode()
-    req  = urllib.request.Request(
-        f'https://api.github.com/gists/{gist_id}',
-        data=body, method='PATCH',
-        headers={
-            'Authorization': f'token {gist_pat}',
-            'Content-Type':  'application/json',
-            'Accept':        'application/vnd.github.v3+json',
-            'User-Agent':    'fill-mlb-results',
-        }
-    )
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return r.status
+    return gist_api.patch(gist_id, gist_pat, filename, json.dumps(data, indent=2), 'fill-mlb-results')
 
 # ── Fetch ESPN final scores ───────────────────────────────────────────────────
 def fetch_espn_results(date_str):
