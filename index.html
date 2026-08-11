@@ -1100,6 +1100,14 @@ input[type=date] {
 .mlb-proj-lbl{font-size:.5rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:.4rem;align-self:center;}
 .mlb-odds-pending{text-align:center;font-size:.6rem;color:var(--muted);padding:.25rem 1.15rem;font-style:italic;opacity:.7;}
 .nfl-record{font-size:.65rem;color:var(--muted);font-weight:400;}
+/* CFB runs 50+ games across Tue–Sat, so the list is grouped under day headers. */
+.cfb-day-hdr{
+  position:sticky;top:0;z-index:2;
+  font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border);
+  padding:.3rem 1.15rem;display:flex;justify-content:space-between;align-items:center;
+}
+.cfb-day-count{opacity:.6;}
 .mlb-opp-hot{color:var(--red)!important;} .mlb-opp-easy{color:var(--green)!important;}
 .mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
 .mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
@@ -1141,6 +1149,7 @@ input[type=date] {
   <button class="sp-tab" data-sport="ncaab">NCAAB</button>
   <button class="sp-tab active" data-sport="mlb">MLB</button>
   <button class="sp-tab" data-sport="nfl">NFL</button>
+  <button class="sp-tab" data-sport="cfb">CFB</button>
 </div>
 
 <div id="ncaab-view" style="display:none">
@@ -1248,6 +1257,26 @@ input[type=date] {
     <div id="nfl-game-list" class="game-list"></div>
   </div>
 </div><!-- /#nfl-view -->
+
+<div id="cfb-view" style="display:none">
+  <div class="mlb-sub-nav">
+    <div class="mlb-sub-nav-left">
+      <button class="icon-btn" onclick="cfbPrevWeek()" title="Previous week">‹</button>
+      <span class="mlb-season-tag" id="cfb-week-label">CFB</span>
+      <button class="icon-btn" onclick="cfbNextWeek()" title="Next week">›</button>
+    </div>
+    <div class="mlb-sub-nav-right">
+      <button class="icon-btn" onclick="cfbRefresh()" title="Refresh CFB data">↻</button>
+    </div>
+  </div>
+  <div class="status-bar">
+    <span class="sc" id="st-cfb-games">Games: —</span>
+    <span class="sc" id="st-cfb-odds">Odds: —</span>
+  </div>
+  <div class="container">
+    <div id="cfb-game-list" class="game-list"></div>
+  </div>
+</div><!-- /#cfb-view -->
 
 <!-- Team stats panel -->
 <div class="tm-overlay" id="tm-overlay" onclick="if(event.target===this)closeTeamModal()">
@@ -4263,8 +4292,10 @@ function setSport(sport) {
   document.getElementById('ncaab-view').style.display = sport === 'ncaab' ? '' : 'none';
   document.getElementById('mlb-view').style.display   = sport === 'mlb'   ? '' : 'none';
   document.getElementById('nfl-view').style.display   = sport === 'nfl'   ? '' : 'none';
+  document.getElementById('cfb-view').style.display   = sport === 'cfb'   ? '' : 'none';
   if (sport === 'mlb' && !mlbLoaded) mlbRefresh();
   if (sport === 'nfl' && !nflLoaded) nflRefresh();
+  if (sport === 'cfb' && !cfbLoaded) cfbRefresh();
 }
 window.setSport = setSport; // explicit global in case inline onclick has scope issues
 
@@ -6989,6 +7020,357 @@ function renderNFL() {
         ${!live && !final ? oddsHtml : ''}
       </div>`;
   }).join('');
+}
+
+// ── CFB data (shell) ──────────────────────────────────────────────────────────
+// v1: ESPN schedule/scores + Vegas odds only, no proprietary model yet —
+// same MVP-first shape as the NFL tab.
+const CFB_ESPN_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard';
+const CFB_SEASONTYPE_LABEL = { 1: 'Preseason', 2: 'Week', 3: 'Postseason' };
+// ESPN's college board defaults to a partial slate; group 80 is FBS (I-A), and
+// the default page size is well under a full Saturday.
+const CFB_GROUP = 80;
+const CFB_LIMIT = 300;
+let cfbGameList = [];
+let cfbLoaded = false;
+let cfbState = { year: null, seasontype: null, week: null };
+
+function cfbWeekLabel() {
+  if (!cfbState.week) return 'CFB';
+  const tag = CFB_SEASONTYPE_LABEL[cfbState.seasontype] || 'Week';
+  return tag === 'Week' ? `Week ${cfbState.week}` : `${tag} ${cfbState.week}`;
+}
+
+function cfbPrevWeek() {
+  if (!cfbState.week) return;
+  cfbState.week = Math.max(1, cfbState.week - 1);
+  cfbRefresh();
+}
+function cfbNextWeek() {
+  if (!cfbState.week) return;
+  cfbState.week += 1;
+  cfbRefresh();
+}
+
+async function cfbRefresh() {
+  const el = document.getElementById('cfb-game-list');
+  if (el) el.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    await loadModelConfig();
+    await loadCFBESPN();
+    await loadCFBOdds();
+  } catch(e) {
+    setSt('st-cfb-games', 'Games: error', 'err');
+  }
+  renderCFB();
+  cfbLoaded = true;
+}
+
+async function loadCFBESPN() {
+  try {
+    const params = [`groups=${CFB_GROUP}`, `limit=${CFB_LIMIT}`];
+    if (cfbState.year && cfbState.seasontype && cfbState.week) {
+      params.push(`dates=${cfbState.year}`, `seasontype=${cfbState.seasontype}`, `week=${cfbState.week}`);
+    }
+    const r = await fetch(`${CFB_ESPN_URL}?${params.join('&')}`, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) throw new Error(`ESPN CFB ${r.status}`);
+    const d = await r.json();
+    if (d.season && d.week) {
+      cfbState = { year: d.season.year, seasontype: d.season.type, week: d.week.number };
+    }
+    const lbl = document.getElementById('cfb-week-label');
+    if (lbl) lbl.textContent = cfbWeekLabel();
+    cfbGameList = (d.events || []).map(ev => {
+      const comp = ev.competitions?.[0];
+      const cs   = comp?.competitors || [];
+      const home = cs.find(c => c.homeAway === 'home');
+      const away = cs.find(c => c.homeAway === 'away');
+      return {
+        id:          ev.id,
+        home:        home?.team?.displayName || '',
+        away:        away?.team?.displayName || '',
+        homeShort:   home?.team?.shortDisplayName || home?.team?.abbreviation || '',
+        awayShort:   away?.team?.shortDisplayName || away?.team?.abbreviation || '',
+        homeRank:    parseInt(home?.curatedRank?.current) || 99,
+        awayRank:    parseInt(away?.curatedRank?.current) || 99,
+        homeRecord:  home?.records?.find(x => x.type === 'total')?.summary || home?.records?.[0]?.summary || '',
+        awayRecord:  away?.records?.find(x => x.type === 'total')?.summary || away?.records?.[0]?.summary || '',
+        homeScore:   home?.score ?? '',
+        awayScore:   away?.score ?? '',
+        time:        ev.date,
+        statusName:  comp?.status?.type?.name || '',
+        shortDetail: comp?.status?.type?.shortDetail || '',
+        venue:       comp?.venue?.fullName || '',
+      };
+    });
+    // Sort by kickoff so the day grouping below comes out in order.
+    cfbGameList.sort((a, b) => new Date(a.time) - new Date(b.time));
+    setSt('st-cfb-games', `Games: ${cfbGameList.length}`, cfbGameList.length ? 'ok' : 'warn');
+  } catch(e) {
+    setSt('st-cfb-games', 'Games: fetch error', 'err');
+    console.warn('loadCFBESPN failed:', e.message);
+  }
+}
+
+// ── CFB team-name matching ────────────────────────────────────────────────────
+// Unlike the pro leagues, the two feeds disagree on college names often enough
+// that a single normalized key drops real games. The Odds API abbreviates State
+// as "St" ("Kennesaw St Owls") where ESPN spells it out, and punctuation differs
+// ("Texas A&M", "Saint Mary's"). So each team gets a small set of candidate keys
+// and a game matches if any home key and any away key line up. Anything still
+// unmatched falls through to a token-overlap pass guarded by kickoff time —
+// showing no line is fine, showing the wrong game's line is not.
+// Strip accents first — ESPN writes "San José State", the Odds API "San Jose St",
+// and dropping the accented letter entirely would misalign the two.
+function cfbFold(s) {
+  return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Schools the two feeds spell differently enough that neither the St/State swap
+// nor token overlap bridges them. Kept deliberately small and one-directional
+// (short form → long form); if this grows past a dozen entries it should move
+// into a data/cfb-team-aliases.json alongside the NCAAB one.
+const CFB_SCHOOL_ALIASES = [
+  [/\bnc state\b/g,        'north carolina state'],
+  [/\bn c state\b/g,       'north carolina state'],
+  [/\bpitt\b/g,            'pittsburgh'],
+  [/\bumass\b/g,           'massachusetts'],
+  [/\bsouthern miss\b/g,   'southern mississippi'],
+  [/\bul monroe\b/g,       'louisiana monroe'],
+  [/\bulm\b/g,             'louisiana monroe'],
+  [/\bfiu\b/g,             'florida international'],
+  [/\bfau\b/g,             'florida atlantic'],
+];
+
+function cfbCanon(base) {
+  let s = base;
+  for (const [re, to] of CFB_SCHOOL_ALIASES) s = s.replace(re, to);
+  return s;
+}
+
+function cfbBase(name) {
+  return cfbFold(name).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function cfbNameVariants(name) {
+  const base = cfbBase(name);
+  if (!base) return [];
+  const out = new Set();
+  const add = s => { const k = s.replace(/ /g, ''); if (k) out.add(k); };
+  for (const form of new Set([base, cfbCanon(base)])) {
+    add(form);
+    add(form.replace(/\bst\b/g, 'state'));
+    add(form.replace(/\bstate\b/g, 'st'));
+  }
+  return [...out];
+}
+
+function cfbTokens(name) {
+  return new Set(cfbCanon(cfbBase(name)).split(' ').filter(t => t.length > 1));
+}
+
+function cfbOverlap(a, b) {
+  if (!a.size || !b.size) return 0;
+  let hit = 0;
+  for (const t of a) if (b.has(t)) hit++;
+  return hit / Math.min(a.size, b.size);
+}
+
+let cfbOddsMap  = new Map();   // "homeKey|awayKey" → odds
+let cfbOddsList = [];          // fallback scan: { homeTokens, awayTokens, kickoff, odds }
+
+async function loadCFBOdds() {
+  cfbOddsMap  = new Map();
+  cfbOddsList = [];
+  if (!cfg.oddsGistId) return;
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/cfb-odds.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) { setSt('st-cfb-odds', 'Odds: none yet', 'warn'); return; }
+    const data = await r.json();
+    for (const game of (Array.isArray(data) ? data : [])) {
+      const markets = game.bookmakers?.[0]?.markets ?? [];
+      const h2h     = markets.find(m => m.key === 'h2h');
+      const spreads = markets.find(m => m.key === 'spreads');
+      const totals  = markets.find(m => m.key === 'totals');
+      if (!h2h && !spreads && !totals) continue;
+      const homeSp = spreads?.outcomes?.find(o => o.name === game.home_team);
+      const awaySp = spreads?.outcomes?.find(o => o.name === game.away_team);
+      const over   = totals?.outcomes?.find(o => o.name === 'Over');
+      const odds = {
+        book:         game.bookmakers?.[0]?.title ?? null,
+        homeML:       h2h?.outcomes?.find(o => o.name === game.home_team)?.price ?? null,
+        awayML:       h2h?.outcomes?.find(o => o.name === game.away_team)?.price ?? null,
+        homeSpread:   homeSp?.point ?? null,
+        homeSpreadML: homeSp?.price ?? null,
+        awaySpread:   awaySp?.point ?? null,
+        awaySpreadML: awaySp?.price ?? null,
+        totalLine:    over?.point   ?? null,
+        totalOverML:  over?.price   ?? null,
+      };
+      for (const hk of cfbNameVariants(game.home_team)) {
+        for (const ak of cfbNameVariants(game.away_team)) {
+          cfbOddsMap.set(`${hk}|${ak}`, odds);
+        }
+      }
+      cfbOddsList.push({
+        homeTokens: cfbTokens(game.home_team),
+        awayTokens: cfbTokens(game.away_team),
+        kickoff:    new Date(game.commence_time).getTime(),
+        odds,
+      });
+    }
+    setSt('st-cfb-odds', `Odds: ${cfbOddsList.length} games`, cfbOddsList.length ? 'ok' : 'warn');
+  } catch(e) {
+    console.warn('loadCFBOdds failed:', e.message);
+    setSt('st-cfb-odds', 'Odds: fetch error', 'err');
+  }
+}
+
+function cfbFindOdds(g) {
+  for (const hk of cfbNameVariants(g.home)) {
+    for (const ak of cfbNameVariants(g.away)) {
+      const hit = cfbOddsMap.get(`${hk}|${ak}`);
+      if (hit) return hit;
+    }
+  }
+  // Fallback: both sides must overlap strongly AND kick off within a day of
+  // each other, so a rematch later in the season can't be picked up by mistake.
+  const homeT = cfbTokens(g.home);
+  const awayT = cfbTokens(g.away);
+  const kick  = new Date(g.time).getTime();
+  let best = null, bestScore = 0;
+  for (const cand of cfbOddsList) {
+    if (Number.isFinite(kick) && Number.isFinite(cand.kickoff) &&
+        Math.abs(kick - cand.kickoff) > 36 * 3600 * 1000) continue;
+    const hs = cfbOverlap(homeT, cand.homeTokens);
+    const as = cfbOverlap(awayT, cand.awayTokens);
+    if (hs < 0.5 || as < 0.5) continue;
+    // Both sides at exactly 0.5 means each matched on the mascot alone
+    // ("Pitt Panthers" vs "Florida International Panthers"). Require at least
+    // one side to agree on the school itself before trusting the pair.
+    if (Math.max(hs, as) < 0.67) continue;
+    if (hs + as > bestScore) { bestScore = hs + as; best = cand.odds; }
+  }
+  return best;
+}
+
+function renderCFB() {
+  const el = document.getElementById('cfb-game-list');
+  if (!el) return;
+  if (!cfbGameList.length) {
+    el.innerHTML = '<div class="loading">No games found for this week.</div>';
+    return;
+  }
+
+  let matched = 0;
+  const byDay = new Map();
+  for (const g of cfbGameList) {
+    const d   = g.time ? new Date(g.time) : null;
+    const key = d ? d.toLocaleDateString([], { weekday:'long', month:'short', day:'numeric' }) : 'TBD';
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(g);
+  }
+
+  const fmtSigned = (n) => n == null ? '—' : `${n > 0 ? '+' : ''}${n}`;
+  const sections = [];
+
+  for (const [dayLabel, games] of byDay) {
+    const cards = games.map(g => {
+      const odds  = cfbFindOdds(g);
+      if (odds) matched++;
+      const live  = g.statusName === 'STATUS_IN_PROGRESS';
+      const final = g.statusName === 'STATUS_FINAL';
+      const gameTime = g.time
+        ? new Date(g.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : '';
+
+      const bothRanked = g.awayRank <= 25 && g.homeRank <= 25;
+      const rankedCls  = (g.awayRank <= 25 || g.homeRank <= 25) ? ' ranked-game' : '';
+      const awayRankBadge = g.awayRank <= 25 ? `<span class="rank-badge">#${g.awayRank}</span> ` : '';
+      const homeRankBadge = g.homeRank <= 25 ? `<span class="rank-badge">#${g.homeRank}</span> ` : '';
+
+      let statusBadge;
+      if (live) {
+        statusBadge = `<span class="status-badge badge-live">● LIVE · ${esc(g.shortDetail)}</span>`;
+      } else if (final) {
+        statusBadge = `<span class="status-badge badge-final">Final · ${esc(String(g.awayScore))}–${esc(String(g.homeScore))}</span>`;
+      } else {
+        statusBadge = `<span class="status-badge badge-upcoming">${esc(gameTime)}</span>`;
+      }
+
+      let scoreHtml = '';
+      if (live || final) {
+        const hs = parseInt(g.homeScore) || 0;
+        const as = parseInt(g.awayScore) || 0;
+        const homeUp = hs > as, awayUp = as > hs;
+        scoreHtml = `
+          <div class="live-score-widget">
+            <div class="live-score-row">
+              <div class="live-score-team">
+                <span class="live-score-name">${esc(g.away)}</span>
+                <span class="live-score-pts${awayUp ? ' winning' : homeUp ? ' losing' : ''}">${as}</span>
+              </div>
+              <span class="live-score-sep">—</span>
+              <div class="live-score-team live-score-team-home">
+                <span class="live-score-name">${esc(g.home)}</span>
+                <span class="live-score-pts${homeUp ? ' winning' : awayUp ? ' losing' : ''}">${hs}</span>
+              </div>
+            </div>
+            ${live ? `<div class="live-score-clock">${esc(g.shortDetail)}</div>` : ''}
+          </div>`;
+      }
+
+      const oddsHtml = odds
+        ? `<table class="mlb-diff-table">
+            <tr><th></th><th>Spread</th><th>ML</th><th>Total</th></tr>
+            <tr>
+              <td>${esc(g.awayShort || g.away)}</td>
+              <td>${fmtSigned(odds.awaySpread)}</td>
+              <td>${fmtSigned(odds.awayML)}</td>
+              <td rowspan="2" style="vertical-align:middle">${odds.totalLine != null ? `o/u ${odds.totalLine}` : '—'}</td>
+            </tr>
+            <tr>
+              <td>${esc(g.homeShort || g.home)}</td>
+              <td>${fmtSigned(odds.homeSpread)}</td>
+              <td>${fmtSigned(odds.homeML)}</td>
+            </tr>
+          </table>`
+        : '<div class="mlb-odds-pending">Odds not yet posted</div>';
+
+      return `
+        <div class="card${rankedCls}" id="cfb-game-${g.id}">
+          <div class="card-hd">
+            <div class="card-hd-teams">
+              <span class="team-away">${awayRankBadge}${esc(g.away)}${g.awayRecord ? ` <span class="nfl-record">(${esc(g.awayRecord)})</span>` : ''}</span>
+              <span class="card-vs">@</span>
+              <span class="team-home">${homeRankBadge}${esc(g.home)}${g.homeRecord ? ` <span class="nfl-record">(${esc(g.homeRecord)})</span>` : ''}</span>
+              ${bothRanked ? '<span class="ranked-badge">Ranked Matchup</span>' : ''}
+            </div>
+            <div>${statusBadge}</div>
+          </div>
+          ${scoreHtml}
+          ${!live && !final ? oddsHtml : ''}
+        </div>`;
+    }).join('');
+
+    sections.push(
+      `<div class="cfb-day-hdr"><span>${esc(dayLabel)}</span>` +
+      `<span class="cfb-day-count">${games.length} game${games.length === 1 ? '' : 's'}</span></div>` +
+      cards
+    );
+  }
+
+  el.innerHTML = sections.join('');
+
+  // Surface match rate — if the two feeds drift on team names this is where
+  // it shows up first, rather than as silently missing lines.
+  if (cfbOddsList.length) {
+    const cls = matched === 0 ? 'err' : matched < cfbGameList.length * 0.8 ? 'warn' : 'ok';
+    setSt('st-cfb-odds', `Odds: ${matched}/${cfbGameList.length} matched`, cls);
+  }
 }
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers
