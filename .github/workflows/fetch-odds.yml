@@ -13,6 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # TEMPORARY — CFBD recon round 2, then gets deleted.
+      - name: TEMP explore CFBD 2
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: python3 .github/scripts/_tmp_cfbd_recon2.py
+
       - name: Fetch and push to Gist
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
