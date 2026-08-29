@@ -1109,6 +1109,22 @@ input[type=date] {
 }
 .cfb-day-count{opacity:.6;}
 .cfb-conf-select{max-width:11rem;}
+.cfb-pick{
+  display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+  padding:.35rem 1.15rem .5rem;font-family:'DM Mono',monospace;font-size:.68rem;
+}
+.cfb-pick-tier{
+  font-size:.56rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;
+  padding:.12rem .4rem;border-radius:4px;
+}
+.cfb-pick-take .cfb-pick-tier{background:rgba(45,160,95,.14);color:var(--green);border:1px solid rgba(45,160,95,.35);}
+.cfb-pick-lean .cfb-pick-tier{background:rgba(245,166,35,.12);color:var(--yellow);border:1px solid rgba(245,166,35,.3);}
+.cfb-pick-side{font-weight:600;color:var(--text);}
+.cfb-pick-edge{color:var(--muted);font-size:.6rem;margin-left:auto;}
+.cfb-no-model{
+  padding:.2rem 1.15rem .45rem;font-size:.58rem;color:var(--muted);
+  font-style:italic;opacity:.7;
+}
 .mlb-opp-hot{color:var(--red)!important;} .mlb-opp-easy{color:var(--green)!important;}
 .mlb-wp-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 1.15rem .1rem;gap:.5rem;}
 .mlb-wp-team{display:flex;flex-direction:column;align-items:center;gap:.1rem;flex:1;}
@@ -1277,6 +1293,7 @@ input[type=date] {
   <div class="status-bar">
     <span class="sc" id="st-cfb-games">Games: —</span>
     <span class="sc" id="st-cfb-odds">Odds: —</span>
+    <span class="sc" id="st-cfb-model">Model: —</span>
   </div>
   <div class="container">
     <div id="cfb-game-list" class="game-list"></div>
@@ -1518,6 +1535,12 @@ let cfg = {
   totalOffset: -5,
   lockHour:    10,
   oddsGistId:  '',
+  cfbScale:    1.05,   // FPI-to-market scale, fitted on the 2026 week-1 board
+  cfbHfa:      3.5,    // home-field points, fitted alongside the scale
+  cfbSigma:    16,     // SD of CFB game margin, for turning a spread into a win %
+  cfbTakeEdge: 6,      // |model − Vegas| in points to call a Take
+  cfbLeanEdge: 3.5,    // ...and to call a Lean
+  cfbMaxEdge:  10,     // beyond this, assume a bad rating rather than a bad line
 };
 
 // ══════════════════════════════════════════════════════════
@@ -1668,6 +1691,12 @@ async function loadModelConfig() {
     cfg.totalOffset = c.totalOffset ?? cfg.totalOffset;
     cfg.oddsGistId  = c.oddsGistId  ?? '';
     cfg.lockHour    = c.lockHour    ?? cfg.lockHour;
+    cfg.cfbScale    = c.cfbScale    ?? cfg.cfbScale;
+    cfg.cfbHfa      = c.cfbHfa      ?? cfg.cfbHfa;
+    cfg.cfbSigma    = c.cfbSigma    ?? cfg.cfbSigma;
+    cfg.cfbTakeEdge = c.cfbTakeEdge ?? cfg.cfbTakeEdge;
+    cfg.cfbLeanEdge = c.cfbLeanEdge ?? cfg.cfbLeanEdge;
+    cfg.cfbMaxEdge  = c.cfbMaxEdge  ?? cfg.cfbMaxEdge;
   } catch(e) {
     console.warn('[TrueLine] model-config fetch failed, using defaults:', e.message);
     setSt('st-odds', 'Config load failed — centralized odds unavailable', 'warn');
@@ -7150,7 +7179,7 @@ async function cfbRefresh() {
     await loadModelConfig();
     await loadCFBConferences();   // before the board, so conferences resolve on first paint
     await loadCFBESPN();
-    await loadCFBOdds();
+    await Promise.all([loadCFBOdds(), loadCFBFpi()]);
   } catch(e) {
     setSt('st-cfb-games', 'Games: error', 'err');
   }
@@ -7187,6 +7216,8 @@ async function loadCFBESPN() {
         awayRank:    parseInt(away?.curatedRank?.current) || 99,
         homeConf:    cfbConfOf(home),
         awayConf:    cfbConfOf(away),
+        homeId:      home?.team?.id || '',
+        awayId:      away?.team?.id || '',
         homeRecord:  home?.records?.find(x => x.type === 'total')?.summary || home?.records?.[0]?.summary || '',
         awayRecord:  away?.records?.find(x => x.type === 'total')?.summary || away?.records?.[0]?.summary || '',
         homeScore:   home?.score ?? '',
@@ -7324,6 +7355,84 @@ async function loadCFBOdds() {
   }
 }
 
+// ── CFB model ─────────────────────────────────────────────────────────────────
+// Projection is FPI-based: FPI is a neutral-field points-above-average rating,
+// so scaled rating difference plus home field gives a projected margin. Scale
+// and home-field were fitted against the week-1 market (60 games, r^2 = 0.95,
+// MAE 2.7 pts) rather than assumed, and both live in model-config.json.
+//
+// Two things this model is not. It has no injury, weather, travel or
+// returning-production input, and it was calibrated on the same market it is
+// being compared against — so it will agree with Vegas most of the time by
+// construction, and its disagreements are the only thing worth looking at.
+// Thresholds are deliberately wide for that reason.
+let cfbFpi = {};   // ESPN team id → { fpi, name, short }
+
+async function loadCFBFpi() {
+  cfbFpi = {};
+  if (!cfg.oddsGistId) return;
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/cfb-fpi.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(8000) }
+    );
+    if (!r.ok) return;
+    const d = await r.json();
+    cfbFpi = d.teams || {};
+  } catch(e) {
+    console.warn('loadCFBFpi failed:', e.message);
+  }
+}
+
+// Normal CDF, for turning a projected margin into a win probability.
+function _normCdf(z) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989423 * Math.exp(-z * z / 2);
+  const p = d * t * (1.330274 * t ** 4 - 1.821256 * t ** 3 + 1.781478 * t * t - 0.356538 * t + 0.319381);
+  return z > 0 ? 1 - p : p;
+}
+
+/**
+ * Returns the model's view of a game, or null when either side is unrated
+ * (FCS opponents have no FPI — those games get Vegas only and no pick).
+ *   homeSpread  model's spread for the home team, same sign as Vegas
+ *   edge        model spread − Vegas spread, in points
+ *   pick        which side the edge favours, with the number it is laid at
+ *   tier        'take' | 'lean' | null
+ */
+function cfbModel(g, odds) {
+  const h = cfbFpi[String(g.homeId)], a = cfbFpi[String(g.awayId)];
+  if (!h || !a) return null;
+  const margin     = cfg.cfbScale * (h.fpi - a.fpi) + cfg.cfbHfa;  // home margin
+  const homeSpread = -margin;
+  const homeWinProb = _normCdf(margin / cfg.cfbSigma);
+  const out = { margin, homeSpread, homeWinProb, edge: null, pick: null, tier: null };
+  if (!odds || odds.homeSpread == null) return out;
+
+  out.edge = homeSpread - odds.homeSpread;
+  // edge > 0 → model makes the home team weaker than the market does → away side
+  const absEdge = Math.abs(out.edge);
+  // Typical disagreement with the market is ~3 points. Past roughly 3.5 sigma the
+  // likelier explanation is a bad rating than a mispriced game — week 1 is full of
+  // teams with no meaningful rating yet, FCS-to-FBS movers especially. Flag those
+  // rather than betting them.
+  out.suspect = absEdge > cfg.cfbMaxEdge;
+  out.tier = out.suspect ? null
+           : absEdge >= cfg.cfbTakeEdge ? 'take'
+           : absEdge >= cfg.cfbLeanEdge ? 'lean' : null;
+  if (out.tier) {
+    const takeHome = out.edge < 0;
+    const line = takeHome ? odds.homeSpread : odds.awaySpread;
+    out.pick = {
+      side: takeHome ? g.home : g.away,
+      short: takeHome ? (g.homeShort || g.home) : (g.awayShort || g.away),
+      line,
+      edge: absEdge,
+    };
+  }
+  return out;
+}
+
 function cfbFindOdds(g) {
   for (const hk of cfbNameVariants(g.home)) {
     for (const ak of cfbNameVariants(g.away)) {
@@ -7393,7 +7502,8 @@ function renderCFB() {
     return;
   }
 
-  let matched = 0;
+  let matched = 0, picks = 0;
+  const round1 = n => Math.round(n * 10) / 10;
   const byDay = new Map();
   for (const g of games) {
     const d   = g.time ? new Date(g.time) : null;
@@ -7451,22 +7561,41 @@ function renderCFB() {
           </div>`;
       }
 
+      const mdl = cfbModel(g, odds);
+      if (mdl?.tier) picks++;
+
       const oddsHtml = odds
         ? `<table class="mlb-diff-table">
-            <tr><th></th><th>Spread</th><th>ML</th><th>Total</th></tr>
+            <tr><th></th><th>Vegas</th><th>Model</th><th>ML</th><th>Total</th></tr>
             <tr>
               <td>${esc(g.awayShort || g.away)}</td>
               <td>${fmtSigned(odds.awaySpread)}</td>
+              <td>${mdl ? fmtSigned(round1(-mdl.homeSpread)) : '—'}</td>
               <td>${fmtSigned(odds.awayML)}</td>
               <td rowspan="2" style="vertical-align:middle">${odds.totalLine != null ? `o/u ${odds.totalLine}` : '—'}</td>
             </tr>
             <tr>
               <td>${esc(g.homeShort || g.home)}</td>
               <td>${fmtSigned(odds.homeSpread)}</td>
+              <td>${mdl ? fmtSigned(round1(mdl.homeSpread)) : '—'}</td>
               <td>${fmtSigned(odds.homeML)}</td>
             </tr>
           </table>`
         : '<div class="mlb-odds-pending">Odds not yet posted</div>';
+
+      let pickHtml = '';
+      if (mdl?.tier) {
+        const p = mdl.pick;
+        pickHtml = `<div class="cfb-pick cfb-pick-${mdl.tier}">
+          <span class="cfb-pick-tier">${mdl.tier === 'take' ? 'Take' : 'Lean'}</span>
+          <span class="cfb-pick-side">${esc(p.short)} ${fmtSigned(p.line)}</span>
+          <span class="cfb-pick-edge">${p.edge.toFixed(1)} pt edge</span>
+        </div>`;
+      } else if (mdl?.suspect) {
+        pickHtml = `<div class="cfb-no-model">Model is ${Math.abs(mdl.edge).toFixed(1)} pts off the market — treating the rating as unreliable, no pick</div>`;
+      } else if (odds && !mdl) {
+        pickHtml = '<div class="cfb-no-model">No rating for one side — Vegas only</div>';
+      }
 
       return `
         <div class="card${rankedCls}" id="cfb-game-${g.id}">
@@ -7481,6 +7610,7 @@ function renderCFB() {
           </div>
           ${scoreHtml}
           ${!live && !final ? oddsHtml : ''}
+          ${!live && !final ? pickHtml : ''}
         </div>`;
     }).join('');
 
@@ -7499,6 +7629,10 @@ function renderCFB() {
     const cls = matched === 0 ? 'err' : matched < games.length * 0.8 ? 'warn' : 'ok';
     setSt('st-cfb-odds', `Odds: ${matched}/${games.length} matched`, cls);
   }
+  const rated = Object.keys(cfbFpi).length;
+  setSt('st-cfb-model',
+    rated ? `Model: ${picks} pick${picks === 1 ? '' : 's'}` : 'Model: ratings unavailable',
+    rated ? (picks ? 'ok' : 'warn') : 'err');
 }
 
 // Edge tooltip — fixed-position to escape overflow-clipped containers

@@ -3,5 +3,11 @@
   "scoreScale": 1.04,
   "totalOffset": -5,
   "oddsGistId": "6bb753ed0b2dfefc120929d6a65cf082",
-  "lockHour": 10
+  "lockHour": 10,
+  "cfbScale": 1.05,
+  "cfbHfa": 3.5,
+  "cfbSigma": 16,
+  "cfbTakeEdge": 6,
+  "cfbLeanEdge": 3.5,
+  "cfbMaxEdge": 10
 }
