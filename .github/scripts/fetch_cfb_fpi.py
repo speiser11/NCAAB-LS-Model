@@ -75,3 +75,46 @@ try:
 except Exception as e:
     print(f'ERROR: Gist PATCH failed: {e}', file=sys.stderr)
     sys.exit(1)
+
+# ── Weekly snapshot, for backtesting ──────────────────────────────────────────
+# The live file above is overwritten every run, so the ratings a pick was
+# actually made from are gone within half an hour. Backtesting against
+# end-of-season ratings instead is lookahead bias — the ratings would already
+# know how the games turned out, and the model would look far better than it is.
+#
+# So keep one immutable snapshot per week, written the first time this runs in a
+# new week and never touched again. It cannot be reconstructed after the fact,
+# which is why it is worth doing before the analysis rather than after.
+def gist_fetch(filename):
+    url = f'https://gist.githubusercontent.com/loganthein/{gist_id}/raw/{filename}'
+    try:
+        req = urllib.request.Request(url, headers={'Cache-Control': 'no-cache'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+    except Exception:
+        return None
+
+
+try:
+    req = urllib.request.Request('https://cdn.espn.com/core/college-football/scoreboard?xhr=1',
+                                 headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        sb = json.loads(r.read())
+    sbd  = sb.get('content', {}).get('sbData', {})
+    week = (sbd.get('week') or {}).get('number')
+    styp = (sbd.get('season') or {}).get('type')
+except Exception as e:
+    week = styp = None
+    print(f'Note: could not determine current week ({e}) — skipping snapshot.')
+
+if week:
+    snap = f'cfb-fpi-{season}-t{styp or 2}w{int(week):02d}.json'
+    if gist_fetch(snap) is not None:
+        print(f'Snapshot {snap} already exists — leaving it untouched.')
+    else:
+        try:
+            print(f'Writing weekly snapshot {snap}...')
+            print(f'Gist PATCH status: {gist_patch(snap, payload)}')
+        except Exception as e:
+            # Never let the snapshot break the live ratings write above.
+            print(f'Note: snapshot write failed (non-fatal): {e}')
