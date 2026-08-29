@@ -13,12 +13,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # TEMPORARY — CFBD reconnaissance, then gets deleted.
-      - name: TEMP explore CFBD
-        env:
-          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
-        run: python3 .github/scripts/_tmp_cfbd_recon.py
-
       - name: Fetch and push to Gist
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
@@ -74,6 +68,14 @@ jobs:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
         run: python3 .github/scripts/log_cfb_predictions.py
+
+      - name: Fill CFB results
+        continue-on-error: true
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+          BACKFILL_DAYS: '10'
+        run: python3 .github/scripts/fill_cfb_results.py
 
       - name: Fetch MLB alternate spreads (once per day)
         continue-on-error: true
