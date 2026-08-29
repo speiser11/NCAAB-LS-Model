@@ -19,7 +19,7 @@ Usage:
   3. First run fetches & caches all data (~20 min). Re-runs are instant.
 """
 
-import json, math, re, sys, time
+import json, math, os, re, sys, time
 import requests
 import numpy as np
 import pandas as pd
@@ -37,7 +37,14 @@ except ImportError:
 # ══════════════════════════════════════════════════════════
 # CONFIG
 # ══════════════════════════════════════════════════════════
-ODDS_API_KEY = "b3e1ccd8a2f25665490e3c35abde718c"
+ODDS_API_KEY = os.environ.get("ODDS_API_KEY")
+if not ODDS_API_KEY:
+    sys.exit(
+        "ODDS_API_KEY not set.\n"
+        "  macOS/Linux:  export ODDS_API_KEY=your_key_here\n"
+        "  Windows:      set ODDS_API_KEY=your_key_here\n"
+        "Or put ODDS_API_KEY=your_key_here in a .env file (see optimize/.env.example)."
+    )
 
 DATA_DIR = Path(__file__).parent / "data"
 

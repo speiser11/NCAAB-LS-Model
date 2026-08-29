@@ -3,3 +3,6 @@ optimize/data/
 mlb_backtest.csv
 __pycache__/
 *.pyc
+.env
+*.env
+!*.env.example
