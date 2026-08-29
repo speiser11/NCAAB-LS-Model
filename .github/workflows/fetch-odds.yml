@@ -13,6 +13,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # TEMPORARY — verifies CFBD_API_KEY, then gets deleted. Not part of the
+      # real pipeline; do not build on this step.
+      - name: TEMP verify CFBD_API_KEY
+        env:
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: |
+          if [ -z "$CFBD_API_KEY" ]; then
+            echo "CFBD_API_KEY is not set."; exit 1
+          fi
+          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -H "Authorization: Bearer $CFBD_API_KEY" \
+            "https://api.collegefootballdata.com/ratings/sp?year=2025&team=Ohio%20State")
+          echo "HTTP status: $code"
+          cat /tmp/resp.json
+          [ "$code" = "200" ] || exit 1
+
       - name: Fetch and push to Gist
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
