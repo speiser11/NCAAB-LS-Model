@@ -54,6 +54,21 @@ jobs:
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
         run: python3 .github/scripts/fetch_cfb_odds.py
 
+      - name: Fetch CFB power ratings (FPI)
+        continue-on-error: true
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+        run: python3 .github/scripts/fetch_cfb_fpi.py
+
+      # Must run after both the CFB odds and FPI steps — it reads what they wrote.
+      - name: Log CFB model predictions
+        continue-on-error: true
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+        run: python3 .github/scripts/log_cfb_predictions.py
+
       - name: Fetch MLB alternate spreads (once per day)
         continue-on-error: true
         env:
