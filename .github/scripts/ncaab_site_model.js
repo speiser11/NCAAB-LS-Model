@@ -49,7 +49,19 @@ function extract(src, name) {
   const firstLine = src.slice(start, eol);
   // Single-line declaration, e.g. const ESPN_URL = '...';
   if (!/[{[]\s*$/.test(firstLine) && /;\s*(\/\/.*)?$/.test(firstLine)) return firstLine;
-  let depth = 0, i = src.indexOf(/^(const|let)/.test(firstLine) ? (firstLine.includes('= {') ? '{' : '[') : '{', start);
+  let i;
+  if (/^(const|let)/.test(firstLine)) {
+    i = src.indexOf(firstLine.includes('= {') ? '{' : '[', start);
+  } else {
+    // Skip the parameter list first: it can hold braces ({ td, yd } = …)
+    let p = src.indexOf('(', start), pd = 0;
+    for (; p < src.length; p++) {
+      if (src[p] === '(') pd++;
+      else if (src[p] === ')' && --pd === 0) break;
+    }
+    i = src.indexOf('{', p);
+  }
+  let depth = 0;
   for (; i < src.length; i++) {
     const c = src[i];
     if (c === '{' || c === '[') depth++;
