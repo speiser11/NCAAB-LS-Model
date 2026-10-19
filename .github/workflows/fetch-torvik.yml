@@ -1,7 +1,9 @@
 name: Fetch Torvik Ratings
 
 on:
-  workflow_dispatch:        # manual trigger only — scheduled runs disabled (off-season)
+  schedule:
+    - cron: '0 14,16,18,20,22,0,2 * * *'  # Every 2hrs: 10am–10pm ET
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -44,22 +46,43 @@ jobs:
           r2 = session.post(url, data={"js_test_submitted": "1"}, timeout=30)
           r2.raise_for_status()
 
-          # Verify it's valid JSON before proceeding
-          parsed = json.loads(r2.text)
+          try:
+              parsed = json.loads(r2.text)
+              content = r2.text
+              source = "trank"
+          except ValueError:
+              parsed = None
+
+          # Before the season's first game, trank.php redirects to the preseason
+          # page instead of returning JSON. Fall back to the preseason ratings in
+          # {YEAR}_team_results.json, reshaped into the trank row layout the site
+          # parses: [team, adjOE, adjDE, barthag, record, wins, games, ...,
+          # adjT at index 15].
+          if parsed is None:
+              tr = session.get(f"https://barttorvik.com/{YEAR}_team_results.json", timeout=30)
+              tr.raise_for_status()
+              parsed = [
+                  [row[1], row[4], row[6], row[8], row[3], 0, 0] + [0] * 8 + [row[-1]]
+                  for row in tr.json()
+              ]
+              content = json.dumps(parsed)
+              source = "preseason"
+
           if not isinstance(parsed, list) or len(parsed) < 100:
               raise ValueError(f"Unexpected Torvik response: {r2.text[:200]}")
-          print(f"Fetched {len(parsed)} teams from Torvik (season {YEAR})")
+          print(f"Fetched {len(parsed)} teams from Torvik (season {YEAR}, {source})")
 
           # ── Build Gist files ──────────────────────────────────────
           meta = {
               "updated_at": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
               "season": YEAR,
               "team_count": len(parsed),
+              "source": source,
           }
 
           gist_files = {
-              "torvik-ratings.json":      {"content": r2.text},
-              f"torvik-{today_iso}.json": {"content": r2.text},
+              "torvik-ratings.json":      {"content": content},
+              f"torvik-{today_iso}.json": {"content": content},
               "torvik-meta.json":         {"content": json.dumps(meta)},
           }
 

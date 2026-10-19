@@ -1165,8 +1165,9 @@ input[type=date] {
 <div class="sport-nav" id="sport-nav">
   <button class="sp-tab" data-sport="ncaab">NCAAB</button>
   <button class="sp-tab active" data-sport="mlb">MLB</button>
-  <button class="sp-tab" data-sport="nfl">NFL</button>
-  <button class="sp-tab" data-sport="cfb">CFB</button>
+  <!-- NFL/CFB hidden while not in use; remove `hidden` to bring them back -->
+  <button class="sp-tab" data-sport="nfl" hidden>NFL</button>
+  <button class="sp-tab" data-sport="cfb" hidden>CFB</button>
 </div>
 
 <div id="ncaab-view" style="display:none">

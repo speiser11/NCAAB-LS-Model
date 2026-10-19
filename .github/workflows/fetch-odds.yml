@@ -39,6 +39,7 @@ jobs:
           DATE=$DATE python3 .github/scripts/fetch_mlb_odds.py
 
       - name: Fetch NFL odds and push to Gist
+        if: false  # NFL/CFB paused — not in use; delete this line to resume
         continue-on-error: true
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
@@ -47,6 +48,7 @@ jobs:
         run: python3 .github/scripts/fetch_nfl_odds.py
 
       - name: Fetch CFB odds and push to Gist
+        if: false  # NFL/CFB paused — not in use; delete this line to resume
         continue-on-error: true
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
@@ -55,6 +57,7 @@ jobs:
         run: python3 .github/scripts/fetch_cfb_odds.py
 
       - name: Fetch CFB power ratings (FPI)
+        if: false  # NFL/CFB paused — not in use; delete this line to resume
         continue-on-error: true
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
@@ -63,6 +66,7 @@ jobs:
 
       # Must run after both the CFB odds and FPI steps — it reads what they wrote.
       - name: Log CFB model predictions
+        if: false  # NFL/CFB paused — not in use; delete this line to resume
         continue-on-error: true
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
