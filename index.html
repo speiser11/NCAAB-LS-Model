@@ -1183,7 +1183,7 @@ input[type=date] {
   <div class="stab-divider"></div>
   <div class="sub-nav-right">
     <div class="sort-pills">
-      <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge<span class="edge-tip" data-tip="Edge = model line minus Vegas line. Lean ≥ 3pts · Take ≥ 6pts">?</span></button>
+      <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge<span class="edge-tip" data-tip="Edge = model line minus Vegas line. Spread: Lean ≥ 3 · Take ≥ 6 · Total: Lean ≥ 5 · Take ≥ 8">?</span></button>
       <button class="sort-pill" data-sort="time" onclick="setSort('time')">Time</button>
       <button class="sort-pill" data-sort="rank" onclick="setSort('rank')">Ranked</button>
       <button class="sort-pill" data-sort="conf" onclick="setSort('conf')">By Conf</button>
@@ -1462,15 +1462,15 @@ function toggleTheme(){
 const ESPN_URL  = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard';
 
 // ESPN conference ID → abbreviation (verified against ESPN's group URLs)
+// ESPN conferenceId → conference name (ESPN scoreboard/conferences, 2026-27).
+// Fallback for the conferences ESPN's groups API leaves out (it returns 25 of 31).
 const CONF_ID_MAP = {
-  '1':'ASUN','2':'ACC','3':'SWAC','4':'Big East','5':'MEAC','6':'MAC',
-  '7':'Mountain West','8':'Big Ten','9':'Summit','10':'SoCon','11':'OVC',
-  '12':'Big 12','13':'Horizon','14':'Ivy','15':'MAAC','16':'America East',
-  '17':'American','18':'NEC','19':'Patriot','20':'Big South','21':'Pac-12',
-  '23':'SEC','25':'Atlantic 10','26':'WCC','27':'C-USA','28':'Sun Belt',
-  '29':'Big West','30':'Missouri Valley','31':'WAC','32':'CAA','44':'Southland',
-  '45':'Independent','46':'ASUN','49':'MVC','56':'Big South','62':'SWAC',
-  '63':'Southland','66':'NEC','68':'Horizon','173':'Big South',
+  '1':'America East','2':'ACC','3':'Atlantic 10','4':'Big East','5':'Big Sky',
+  '6':'Big South','7':'Big Ten','8':'Big 12','9':'Big West','10':'CAA',
+  '11':'C-USA','12':'Ivy','13':'Metro','14':'MAC','16':'MEAC','18':'MVC',
+  '19':'NEC','20':'OVC','21':'Pac-12','22':'Patriot','23':'SEC','24':'Southern',
+  '25':'Southland','26':'SWAC','27':'Sun Belt','29':'WCC','30':'UAC',
+  '44':'Mountain West','45':'Horizon','46':'ASUN','49':'Summit','62':'American',
 };
 const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
 const TORVIK    = 'https://barttorvik.com/trank.php?json=1';
@@ -1511,6 +1511,7 @@ const _odds404Dates    = new Set(); // dates known to 404 on locked-odds Gist
 const _oddsPendingDates = new Set(); // dates with a fetch currently in-flight
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
+let espnIdToKey  = {};  // ESPN team id → Torvik key, every D1 team (data/ncaab-espn-ids.json)
 
 // ── Contextual model data ──────────────────────────────────
 let teamsPlayedYesterday = new Set(); // ESPN team IDs of teams that played yesterday
@@ -1527,6 +1528,9 @@ const CONF_TZ = {
   'SEC':1,'Big Ten':1,'American':1,'MVC':1,'Horizon':1,'Summit':1,'OVC':1,'SWAC':1,
   'Mountain West':2,'MWC':2,'WAC':2,'Big Sky':2,'SAC':2,
   'WCC':3,'Big West':3,'Pac-12':3,'PAC-12':3,
+  // Names ESPN's groups API returns that weren't listed (they defaulted to Eastern)
+  'Big 12':1,'Missouri Valley':1,'Horizon League':1,'Ohio Valley':1,'Southland':1,
+  'Conference USA':0,'Atlantic Sun':0,'ASUN':0,'Metro':0,'UAC':1,
 };
 
 // v3: reset totalOffset to 0 (regression calibration now built into formula)
@@ -1536,6 +1540,10 @@ let cfg = {
   totalOffset: -5,
   lockHour:    10,
   oddsGistId:  '',
+  spreadLean:  3,      // NCAAB |model − Vegas| spread edge for a Lean
+  spreadTake:  6,      // ...and for a Take
+  totalLean:   5,      // NCAAB total edge for a Lean
+  totalTake:   8,      // ...and for a Take
   cfbScale:    1.05,   // FPI-to-market scale, fitted on the 2026 week-1 board
   cfbHfa:      3.5,    // home-field points, fitted alongside the scale
   cfbSigma:    16,     // SD of CFB game margin, for turning a spread into a win %
@@ -1598,7 +1606,22 @@ const ALIAS = {
   'loyola (il)':'loyola chicago','loyola chicago ramblers':'loyola chicago',
   "st. john's (ny)":"st. john's","st john's red storm":"st. john's",
   'njit':'njit','njit highlanders':'njit',
-  'tcu horned frogs':'tcu','ut rio grande valley':'utrgv',
+  'tcu horned frogs':'tcu',
+  'lsu new orleans privateers':'new orleans','lsu new orleans':'new orleans',
+  'st. thomas tommies':'st. thomas',
+  // Odds API spellings that name matching got wrong or missed (2025-26 lines audit)
+  'omaha mavericks':'nebraska omaha',
+  'maryland-eastern shore hawks':'maryland eastern shore',
+  'tenn-martin skyhawks':'tennessee martin',
+  'loyola greyhounds':'loyola md',
+  'miss valley state delta devils':'mississippi valley state',
+  'ul monroe warhawks':'louisiana monroe',
+  'siu-edwardsville cougars':'siue',
+  'arkansas-little rock trojans':'little rock',
+  'texas a&m-cc islanders':'texas a&m corpus chris',
+  'n colorado bears':'northern colorado',
+  'south carolina upstate spartans':'usc upstate',
+  'se louisiana lions':'southeastern louisiana','ut rio grande valley':'utrgv',
   'southeast missouri state':'se missouri state',
   'long island university':'liu','liu sharks':'liu',
   'ipfw':'purdue fort wayne','purdue fort wayne mastodons':'purdue fort wayne',
@@ -1634,8 +1657,13 @@ function normTeam(raw) {
 
 // Find Torvik key that best matches a full team name (ESPN or Odds API)
 function matchTeam(fullName) {
-  const norm = normTeam(TeamResolver.getCanonical(fullName));
+  const canonical = TeamResolver.getCanonical(fullName);
+  const norm = normTeam(canonical);
   if (ratings[norm]) return norm;
+
+  // A "(XX)" qualifier the resolver doesn't know is a non-D1 namesake —
+  // "Cornell (IA)", "Northwestern (OK)" — so don't loosen the match below.
+  if (canonical === fullName && fullName && fullName.includes('(')) return null;
 
   // Strip trailing words one at a time (removes mascot progressively)
   const words = norm.split(' ');
@@ -1644,15 +1672,18 @@ function matchTeam(fullName) {
     if (ratings[shorter]) return shorter;
   }
 
-  // Fuzzy: Dice coefficient on shared words
-  const nw = words.filter(w => w.length > 2);
+  // Fuzzy: Dice coefficient on shared words. Generic words don't count, and
+  // half the words isn't enough — otherwise "Truman State" matched NC State on
+  // "state" and "Chicago Maroons" matched Illinois Chicago.
+  const GENERIC = new Set(['state', 'university', 'college', 'saint']);
+  const nw = words.filter(w => w.length > 2 && !GENERIC.has(w));
   let best = 0, bestKey = null;
   for (const key of Object.keys(ratings)) {
-    const kw = key.split(' ').filter(w => w.length > 2);
+    const kw = key.split(' ').filter(w => w.length > 2 && !GENERIC.has(w));
     const shared = nw.filter(w => kw.includes(w)).length;
     if (!shared) continue;
     const score = (2 * shared) / (nw.length + kw.length);
-    if (score > best && score >= 0.5) { best = score; bestKey = key; }
+    if (score > best && score > 0.5) { best = score; bestKey = key; }
   }
   if (bestKey) return bestKey;
 
@@ -1692,6 +1723,10 @@ async function loadModelConfig() {
     cfg.totalOffset = c.totalOffset ?? cfg.totalOffset;
     cfg.oddsGistId  = c.oddsGistId  ?? '';
     cfg.lockHour    = c.lockHour    ?? cfg.lockHour;
+    cfg.spreadLean  = c.spreadLean  ?? cfg.spreadLean;
+    cfg.spreadTake  = c.spreadTake  ?? cfg.spreadTake;
+    cfg.totalLean   = c.totalLean   ?? cfg.totalLean;
+    cfg.totalTake   = c.totalTake   ?? cfg.totalTake;
     cfg.cfbScale    = c.cfbScale    ?? cfg.cfbScale;
     cfg.cfbHfa      = c.cfbHfa      ?? cfg.cfbHfa;
     cfg.cfbSigma    = c.cfbSigma    ?? cfg.cfbSigma;
@@ -1707,6 +1742,28 @@ async function loadModelConfig() {
     console.warn('[TrueLine] oddsGistId not set in model-config.json — centralized odds will not load');
     setSt('st-odds', 'Odds: Gist ID not configured', 'warn');
   }
+}
+
+async function loadEspnIds() {
+  try {
+    const r = await fetch('data/ncaab-espn-ids.json', { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const m = await r.json();
+    espnIdToKey = Object.fromEntries(Object.entries(m).map(([id, v]) => [id, v.torvik]));
+  } catch(e) {
+    console.warn('[TrueLine] ESPN id table failed to load, matching teams by name:', e.message);
+  }
+}
+
+// ESPN team → Torvik key. D1 teams resolve exactly by ESPN team id; a team not
+// in the table is a non-D1 opponent and gets no rating. Matching by name (which
+// paired "Kentucky Wesleyan" with Kentucky) is only the fallback for when the
+// table didn't load.
+function espnTeamKey(teamId, name) {
+  if (!Object.keys(espnIdToKey).length) return matchTeam(name);
+  const key = espnIdToKey[teamId];
+  if (key && !ratings[key]) console.warn(`[TrueLine] ESPN id ${teamId} (${name}) → "${key}" has no Torvik rating`);
+  return key && ratings[key] ? key : null;
 }
 
 async function loadTorvik() {
@@ -2392,8 +2449,8 @@ function assembleGames() {
   const openSnap = lockedOddsList.length ? lockedOddsList : null;
 
   return espnList.map(g => {
-    const hKey = matchTeam(g.home);
-    const aKey = matchTeam(g.away);
+    const hKey = espnTeamKey(g.homeTeamId, g.home);
+    const aKey = espnTeamKey(g.awayTeamId, g.away);
 
     // Conferences (needed for travel calc)
     const hConf = (hKey && ratings[hKey]?.conf) || teamIdToConf[g.homeTeamId] || confIdMap[g.homeConfId] || '';
@@ -2603,8 +2660,8 @@ function getAdvice(g) {
   const spreadTeam = sEdge !== null ? (sEdge > 0 ? hShort : aShort) : null;
   const totalDir   = tEdge !== null ? (tEdge > 0 ? 'Over'  : 'Under') : null;
 
-  const sStrong = sAbs >= 6, sLean = sAbs >= 3;
-  const tStrong = tAbs >= 8,  tLean = tAbs >= 5;
+  const sStrong = sAbs >= cfg.spreadTake, sLean = sAbs >= cfg.spreadLean;
+  const tStrong = tAbs >= cfg.totalTake,  tLean = tAbs >= cfg.totalLean;
 
   if (!sLean && !tLean) return { text: 'No Action', cls: 'cm-act-none' };
 
@@ -2723,7 +2780,7 @@ function renderMobileCard(g) {
         <span class="cm-col-hdr ch-lbl"></span>
         <span class="cm-col-hdr">Model</span>
         <span class="cm-col-hdr">Vegas</span>
-        <span class="cm-col-hdr ch-edge">Edge<span class="edge-tip" data-tip="Model spread/total minus Vegas line. Lean ≥ 3pts · Take ≥ 6pts">?</span></span>
+        <span class="cm-col-hdr ch-edge">Edge<span class="edge-tip" data-tip="Model spread/total minus Vegas line. Spread: Lean ≥ 3 · Take ≥ 6 · Total: Lean ≥ 5 · Take ≥ 8">?</span></span>
       </div>
       ${spreadRow}${totalRow}
     </div>
@@ -3193,82 +3250,57 @@ function renderTopPicks(games) {
   buildPicksBar(snapshot, false);
 }
 
-// ── Historical accuracy scorecard ─────────────────────────
-// Season start: Nov 1 of current academic year
-// (before July → prior year's Nov; July+ → current year's Nov)
-const ACC_START_DATE = '20260309'; // Reset: count picks-record from this date forward
-
+// ── Pick record ───────────────────────────────────────────
+// Graded from ncaab-log-YYYY-MM-DD.json: the pre-game picks the workflow froze
+// at tip-off (log_ncaab_predictions.js) and graded after the final
+// (fill_ncaab_results.py). Never re-runs the model on past games, so the
+// record can't drift as ratings change.
 let _accCache = null, _accCacheTs = 0;
+const _ncaabLogCache = {};  // isoDate → log entries (past days only; today keeps changing)
+
+async function fetchNCAABLog(isoDate, todayIso) {
+  if (_ncaabLogCache[isoDate]) return _ncaabLogCache[isoDate];
+  let entries = [];
+  try {
+    const r = await fetch(
+      `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw/ncaab-log-${isoDate}.json`,
+      { cache: 'no-store', signal: AbortSignal.timeout(6000) }
+    );
+    if (r.ok) entries = await r.json();
+  } catch(e) { /* missing day = no picks */ }
+  if (isoDate < todayIso) _ncaabLogCache[isoDate] = entries;
+  return entries;
+}
+
+// { take: {w,l,p}, lean: {w,l,p} } over every graded pick in the given logs
+function tallyPicks(logs) {
+  const rec = { take: { w:0, l:0, p:0 }, lean: { w:0, l:0, p:0 } };
+  for (const e of logs.flat()) {
+    for (const pk of (e.picks || [])) {
+      if (pk.outcome && rec[pk.tier]) rec[pk.tier][pk.outcome[0]]++;  // 'win' → w, …
+    }
+  }
+  return rec;
+}
 
 async function loadAccuracyStats() {
   const now = Date.now();
-
-  if (_accCache && (now - _accCacheTs) < 30 * 60 * 1000) {
+  if (_accCache && (now - _accCacheTs) < 10 * 60 * 1000) {
     renderAccuracyBadges(_accCache);
     return;
   }
-  const toDateStr = d => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const dy = String(d.getDate()).padStart(2,'0');
-    return `${y}${m}${dy}`;
-  };
-  const today = new Date();
-  const shiftDay = n => { const d = new Date(today); d.setDate(today.getDate() + n); return d; };
-  const dateRange = (start, end) => {
-    const dates = [], d = new Date(start);
-    while (d <= end) { dates.push(toDateStr(new Date(d))); d.setDate(d.getDate()+1); }
-    return dates;
-  };
-  const yest        = shiftDay(-1);
-  const weekAgo     = shiftDay(-7);
-  const monthAgo    = shiftDay(-30);
-  async function scoreRange(dates) {
-    let w = 0, l = 0;
-    for (const dateStr of dates.filter(d => d >= ACC_START_DATE)) {
-      const isoDate = `${dateStr.slice(0,4)}-${dateStr.slice(4,6)}-${dateStr.slice(6,8)}`;
-      try {
-        const [games, storedOdds] = await Promise.all([
-          fetchESPNFinal(dateStr),
-          fetchOddsForDate(isoDate),
-        ]);
-        for (const g of games) {
-          const hKey = matchTeam(g.home), aKey = matchTeam(g.away);
-          const pred = predict(hKey, aKey, g.neutral);
-          if (!pred) continue;
-          const actual = g.homeScore - g.awayScore;
-          if (actual === 0) continue;
-          // Takes only: edge ≥ 7 on spread or total vs locked pre-game line
-          const odds = matchStoredOdds(storedOdds, hKey, aKey);
-          if (!odds) continue;
-          const spreadEdge = odds.spread != null ? Math.abs(pred.margin + odds.spread) : 0;
-          const totalEdge  = odds.total  != null ? Math.abs(pred.total  - odds.total)  : 0;
-          const useSpread  = spreadEdge >= totalEdge && spreadEdge >= 7;
-          const useTotal   = totalEdge  >  spreadEdge && totalEdge  >= 7;
-          if (!useSpread && !useTotal) continue;
-          // Score ATS for spread takes, O/U for total takes
-          if (useSpread) {
-            const cover = actual + odds.spread;
-            if (cover === 0) continue; // push
-            (pred.margin >= 0) === (cover > 0) ? w++ : l++;
-          } else {
-            const tot = g.homeScore + g.awayScore;
-            if (tot === odds.total) continue; // push
-            (pred.total > odds.total) === (tot > odds.total) ? w++ : l++;
-          }
-        }
-      } catch(e) { /* skip */ }
-    }
-    return { w, l };
-  }
-
+  if (!cfg.oddsGistId) return;
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const days = [...Array(30)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return iso(d); });
   try {
-    const [yd, wk, mo] = await Promise.all([
-      scoreRange([toDateStr(yest)]),
-      scoreRange(dateRange(weekAgo, yest)),
-      scoreRange(dateRange(monthAgo, yest)),
-    ]);
-    _accCache = { yd, wk, mo };
+    const logs = await Promise.all(days.map(d => fetchNCAABLog(d, days[0])));
+    _accCache = {
+      td: tallyPicks(logs.slice(0, 1)),
+      yd: tallyPicks(logs.slice(1, 2)),
+      wk: tallyPicks(logs.slice(0, 7)),
+      mo: tallyPicks(logs),
+    };
     _accCacheTs = now;
     renderAccuracyBadges(_accCache);
   } catch(e) {
@@ -3277,17 +3309,19 @@ async function loadAccuracyStats() {
   }
 }
 
-function renderAccuracyBadges({ yd, wk, mo }) {
+function renderAccuracyBadges({ td, yd, wk, mo }) {
   const row = document.getElementById('picks-accuracy-row');
   if (!row) return;
-  const badge = (lbl, { w, l }) => {
-    const tot = w + l;
-    if (!tot) return `<span class="acc-badge" title="Takes only (edge ≥ 7) — ATS for spreads, O/U for totals">${lbl}: <span class="acc-pct">—</span></span>`;
-    const pct = Math.round(w / tot * 100);
+  const rec = ({ w, l, p }) => `${w}-${l}${p ? `-${p}` : ''}`;
+  const badge = (lbl, { take, lean }) => {
+    const tip = `Takes ${rec(take)} · Leans ${rec(lean)} (W-L-Push, graded vs the line at tip-off)`;
+    const n = take.w + take.l;
+    if (!n) return `<span class="acc-badge" title="${tip}">${lbl}: <span class="acc-pct">—</span></span>`;
+    const pct = Math.round(take.w / n * 100);
     const cls = pct >= 60 ? 'acc-good' : pct < 50 ? 'acc-bad' : '';
-    return `<span class="acc-badge ${cls}" title="Takes only (edge ≥ 7) — ATS for spreads, O/U for totals">${lbl} <span class="acc-pct">${w}-${l}</span> <span style="opacity:.55">takes ${pct}%</span></span>`;
+    return `<span class="acc-badge ${cls}" title="${tip}">${lbl} takes <span class="acc-pct">${rec(take)}</span> <span style="opacity:.55">${pct}%</span></span>`;
   };
-  row.innerHTML = badge('Yday', yd) + badge('Week', wk) + badge('Month', mo);
+  row.innerHTML = badge('Today', td) + badge('Yday', yd) + badge('Week', wk) + badge('Month', mo);
 }
 
 // ── Filter state ──────────────────────────────────────────
@@ -4268,6 +4302,7 @@ async function refresh() {
   try {
     await loadModelConfig();
     await Promise.all([
+      loadEspnIds(),
       loadConferences(),
       loadTorvik(),
       loadESPN(dateStr),

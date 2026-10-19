@@ -44,22 +44,24 @@ jobs:
 
           # Step 2: POST simulating the JS form auto-submit
           r2 = session.post(url, data={"js_test_submitted": "1"}, timeout=30)
-          r2.raise_for_status()
+          print(f"trank.php: HTTP {r2.status_code}")
 
           try:
+              r2.raise_for_status()
               parsed = json.loads(r2.text)
               content = r2.text
               source = "trank"
-          except ValueError:
+          except (requests.HTTPError, ValueError):
               parsed = None
 
           # Before the season's first game, trank.php redirects to the preseason
-          # page instead of returning JSON. Fall back to the preseason ratings in
+          # page instead of returning JSON (and the POST can 403). Fall back to the preseason ratings in
           # {YEAR}_team_results.json, reshaped into the trank row layout the site
           # parses: [team, adjOE, adjDE, barthag, record, wins, games, ...,
           # adjT at index 15].
           if parsed is None:
               tr = session.get(f"https://barttorvik.com/{YEAR}_team_results.json", timeout=30)
+              print(f"{YEAR}_team_results.json: HTTP {tr.status_code}")
               tr.raise_for_status()
               parsed = [
                   [row[1], row[4], row[6], row[8], row[3], 0, 0] + [0] * 8 + [row[-1]]
