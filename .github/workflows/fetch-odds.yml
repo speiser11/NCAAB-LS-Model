@@ -116,3 +116,21 @@ jobs:
         run: |
           DATE=$(date -u +%Y-%m-%d)
           DATE=$DATE python3 .github/scripts/fill_mlb_results.py
+
+      # Re-logs each NCAAB game every run until tip-off, then freezes it — the
+      # frozen pick is what the site's takes/leans record grades.
+      - name: Log NCAAB model predictions
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+          TZ: America/New_York
+        run: node .github/scripts/log_ncaab_predictions.js
+
+      - name: Fill NCAAB results (recent days)
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+          BACKFILL_DAYS: '3'
+        run: |
+          DATE=$(TZ=America/New_York date +%Y-%m-%d)
+          DATE=$DATE python3 .github/scripts/fill_ncaab_results.py
