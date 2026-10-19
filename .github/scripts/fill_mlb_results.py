@@ -57,6 +57,8 @@ def fetch_game_results(date_str):
         f5Home, f5Away,   # runs over the first 5 innings (None if not available)
         status            # 'final' | 'in_progress' | 'scheduled'
     }
+    Returns None if the fetch itself failed. An empty dict is a valid answer:
+    every game that day was postponed or cancelled.
     """
     url = f'{STATS_URL}?sportId=1&date={date_str}&hydrate=linescore,team'
     try:
@@ -65,7 +67,7 @@ def fetch_game_results(date_str):
             d = json.loads(r.read())
     except Exception as e:
         print(f'MLB Stats API fetch failed: {e}', file=sys.stderr)
-        return {}
+        return None
 
     results = {}
     for day in d.get('dates', []):
@@ -124,9 +126,14 @@ def fill_date(date_str):
         return True
 
     scores = fetch_game_results(date_str)
-    if not scores:
+    if scores is None:
         print(f'{date_str}: no score data returned.')
         return False
+    if not scores:
+        # e.g. 2026-10-16: the only game was rained out. Not a failure — the
+        # entry just stays unscored rather than failing every run for 10 days.
+        print(f'{date_str}: no games played (postponed/cancelled).')
+        return True
 
     updated = 0
     for entry in log:
