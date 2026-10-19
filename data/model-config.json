@@ -8,6 +8,7 @@
   "spreadTake": 6,
   "totalLean": 5,
   "totalTake": 8,
+  "earlyGames": 8,
   "cfbScale": 1.05,
   "cfbHfa": 3.5,
   "cfbSigma": 16,
