@@ -5,17 +5,26 @@ torvik-ratings.json (+ a dated copy and torvik-meta.json), which index.html
 and the NCAAB pick log read.
 
 Torvik answers GitHub-hosted runners with 403 Forbidden (it started in May
-2026 and was total by October), so the workflow runs this on a self-hosted
-runner on a home computer. Standard library only, so it runs on any machine
-with Python 3 — no pip install.
+2026 and was total by October), so this runs somewhere Torvik doesn't block.
+Standard library only, so it runs on any machine with Python 3.
 
-Env: GIST_TOKEN (PAT with gist scope for the speiser11 ratings Gist).
+Two ways to deliver the result:
+  --out DIR   write torvik-ratings.json, torvik-meta.json and the dated copy
+              into DIR. The daily Claude cloud session uses this and pushes
+              DIR to the torvik-data branch, where publish-torvik.yml copies
+              it to the Gist (cloud sessions can't write Gists themselves).
+  (default)   PATCH the files straight to the Gist; needs GIST_TOKEN, a PAT
+              with gist scope for the speiser11 ratings Gist.
 """
 
-import http.cookiejar, json, os, sys, urllib.parse, urllib.request
+import argparse, http.cookiejar, json, os, sys, urllib.parse, urllib.request
 from datetime import date, datetime, timezone
 
 GIST_ID = '44dd1f1464e3d7e2689b25ba758d4ea9'
+
+ap = argparse.ArgumentParser()
+ap.add_argument('--out', help='write the files into this directory instead of the Gist')
+args = ap.parse_args()
 
 # Season year: from October on, it's next spring's season (Nov 2026 → 2027).
 today = date.today()
@@ -80,6 +89,14 @@ files = {
     f'torvik-{today.isoformat()}.json':  {'content': content},
     'torvik-meta.json':                  {'content': json.dumps(meta)},
 }
+
+if args.out:
+    os.makedirs(args.out, exist_ok=True)
+    for name, f in files.items():
+        with open(os.path.join(args.out, name), 'w', encoding='utf-8') as fh:
+            fh.write(f['content'])
+    print(f'Wrote {len(files)} files to {args.out}')
+    sys.exit(0)
 
 token = os.environ.get('GIST_TOKEN')
 if not token:
