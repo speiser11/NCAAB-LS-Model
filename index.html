@@ -1619,6 +1619,7 @@ let cfg = {
   spreadTake:  6,      // ...and for a Take
   totalLean:   5,      // NCAAB total edge for a Lean
   totalTake:   8,      // ...and for a Take
+  earlyGames:  8,      // picks where either team has played fewer are "early season" in the record
   cfbScale:    1.05,   // FPI-to-market scale, fitted on the 2026 week-1 board
   cfbHfa:      3.5,    // home-field points, fitted alongside the scale
   cfbSigma:    16,     // SD of CFB game margin, for turning a spread into a win %
@@ -1802,6 +1803,7 @@ async function loadModelConfig() {
     cfg.spreadTake  = c.spreadTake  ?? cfg.spreadTake;
     cfg.totalLean   = c.totalLean   ?? cfg.totalLean;
     cfg.totalTake   = c.totalTake   ?? cfg.totalTake;
+    cfg.earlyGames  = c.earlyGames  ?? cfg.earlyGames;
     cfg.cfbScale    = c.cfbScale    ?? cfg.cfbScale;
     cfg.cfbHfa      = c.cfbHfa      ?? cfg.cfbHfa;
     cfg.cfbSigma    = c.cfbSigma    ?? cfg.cfbSigma;
@@ -3343,12 +3345,16 @@ async function fetchNCAABLog(isoDate, todayIso) {
   return entries;
 }
 
-// { take: {w,l,p}, lean: {w,l,p} } over every graded pick in the given logs
+// { take, lean, earlyTake } as {w,l,p} over every graded pick in the given logs.
+// earlyTake: takes where either team had played < cfg.earlyGames when picked.
 function tallyPicks(logs) {
-  const rec = { take: { w:0, l:0, p:0 }, lean: { w:0, l:0, p:0 } };
+  const rec = { take: { w:0, l:0, p:0 }, lean: { w:0, l:0, p:0 }, earlyTake: { w:0, l:0, p:0 } };
   for (const e of logs.flat()) {
+    const games = Math.min(e.model?.hGames ?? Infinity, e.model?.aGames ?? Infinity);
     for (const pk of (e.picks || [])) {
-      if (pk.outcome && rec[pk.tier]) rec[pk.tier][pk.outcome[0]]++;  // 'win' → w, …
+      if (!pk.outcome || !rec[pk.tier]) continue;
+      rec[pk.tier][pk.outcome[0]]++;  // 'win' → w, …
+      if (pk.tier === 'take' && games < cfg.earlyGames) rec.earlyTake[pk.outcome[0]]++;
     }
   }
   return rec;
@@ -3395,13 +3401,15 @@ function renderAccuracyBadges({ td, yd, wk, mo, daily }) {
   const rec = ({ w, l, p }) => `${w}–${l}${p ? `–${p}` : ''}`;
   const pct = ({ w, l }) => w + l ? Math.round(w / (w + l) * 100) : null;
   const pctEm = r => { const p = pct(r); return p == null ? '' : `<em class="${p >= 60 ? 'good' : p < 50 ? 'bad' : ''}">${p}%</em>`; };
-  const tip = (lbl, { take, lean }) => `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)} (W–L–Push, graded vs the line at tip-off)`;
+  const early = r => r.w + r.l + r.p ? `early season (a team under ${cfg.earlyGames} games) ${rec(r)}` : '';
+  const tip = (lbl, { take, lean, earlyTake }) =>
+    `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)}${early(earlyTake) ? ` · of the takes, ${early(earlyTake)}` : ''} (W–L–Push, graded vs the line at tip-off)`;
   const lp = pct(wk.lean);
   el.innerHTML = `
     <div class="rb-stat" title="${tip('Last 7 days', wk)}"><div class="rb-eyebrow">Takes this week</div>
       <div class="rb-stat-row"><div><div class="rb-num">${rec(wk.take)}${pctEm(wk.take)}</div><div class="rb-sub">Leans ${rec(wk.lean)}${lp == null ? '' : ` · ${lp}%`}</div></div>${recordSpark(daily)}</div></div>
     <div class="rb-stat" title="${tip('Today', td)}"><div class="rb-eyebrow">Today</div><div class="rb-num">${rec(td.take)}</div><div class="rb-sub">Yesterday ${rec(yd.take)}</div></div>
-    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">This month</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div></div>`;
+    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">This month</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div>${early(mo.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(mo.earlyTake)}</div>` : ''}</div>`;
 }
 
 // Running Takes net (wins − losses) over the last 30 days

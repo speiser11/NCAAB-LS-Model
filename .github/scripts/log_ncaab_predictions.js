@@ -131,6 +131,9 @@ async function main() {
         homeWinProb: g.pred.homeWinProb,
         hB2B: g.hB2B, aB2B: g.aB2B, awayTravel: g.awayTravel,
         hInjuries: g.hInjuries.length, aInjuries: g.aInjuries.length,
+        // Torvik games played (0 = preseason projection) — lets the record
+        // separate early-season picks, when ratings are mostly priors.
+        hGames: g.pred.hRating.games ?? null, aGames: g.pred.aRating.games ?? null,
       },
       vegas: {
         spread: g.vegasSpread?.point ?? null,  // home line (− = home favored)
