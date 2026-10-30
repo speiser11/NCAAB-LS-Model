@@ -1,0 +1,43 @@
+name: Publish Torvik Ratings
+
+# A daily Claude cloud session fetches Torvik (which blocks GitHub-hosted
+# runners) and pushes the files in torvik/ to this branch. This copies them to
+# the ratings Gist that the site and the NCAAB pick log read — cloud sessions
+# can't write Gists, GitHub Actions can.
+on:
+  push:
+    branches: [torvik-data]
+    paths: ['torvik/**']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Copy torvik/ to the Gist
+        env:
+          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, urllib.request
+          GIST_ID = '44dd1f1464e3d7e2689b25ba758d4ea9'
+          files = {}
+          for path in sorted(glob.glob('torvik/*.json')):
+              with open(path, encoding='utf-8') as f:
+                  files[os.path.basename(path)] = {'content': f.read()}
+          ratings = json.loads(files['torvik-ratings.json']['content'])
+          if not isinstance(ratings, list) or len(ratings) < 100:
+              raise SystemExit(f'torvik-ratings.json looks wrong ({len(ratings)} rows) — not publishing')
+          print('Publishing:', ', '.join(files), '—', files['torvik-meta.json']['content'])
+          req = urllib.request.Request(
+              f'https://api.github.com/gists/{GIST_ID}',
+              data=json.dumps({'files': files}).encode('utf-8'), method='PATCH',
+              headers={'Authorization': f"token {os.environ['GIST_TOKEN']}",
+                       'Accept': 'application/vnd.github+json',
+                       'Content-Type': 'application/json'})
+          with urllib.request.urlopen(req, timeout=30) as r:
+              print(f'Gist updated: HTTP {r.status}')
+          PY
