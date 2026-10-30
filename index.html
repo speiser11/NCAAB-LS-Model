@@ -31,7 +31,6 @@
 /* ── Reset ── */
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
-.mobile-conf-wrap{width:100%;box-sizing:border-box;}
 
 /* ── Site Header ── */
 .site-header{
@@ -104,32 +103,10 @@ input[type=date]{
 }
 .stab.active .stab-count{background:var(--surface-blue);border-color:var(--border-blue);color:var(--blue);}
 .stab-dot{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.5s infinite;flex-shrink:0;}
-.stab-divider{width:1px;background:var(--border);margin:.5rem 0;flex-shrink:0;}
 .sub-nav-right{
   display:flex;align-items:center;gap:.4rem;
   padding:.45rem .9rem;margin-left:auto;flex-shrink:0;
 }
-.sort-pills{
-  display:flex;background:var(--surface2);
-  border:1px solid var(--border);border-radius:8px;padding:.15rem;gap:.1rem;
-}
-.sort-pill{
-  background:none;border:none;color:var(--muted);
-  padding:.18rem .55rem;border-radius:6px;
-  font-family:'Inter',sans-serif;font-size:.7rem;font-weight:500;
-  cursor:pointer;transition:all .15s;white-space:nowrap;
-}
-.sort-pill:hover{color:var(--text);}
-.sort-pill.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.25);}
-.chip-btn{
-  background:transparent;border:1px solid var(--border);color:var(--muted);
-  padding:.2rem .58rem;border-radius:6px;
-  font-family:'Inter',sans-serif;font-size:.7rem;font-weight:500;
-  cursor:pointer;transition:all .15s;white-space:nowrap;
-}
-.chip-btn:hover{border-color:var(--text);color:var(--text);}
-.chip-btn.on,.chip-btn.active{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
-.subnav-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;}
 
 /* ── Day summary ── */
 .day-summary{
@@ -478,27 +455,6 @@ input[type=date]{
 }
 
 /* ── Conference pill strip ── */
-.conf-strip{
-  display:flex;align-items:center;gap:.35rem;
-  padding:.5rem 1.25rem;
-  background:var(--surface);border-bottom:1px solid var(--border);
-  overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
-}
-.conf-strip::-webkit-scrollbar{display:none;}
-.conf-strip-label{
-  font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;
-  letter-spacing:.7px;color:var(--muted);flex-shrink:0;margin-right:.1rem;
-}
-.conf-pill{
-  flex-shrink:0;background:transparent;border:1px solid var(--border);
-  color:var(--muted);padding:.25rem .65rem;border-radius:20px;
-  font-family:'DM Mono',monospace;font-size:.68rem;font-weight:500;
-  cursor:pointer;transition:all .15s;white-space:nowrap;
-}
-.conf-pill:hover{border-color:var(--text);color:var(--text);}
-.conf-pill.active{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
-.conf-pill.all-pill{color:var(--text);border-color:var(--border);}
-.conf-pill.all-pill.active{border-color:var(--blue);background:var(--surface-blue);color:var(--blue);}
 
 /* ── Compact mode ── */
 .compact-list .card-ft{display:none;}
@@ -750,8 +706,6 @@ input[type=date]{
 .gd-btn:hover{border-color:var(--accent);color:var(--accent);}
 
 /* ── Mobile controls (hidden on desktop) ── */
-.mobile-controls { display:none; }
-.mobile-conf-wrap { display:none; }
 
 .mobile-select {
   font-size:.72rem; padding:.22rem .5rem;
@@ -759,34 +713,6 @@ input[type=date]{
   background:var(--surface); color:var(--text);
   cursor:pointer; appearance:auto;
 }
-.mobile-filter-wrap { position:relative; }
-.mobile-filter-btn {
-  font-size:.72rem; padding:.22rem .55rem;
-  border:1px solid var(--border); border-radius:6px;
-  background:var(--surface); color:var(--text);
-  cursor:pointer; display:flex; align-items:center; gap:.25rem;
-}
-.mobile-filter-btn.mfb-active { border-color:var(--accent); color:var(--accent); }
-.mobile-filter-count {
-  background:var(--accent); color:#fff;
-  border-radius:50%; width:14px; height:14px;
-  font-size:.58rem; font-weight:700;
-  display:inline-flex; align-items:center; justify-content:center;
-}
-.mobile-filter-panel {
-  display:none; position:absolute; top:calc(100% + 4px); right:0;
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:8px; padding:.5rem .6rem; z-index:200;
-  min-width:140px; box-shadow:0 4px 16px rgba(0,0,0,.15);
-}
-.mobile-filter-panel.mfp-open { display:block; }
-.mfp-item {
-  display:flex; align-items:center; gap:.4rem;
-  font-size:.75rem; color:var(--text);
-  padding:.28rem 0; cursor:pointer; white-space:nowrap;
-}
-.mfp-item input { cursor:pointer; accent-color:var(--accent); }
-.mobile-conf-select { width:auto; }
 
 /* ── Responsive ── */
 @media(max-width:640px){
@@ -798,16 +724,6 @@ input[type=date]{
   /* Sub-nav — hide desktop controls, show mobile replacements */
   .sub-nav-right{padding:.3rem .6rem;gap:.3rem;}
   .stab{padding:.45rem .6rem;font-size:.72rem;}
-  .sort-pills{display:none;}
-  .subnav-sep{display:none;}
-  .chip-btn{display:none;}
-  .conf-strip{display:none!important;}
-  .mobile-conf-wrap{display:flex!important;align-items:center;gap:.4rem;padding:.3rem .6rem;border-bottom:1px solid var(--border);background:var(--surface2);}
-  .mobile-controls{display:flex;align-items:center;gap:.3rem;margin-left:auto;}
-  .sort-pill{font-size:.68rem;padding:.15rem .45rem;}
-  .chip-btn{font-size:.68rem;padding:.18rem .45rem;}
-  .conf-strip{padding:.4rem .85rem;gap:.25rem;}
-  .conf-pill{font-size:.64rem;padding:.2rem .5rem;}
 
   /* Layout & spacing */
   .container{padding:.75rem .15rem;}
@@ -1173,7 +1089,119 @@ input[type=date] {
 .rb-how-pop b{display:block;font-size:.85rem;}
 .rb-how-pop p{margin:0;color:var(--muted);}
 
+/* ── Game cards: teams + market, our line vs the market, one call ── */
+#game-list .game-group{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:.85rem;}
+#game-list .game-group > .group-header,#game-list .conf-group-section > .conf-group-hd{grid-column:1/-1;}
+#game-list .conf-group-section{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:.85rem;margin-bottom:1.25rem;}
+.gc{background:var(--surface);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;cursor:pointer;box-shadow:var(--shadow);transition:border-color .15s;font-family:'Inter',sans-serif;min-width:0;}
+.gc:hover{border-color:var(--blue);}
+.gc:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+.gc.is-take{border-color:var(--border-green);}
+.gc.is-lean{border-color:var(--border-yellow);}
+.gc-top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.7rem .95rem .2rem;font-size:.75rem;color:var(--muted);}
+.gc-top b{color:var(--text);font-weight:600;}
+.gc-live{display:inline-flex;align-items:center;gap:.35rem;color:var(--red);font-weight:700;}
+.gc-live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.5s infinite;}
+.gc-tags{display:flex;flex-wrap:wrap;gap:.25rem;padding:.2rem .95rem 0;}
+.gc-teams{display:flex;flex-direction:column;gap:.45rem;padding:.45rem .95rem .6rem;}
+.gc-tm{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;align-items:center;gap:.55rem;}
+.gc-logo{width:28px;height:28px;border-radius:50%;background:var(--tc,var(--surface2));color:#fff;font-family:'Archivo','Inter',sans-serif;font-stretch:75%;font-weight:800;font-size:.55rem;display:grid;place-items:center;box-shadow:0 0 0 1px var(--border);overflow:hidden;}
+.gc-name{display:flex;align-items:baseline;flex-wrap:wrap;gap:.1rem .35rem;min-width:0;font-weight:700;font-size:.95rem;color:var(--text);}
+.gc-name .team-link{cursor:pointer;}
+.gc-name .team-link:hover{text-decoration:underline;}
+.gc-rk{font-size:.72rem;color:var(--muted);font-weight:600;}
+.gc-rec{font-size:.72rem;color:var(--muted);font-weight:500;}
+.gc-name .ctx-badge{align-self:center;}
+.gc-line{min-width:52px;text-align:center;font-weight:700;font-size:.82rem;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.18rem .35rem;font-variant-numeric:tabular-nums;color:var(--text);}
+.gc-score{font-family:'Archivo','Inter',sans-serif;font-weight:800;font-size:1.3rem;min-width:30px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text);}
+.gc-score.trail{color:var(--muted);}
+.gc-model{margin:0 .7rem;background:var(--surface2);border-radius:11px;padding:.6rem .7rem;display:grid;gap:.7rem;}
+.gc-mm{display:grid;grid-template-columns:46px minmax(0,1fr) auto;grid-template-areas:"k v e" ". b b";gap:.3rem .5rem;align-items:center;font-size:.8rem;}
+.gc-k{grid-area:k;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+.gc-v{grid-area:v;min-width:0;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
+.gc-v b{color:var(--text);}
+.gc-v .line-move{margin-left:.3rem;}
+.gc-e{grid-area:e;font-size:.75rem;font-weight:700;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.gc-e.take{color:var(--green);} .gc-e.lean{color:var(--yellow);}
+.eb{grid-area:b;position:relative;height:10px;}
+.eb::before{content:"";position:absolute;left:0;right:0;top:3px;height:4px;border-radius:99px;background:var(--border);}
+.eb-tk{position:absolute;top:0;width:1px;height:10px;background:var(--muted);opacity:.55;}
+.eb-mid{position:absolute;left:50%;top:-2px;width:2px;height:14px;margin-left:-1px;border-radius:1px;background:var(--text);opacity:.7;}
+.eb-fill{position:absolute;top:3px;height:4px;border-radius:99px;background:var(--muted);}
+.eb-fill.take{background:var(--green);} .eb-fill.lean{background:var(--yellow);}
+.gc-nomodel{font-size:.8rem;color:var(--muted);}
+.gc-note{margin:.5rem .95rem 0;font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums;}
+.gc-note.live{color:var(--text);}
+.gc-call{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem .6rem;padding:.7rem .95rem .8rem;margin-top:auto;}
+.gc-callrow{display:flex;align-items:center;gap:.5rem;flex-basis:100%;}
+.gc-callrow:last-of-type{flex-basis:auto;flex:1;}
+.gc-pill{display:inline-flex;align-items:center;font-size:.64rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:.15rem .45rem;border-radius:999px;white-space:nowrap;background:var(--surface2);color:var(--muted);}
+.gc-pill.take{background:var(--surface-green);color:var(--green);}
+.gc-pill.lean{background:var(--surface-yellow);color:var(--yellow);}
+.gc-pill.won{background:var(--green);color:var(--surface);}
+.gc-pill.lost{background:var(--red);color:var(--surface);}
+.gc-call-text{font-weight:700;font-size:.9rem;color:var(--text);}
+.gc-call-none{font-size:.82rem;color:var(--muted);}
+.gc-more{margin-left:auto;font-size:.8rem;font-weight:600;color:var(--blue);white-space:nowrap;}
+.compact-list .gc-model,.compact-list .gc-tags{display:none;}
+.calls-chip{align-self:center;display:inline-flex;align-items:center;gap:.4rem;margin:0 .6rem;height:30px;padding:0 .75rem;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--muted);font-family:'Inter',sans-serif;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.calls-chip::before{content:"";width:12px;height:12px;border-radius:3px;border:1.5px solid var(--muted);}
+.calls-chip.on{border-color:var(--green);color:var(--green);background:var(--surface-green);}
+.calls-chip.on::before{background:var(--green);border-color:var(--green);box-shadow:inset 0 0 0 2px var(--surface-green);}
+
+#ncaab-view .container{max-width:1280px;}
+.gc,.gc-teams{text-align:left;}
+.gc-name{display:block;line-height:1.3;}
+.gc-name > *{margin-right:.3rem;}
+.gc-name .ctx-badge{vertical-align:2px;}
+
+/* ── Top plays (NCAAB) ── */
+#top-picks-bar{background:var(--bg);border:0;padding:.2rem 1.25rem .9rem;}
+#top-picks-bar .top-picks-title{font-family:'Archivo','Inter',sans-serif;font-stretch:108%;font-weight:800;font-size:1rem;letter-spacing:0;text-transform:none;color:var(--text);}
+#top-picks-bar .picks-lock{font-family:'Inter',sans-serif;font-size:.72rem;font-weight:500;color:var(--muted);margin-left:.4rem;}
+#top-picks-bar .picks-row{gap:.65rem;}
+#top-picks-bar .pick-card{flex:0 0 auto;width:220px;text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.7rem .8rem;box-shadow:var(--shadow);cursor:pointer;display:flex;flex-direction:column;gap:.25rem;font:inherit;color:var(--text);}
+#top-picks-bar .pick-card:hover{transform:none;border-color:var(--blue);}
+#top-picks-bar .pick-top{display:flex;justify-content:space-between;align-items:center;}
+#top-picks-bar .pick-edge{font-family:'Archivo','Inter',sans-serif;font-weight:800;font-size:1rem;color:var(--muted);}
+#top-picks-bar .pick-card.take .pick-edge{color:var(--green);}
+#top-picks-bar .pick-card.lean .pick-edge{color:var(--yellow);}
+#top-picks-bar .pick-main{font-family:'Archivo','Inter',sans-serif;font-stretch:105%;font-weight:800;font-size:1.05rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#top-picks-bar .pick-matchup{font-family:'Inter',sans-serif;font-size:.74rem;margin:0;}
+#top-picks-bar .pick-why{font-family:'Inter',sans-serif;font-size:.7rem;margin-top:.2rem;padding-top:.4rem;border-top:1px solid var(--border);}
+
+/* ── Controls: status tabs · Takes & Leans · updated · sort · filters ── */
+#sub-nav .sub-nav-right{margin-left:auto;display:flex;align-items:center;gap:.5rem;padding:.35rem .9rem;}
+.sn-updated{font-family:'Inter',sans-serif;font-size:.72rem;color:var(--muted);white-space:nowrap;}
+.sn-select,.sn-btn{height:32px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;}
+.sn-select{padding:0 .6rem;}
+.sn-btn{display:inline-flex;align-items:center;gap:.4rem;padding:0 .8rem;}
+.sn-btn.on{border-color:var(--blue);color:var(--blue);}
+.filter-count{background:var(--blue);color:var(--surface);border-radius:999px;font-size:.65rem;padding:0 .4rem;line-height:1.35;}
+.filter-panel{display:flex;flex-wrap:wrap;align-items:flex-start;gap:1rem 2rem;padding:.9rem 1.25rem;background:var(--surface);border-bottom:1px solid var(--border);font-family:'Inter',sans-serif;}
+.fp-group h4{margin:0 0 .45rem;font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);}
+.fp-toggle{display:flex;align-items:center;gap:.45rem;font-size:.82rem;color:var(--text);padding:.2rem 0;cursor:pointer;}
+.fp-toggle input{accent-color:var(--blue);width:15px;height:15px;margin:0;}
+.fp-confs{flex:1;min-width:240px;}
+.fp-chips{display:flex;flex-wrap:wrap;gap:.35rem;}
+.fp-chip{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:.25rem .65rem;font-size:.75rem;font-weight:600;cursor:pointer;}
+.fp-chip[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);background:var(--surface-blue);}
+.fp-clear{align-self:flex-end;border:0;background:none;color:var(--blue);font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;padding:.25rem 0;}
+
 @media(max-width:640px){
+  .site-header{position:relative;}
+  #sub-nav{top:0;flex-wrap:wrap;overflow:visible;}
+  #sub-nav .status-tabs{width:100%;overflow-x:auto;}
+  #sub-nav .sub-nav-right{padding:.35rem .6rem .45rem 0;}
+  .sn-updated{display:none;}
+  .filter-panel{padding:.75rem .85rem;gap:.8rem;}
+  #game-list .game-group,#game-list .conf-group-section{grid-template-columns:1fr;gap:.65rem;}
+  .gc-mm{grid-template-columns:42px minmax(0,1fr) auto;}
+  .gc-v{white-space:normal;font-size:.76rem;}
+  #ncaab-view .container{padding:.75rem .75rem;}
+  #top-picks-bar{padding:.6rem .85rem .75rem;}
+  #top-picks-bar .pick-card{width:200px;}
+  .calls-chip{margin:.15rem .6rem;}
   .site-header{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"brand menu" "sports date" "search search";gap:.45rem .6rem;padding:.5rem .85rem;}
   .site-header .brand{grid-area:brand;}
   .site-header .sport-nav{grid-area:sports;}
@@ -1253,47 +1281,31 @@ input[type=date] {
     <button class="stab" data-tab="upcoming" onclick="setTab('upcoming')">Upcoming <span class="stab-count" id="tc-upcoming"></span></button>
     <button class="stab" data-tab="final" onclick="setTab('final')">Final <span class="stab-count" id="tc-final"></span></button>
   </div>
-  <div class="stab-divider"></div>
+  <button class="calls-chip" id="fc-calls" onclick="toggleFilter('callsOnly')" aria-pressed="false">Takes &amp; Leans only</button>
   <div class="sub-nav-right">
-    <div class="sort-pills">
-      <button class="sort-pill active" data-sort="edge" onclick="setSort('edge')">Best Edge<span class="edge-tip" data-tip="Edge = model line minus Vegas line. Spread: Lean ≥ 3 · Take ≥ 6 · Total: Lean ≥ 5 · Take ≥ 8">?</span></button>
-      <button class="sort-pill" data-sort="time" onclick="setSort('time')">Time</button>
-      <button class="sort-pill" data-sort="rank" onclick="setSort('rank')">Ranked</button>
-      <button class="sort-pill" data-sort="conf" onclick="setSort('conf')">By Conf</button>
-    </div>
-    <div class="subnav-sep"></div>
-    <button class="chip-btn" id="fc-odds" onclick="toggleFilter('hasOdds')">Odds Only</button>
-    <button class="chip-btn" id="fc-edge" onclick="toggleFilter('edgeOnly')">Edge ≥ 4</button>
-    <button class="chip-btn" id="fc-ranked" onclick="toggleFilter('onlyRanked')">Top 25</button>
-    <div class="subnav-sep"></div>
-    <button class="chip-btn" id="fc-compact" onclick="toggleFilter('compact')" title="Compact view">⊟</button>
+    <span class="sn-updated" id="sn-updated"></span>
+    <select class="sn-select" id="sort-select" onchange="setSort(this.value)" aria-label="Sort games">
+      <option value="edge">Sort: Best edge</option>
+      <option value="time">Sort: Tip-off</option>
+      <option value="rank">Sort: Ranked first</option>
+      <option value="conf">Sort: By conference</option>
+    </select>
+    <button class="sn-btn" id="filter-btn" onclick="toggleFilterPanel(event)" aria-expanded="false" aria-controls="filter-panel">Filters<span class="filter-count" id="filter-count" hidden></span></button>
   </div>
 </div>
 
-<div class="conf-strip" id="conf-strip" style="display:none"></div>
-<div class="mobile-conf-wrap" id="mobile-conf-wrap">
-  <select class="mobile-select mobile-conf-select" id="mobile-conf" onchange="setConference(this.value)">
-    <option value="">All Conferences</option>
-  </select>
-  <div class="mobile-controls">
-    <select class="mobile-select" id="mobile-sort" onchange="setSort(this.value)">
-      <option value="edge">Best Edge</option>
-      <option value="time">Time</option>
-      <option value="rank">Ranked</option>
-      <option value="conf">By Conf</option>
-    </select>
-    <div class="mobile-filter-wrap">
-      <button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleMobileFilters(event)">
-        Filters<span class="mobile-filter-count" id="mobile-filter-count" style="display:none"></span>
-      </button>
-      <div class="mobile-filter-panel" id="mobile-filter-panel">
-        <label class="mfp-item"><input type="checkbox" id="mfp-odds" onchange="toggleFilter('hasOdds')"> Odds Only</label>
-        <label class="mfp-item"><input type="checkbox" id="mfp-edge" onchange="toggleFilter('edgeOnly')"> Edge ≥ 4</label>
-        <label class="mfp-item"><input type="checkbox" id="mfp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25</label>
-        <label class="mfp-item"><input type="checkbox" id="mfp-compact" onchange="toggleFilter('compact')"> Compact</label>
-      </div>
-    </div>
+<div class="filter-panel" id="filter-panel" hidden>
+  <div class="fp-group">
+    <h4>Show only</h4>
+    <label class="fp-toggle"><input type="checkbox" id="fp-odds" onchange="toggleFilter('hasOdds')"> Games with odds posted</label>
+    <label class="fp-toggle"><input type="checkbox" id="fp-ranked" onchange="toggleFilter('onlyRanked')"> Top 25 teams</label>
+    <label class="fp-toggle"><input type="checkbox" id="fp-compact" onchange="toggleFilter('compact')"> Compact cards</label>
   </div>
+  <div class="fp-group fp-confs">
+    <h4>Conference</h4>
+    <div class="fp-chips" id="conf-chips"></div>
+  </div>
+  <button class="fp-clear" onclick="clearFilters()">Clear filters</button>
 </div>
 
 <div class="container">
@@ -2021,6 +2033,13 @@ async function loadESPN(dateStr) {
         awayRank:    parseInt(away?.curatedRank?.current) || 99,
         homeTeamId:  home?.team?.id || '',
         awayTeamId:  away?.team?.id || '',
+        homeAbbr:    home?.team?.abbreviation || '',
+        awayAbbr:    away?.team?.abbreviation || '',
+        homeColor:   home?.team?.color || '',
+        awayColor:   away?.team?.color || '',
+        homeRecord:  home?.records?.find(x => x.type === 'total')?.summary || home?.records?.[0]?.summary || '',
+        awayRecord:  away?.records?.find(x => x.type === 'total')?.summary || away?.records?.[0]?.summary || '',
+        broadcast:   comp?.broadcasts?.[0]?.names?.[0] || '',
         homeConfId:  home?.team?.conferenceId || '',
         awayConfId:  away?.team?.conferenceId || '',
         officials:   (comp?.officials || []).map(o => o.displayName || o.fullName || '').filter(Boolean),
@@ -2650,11 +2669,6 @@ function fmtSpread(n) {
   return v > 0 ? `+${v}` : String(v);
 }
 
-function edgeCls(e) {
-  const a = Math.abs(e);
-  return a >= 7 ? 'strong' : a >= 4 ? 'mod' : 'neg';
-}
-
 // Projected final total based on current score and time elapsed
 function calcLivePace(g) {
   if (!g.period || !g.clock) return null;
@@ -2691,197 +2705,6 @@ function stopLiveRefresh() {
   if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
 }
 
-function renderFactors(g) {
-  const { pred } = g;
-  if (!pred) return '';
-  const a = pred.aRating, h = pred.hRating;
-  if (!a.oEfg || !h.oEfg) return ''; // four factors not in data
-
-  // For each factor: compute matchup delta = offense value vs what opponent's defense allows
-  // Positive = offense exceeds what defense allows (good for offense), except TO% where negative is good
-  const factors = [
-    { name: 'eFG%',  aDelta: a.oEfg - h.dEfg, hDelta: h.oEfg - a.dEfg, invert: false, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) },
-    { name: 'TO%',   aDelta: a.oTo  - h.dTo,  hDelta: h.oTo  - a.dTo,  invert: true,  fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) },
-    { name: 'OR%',   aDelta: a.oOr  - h.dOr,  hDelta: h.oOr  - a.dOr,  invert: false, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) },
-    { name: 'FTR',   aDelta: a.oFtr - h.dFtr, hDelta: h.oFtr - a.dFtr, invert: false, fmt: v => (v > 0 ? '+' : '') + v.toFixed(2) },
-  ];
-
-  function edgeCls(delta, invert) {
-    const v = invert ? -delta : delta;
-    return v >= 1 ? 'pos' : v <= -1 ? 'neg' : 'neu';
-  }
-
-  const cells = factors.map(f => `
-    <div class="factor-cell">
-      <div class="factor-name">${f.name}</div>
-      <div class="fm-row"><span class="fm-side">A</span><span class="fm-val ${edgeCls(f.aDelta, f.invert)}">${f.fmt(f.aDelta)}</span></div>
-      <div class="fm-row"><span class="fm-side">H</span><span class="fm-val ${edgeCls(f.hDelta, f.invert)}">${f.fmt(f.hDelta)}</span></div>
-    </div>`).join('');
-
-  return `<div class="factors-wrap"><div class="factors-title">Four Factors Matchup</div><div class="factors-grid">${cells}</div></div>`;
-}
-
-function getAdvice(g) {
-  const { pred, vegasSpread, vegasTotal } = g;
-  if (!pred) return { text: 'No data', cls: 'cm-act-none' };
-
-  const hShort = displayName(g.hKey, g.home);
-  const aShort = displayName(g.aKey, g.away);
-
-  const sEdge = vegasSpread ? pred.margin - (-vegasSpread.point) : null;
-  const tEdge = vegasTotal  ? pred.total - vegasTotal.point      : null;
-
-  const sAbs = sEdge !== null ? Math.abs(sEdge) : 0;
-  const tAbs = tEdge !== null ? Math.abs(tEdge) : 0;
-
-  const spreadTeam = sEdge !== null ? (sEdge > 0 ? hShort : aShort) : null;
-  const totalDir   = tEdge !== null ? (tEdge > 0 ? 'Over'  : 'Under') : null;
-
-  const sStrong = sAbs >= cfg.spreadTake, sLean = sAbs >= cfg.spreadLean;
-  const tStrong = tAbs >= cfg.totalTake,  tLean = tAbs >= cfg.totalLean;
-
-  if (!sLean && !tLean) return { text: 'No Action', cls: 'cm-act-none' };
-
-  const parts = [];
-  if (sLean) parts.push(`${sStrong ? 'Take' : 'Lean'} ${spreadTeam}`);
-  if (tLean) parts.push(`${tStrong ? 'Take the' : 'Lean'} ${totalDir}`);
-
-  const cls = (sStrong || tStrong) ? 'cm-act-strong' : 'cm-act-lean';
-  return { text: parts.join(' · '), cls };
-}
-
-function renderMobileCard(g) {
-  const { pred, vegasSpread, vegasTotal } = g;
-  const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
-  const final = g.statusName === 'STATUS_FINAL';
-
-  // Status badge
-  const gameTime = g.time ? new Date(g.time).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : '';
-  const badge = live  ? `<span class="status-badge badge-live">● ${esc(g.shortDetail)}</span>`
-              : final ? `<span class="status-badge badge-final">Final</span>`
-              :         `<span class="status-badge badge-upcoming">${gameTime}</span>`;
-
-  // Teams
-  const aRank = g.awayRank <= 25 ? `<span class="cm-rank">#${g.awayRank}</span>` : '';
-  const hRank = g.homeRank <= 25 ? `<span class="cm-rank">#${g.homeRank}</span>` : '';
-  const aName = esc(displayName(g.aKey, g.away));
-  const hName = esc(displayName(g.hKey, g.home));
-  const be = bestEdge(g);
-  const hotCls = be >= 7 ? ' cm-hot' : be >= 4 ? ' cm-warm' : '';
-
-  // Spread row
-  let spreadRow;
-  if (!pred) {
-    spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val cm-muted">No data</span></div>`;
-  } else {
-    const modelSpreadPt = -pred.margin;
-    const modelStr = fmtSpread(modelSpreadPt.toFixed(1));
-    const mFav = esc(spreadFavName(modelSpreadPt, g.hKey, g.home, g.aKey, g.away));
-    if (vegasSpread) {
-      const vFav = esc(spreadFavName(vegasSpread.point, g.hKey, g.home, g.aKey, g.away));
-      const edge = pred.margin - (-vegasSpread.point);
-      const eCls = Math.abs(edge) >= 7 ? ' cm-good' : Math.abs(edge) >= 4 ? ' cm-mod' : '';
-      const smv = g.spreadMove != null && Math.abs(g.spreadMove) >= 0.5 ? `<span class="line-move ${g.spreadMove > 0 ? 'lm-up' : 'lm-dn'}">${g.spreadMove > 0 ? '↑' : '↓'}${Math.abs(g.spreadMove).toFixed(1)}</span>` : '';
-      spreadRow = `<div class="cm-row">
-        <span class="cm-lbl">Spread</span>
-        <span class="cm-val">${modelStr} <span class="cm-fav">${mFav}</span></span>
-        <span class="cm-vs">vs</span>
-        <span class="cm-vval">${fmtSpread(vegasSpread.point)} <span class="cm-fav">${vFav}</span></span>
-        ${smv}
-        <span class="cm-edge${eCls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
-      </div>`;
-    } else {
-      spreadRow = `<div class="cm-row"><span class="cm-lbl">Spread</span><span class="cm-val">${modelStr} <span class="cm-fav">${mFav}</span></span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
-    }
-  }
-
-  // O/U row
-  let totalRow;
-  if (!pred) {
-    totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val cm-muted">No data</span></div>`;
-  } else {
-    const modelTot = pred.total.toFixed(1);
-    if (vegasTotal) {
-      const edge = pred.total - vegasTotal.point;
-      const eCls = Math.abs(edge) >= 7 ? ' cm-good' : Math.abs(edge) >= 4 ? ' cm-mod' : '';
-      const tmv = g.totalMove != null && Math.abs(g.totalMove) >= 0.5 ? `<span class="line-move ${g.totalMove > 0 ? 'lm-up' : 'lm-dn'}">${g.totalMove > 0 ? '↑' : '↓'}${Math.abs(g.totalMove).toFixed(1)}</span>` : '';
-      totalRow = `<div class="cm-row">
-        <span class="cm-lbl">O/U</span>
-        <span class="cm-val">${modelTot}</span>
-        <span class="cm-vs">vs</span>
-        <span class="cm-vval">${vegasTotal.point}</span>
-        ${tmv}
-        <span class="cm-edge${eCls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>
-      </div>`;
-    } else {
-      totalRow = `<div class="cm-row"><span class="cm-lbl">O/U</span><span class="cm-val">${modelTot}</span><span class="cm-vval" style="color:var(--muted);margin-left:.4rem">no line</span></div>`;
-    }
-  }
-
-  // Score row (live + final) — score and clock only
-  let scoreHtml = '';
-  if (live || final) {
-    const hs = parseInt(g.homeScore) || 0;
-    const as = parseInt(g.awayScore) || 0;
-    const aLead = as > hs, hLead = hs > as;
-    const clockStr = final ? 'Final' : (g.shortDetail || '');
-    scoreHtml = `<div class="cm-score">
-      <span class="cm-pts${aLead ? ' cm-lead' : ''}">${as}</span>
-      <span class="cm-score-sep">—</span>
-      <span class="cm-pts${hLead ? ' cm-lead' : ''}">${hs}</span>
-      <span class="cm-clock">${esc(clockStr)}</span>
-    </div>`;
-  }
-
-  const advice = getAdvice(g);
-  const wpBadge = pred
-    ? `<span class="cm-wp">${pred.homeWinProb > pred.awayWinProb
-        ? `${esc(displayName(g.hKey, g.home).split(' ').pop())} ${pred.homeWinProb}%`
-        : `${esc(displayName(g.aKey, g.away).split(' ').pop())} ${pred.awayWinProb}%`}</span>`
-    : '';
-
-  function cmCtx(b2b, daysRest, injuries, form) {
-    let s = '';
-    if (b2b) s += `<span class="ctx-badge b2b-tag">B2B</span>`;
-    else if (daysRest === 2) s += `<span class="ctx-badge b2b-tag" style="opacity:.7">SR</span>`;
-    if (injuries.length) s += `<span class="ctx-badge inj-flag">⚠</span>`;
-    if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}">${form.net > 0 ? '↑' : '↓'}</span>`;
-    return s;
-  }
-  const aBadges = cmCtx(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
-  const hBadges = cmCtx(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm);
-
-  const linesAndAdvice = `
-    <div class="cm-lines">
-      <div class="cm-col-hdrs">
-        <span class="cm-col-hdr ch-lbl"></span>
-        <span class="cm-col-hdr">Model</span>
-        <span class="cm-col-hdr">Vegas</span>
-        <span class="cm-col-hdr ch-edge">Edge<span class="edge-tip" data-tip="Model spread/total minus Vegas line. Spread: Lean ≥ 3 · Take ≥ 6 · Total: Lean ≥ 5 · Take ≥ 8">?</span></span>
-      </div>
-      ${spreadRow}${totalRow}
-    </div>
-    <div class="cm-advice ${advice.cls}">
-      <span class="cm-advice-text">${advice.text}</span>
-      ${wpBadge}
-      ${(() => { if (!g.betting) return ''; const p = Math.max(g.betting.homeSpreadBetPct||0, g.betting.awaySpreadBetPct||0); return p >= 65 ? `<span class="ctx-badge public-tag" style="font-size:.5rem" title="${p}% public bets on spread">🎰 ${p}%</span>` : ''; })()}
-      <button class="gd-btn" onclick="event.stopPropagation();showGameModal('${g.id}')">Details</button>
-    </div>`;
-
-  return `<div class="card-mobile${hotCls}" id="game-${g.id}">
-    <div class="cm-hd">
-      <div class="cm-teams">
-        ${aRank}<span class="cm-tname" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${aName}</span>${aBadges}
-        <span class="cm-at">@</span>
-        ${hRank}<span class="cm-tname" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${hName}</span>${hBadges}
-      </div>
-      ${badge}
-    </div>
-    ${scoreHtml}
-    ${linesAndAdvice}
-  </div>`;
-}
-
 // Returns the favored team's display name given a home-team spread point
 // spreadPt < 0 → home favored; spreadPt > 0 → away favored
 function spreadFavName(spreadPt, hKey, home, aKey, away) {
@@ -2891,327 +2714,193 @@ function spreadFavName(spreadPt, hKey, home, aKey, away) {
     : displayName(aKey, away);
 }
 
+// Short team label for tight spots: ESPN abbreviation, else the last word of the name
+function teamAbbr(g, side) {
+  const ab = side === 'h' ? g.homeAbbr : g.awayAbbr;
+  return ab || displayName(side === 'h' ? g.hKey : g.aKey, side === 'h' ? g.home : g.away).split(' ').pop();
+}
+
+// The model's read on one game against the market.
+// spread.e > 0 favors the home side; total.e > 0 favors the over. tier: 'take' | 'lean' | null.
+function gameLines(g) {
+  const out = { spread: null, total: null };
+  if (!g.pred) return out;
+  if (g.vegasSpread) {
+    const e = g.pred.margin + g.vegasSpread.point, a = Math.abs(e), home = e > 0;
+    const line = home ? g.vegasSpread.point : -g.vegasSpread.point;
+    out.spread = { market: 'spread', e, edge: a, home,
+      tier: a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null,
+      side: teamAbbr(g, home ? 'h' : 'a'),
+      label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}` };
+  }
+  if (g.vegasTotal) {
+    const e = g.pred.total - g.vegasTotal.point, a = Math.abs(e);
+    out.total = { market: 'total', e, edge: a, over: e > 0,
+      tier: a >= cfg.totalTake ? 'take' : a >= cfg.totalLean ? 'lean' : null,
+      side: e > 0 ? 'O' : 'U',
+      label: `${e > 0 ? 'Over' : 'Under'} ${g.vegasTotal.point}` };
+  }
+  return out;
+}
+const gameCalls = g => { const l = gameLines(g); return [l.spread, l.total].filter(c => c && c.tier); };
+
+// Edge bar: centre = agrees with the market, fill grows toward the side the model likes,
+// ticks mark Lean and Take on both sides.
+function edgeBar(c, market) {
+  const lean = market === 'spread' ? cfg.spreadLean : cfg.totalLean;
+  const take = market === 'spread' ? cfg.spreadTake : cfg.totalTake;
+  const max = take * 1.6, pos = v => 50 + Math.max(-1, Math.min(1, v / max)) * 50;
+  const ticks = [-take, -lean, lean, take].map(v => `<span class="eb-tk" style="left:${pos(v)}%"></span>`).join('');
+  const fill = c ? `<span class="eb-fill ${c.tier || ''}" style="left:${Math.min(50, pos(c.e))}%;width:${Math.abs(pos(c.e) - 50)}%"></span>` : '';
+  return `<div class="eb">${ticks}${fill}<span class="eb-mid"></span></div>`;
+}
+
 function renderCard(g) {
-  if (window.innerWidth <= 640) return renderMobileCard(g);
   const { pred, vegasSpread, vegasTotal } = g;
   const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
   const final = g.statusName === 'STATUS_FINAL';
+  const hs = parseInt(g.homeScore) || 0, as = parseInt(g.awayScore) || 0;
+  const lines = gameLines(g), calls = gameCalls(g);
+  const tier = calls.some(c => c.tier === 'take') ? 'take' : calls.length ? 'lean' : '';
 
-  // ── Status badge ──
-  const gameTime = g.time ? new Date(g.time).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : '';
-  let statusBadge;
-  if (live) {
-    statusBadge = `<span class="status-badge badge-live">● LIVE · ${g.shortDetail}</span>`;
-  } else if (final) {
-    statusBadge = `<span class="status-badge badge-final">Final · ${g.awayScore}–${g.homeScore}</span>`;
-  } else {
-    statusBadge = `<span class="status-badge badge-upcoming">${gameTime}</span>`;
-  }
-
-  // ── Spread block ──
-  let spreadHtml;
-  if (!pred) {
-    spreadHtml = `<div class="mnum-no-data">No ratings matched</div>`;
-  } else {
-    const modelHomeSpread = -pred.margin;
-    const modelStr = fmtSpread(modelHomeSpread.toFixed(1));
-    const modelFav = esc(spreadFavName(modelHomeSpread, g.hKey, g.home, g.aKey, g.away));
-    if (vegasSpread) {
-      const vegasPoint = vegasSpread.point;
-      const vegasFav = esc(spreadFavName(vegasPoint, g.hKey, g.home, g.aKey, g.away));
-      const edge = (-modelHomeSpread) - (-vegasPoint);
-      const cls  = edgeCls(edge);
-      const edgeDir = edge > 0
-        ? displayName(g.hKey, g.home)
-        : displayName(g.aKey, g.away);
-      const edgeLabel = `${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${esc(edgeDir)}`;
-      spreadHtml = `
-        <div class="mnum-row">
-          <span class="mnum-lbl">Model</span>
-          <span class="mnum-val">${modelStr}</span>
-          <span class="mnum-team">${modelFav}</span>
-        </div>
-        <div class="mnum-row">
-          <span class="mnum-lbl">Vegas</span>
-          <span class="mnum-val">${fmtSpread(vegasPoint)}</span>
-          <span class="mnum-team">${vegasFav}</span>
-          ${moveBadge(g.spreadMove)}
-          ${Math.abs(edge) >= 4
-            ? `<span class="edge-pill ${cls}">${edgeLabel}</span>`
-            : `<span class="mnum-edge-sm ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>`}
-        </div>
-      `;
-    } else {
-      spreadHtml = `
-        <div class="mnum-row">
-          <span class="mnum-lbl">Model</span>
-          <span class="mnum-val">${modelStr}</span>
-          <span class="mnum-team">${modelFav}</span>
-        </div>
-        <div class="mnum-no-data">No Vegas line</div>
-      `;
-    }
-  }
-
-  // ── Total block ──
-  let totalHtml;
-  if (!pred) {
-    totalHtml = `<div class="mnum-no-data">No ratings matched</div>`;
-  } else {
-    const modelTot = pred.total.toFixed(1);
-    if (vegasTotal) {
-      const edge = pred.total - vegasTotal.point;
-      const cls  = edgeCls(edge);
-      const dir  = edge > 0 ? 'OVER' : 'UNDER';
-      totalHtml = `
-        <div class="mnum-row">
-          <span class="mnum-lbl">Model</span>
-          <span class="mnum-val">${modelTot}</span>
-        </div>
-        <div class="mnum-row">
-          <span class="mnum-lbl">Vegas</span>
-          <span class="mnum-val">${vegasTotal.point}</span>
-          ${moveBadge(g.totalMove)}
-          ${Math.abs(edge) >= 4
-            ? `<span class="edge-pill ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)} · ${dir}</span>`
-            : `<span class="mnum-edge-sm ${cls}">${edge > 0 ? '+' : ''}${edge.toFixed(1)}</span>`}
-        </div>
-      `;
-    } else {
-      totalHtml = `
-        <div class="mnum-row">
-          <span class="mnum-lbl">Model</span>
-          <span class="mnum-val">${modelTot}</span>
-        </div>
-        <div class="mnum-no-data">No Vegas line</div>
-      `;
-    }
-  }
-
-  // ── Live score widget ──
-  let liveScoreHtml = '';
-  if (live) {
-    const hs = parseInt(g.homeScore) || 0;
-    const as = parseInt(g.awayScore) || 0;
-    const homeUp = hs > as, awayUp = as > hs;
-
-    // Covering check vs pre-game spread
-    let coverHtml = '';
-    if (vegasSpread) {
-      const gap = hs - as + vegasSpread.point; // >0 = home covering
-      const hName = esc(displayName(g.hKey, g.home));
-      const aName = esc(displayName(g.aKey, g.away));
-      if (Math.abs(gap) < 0.5) {
-        coverHtml = `<span class="trend-chip push">On the line</span>`;
-      } else if (gap > 0) {
-        coverHtml = `<span class="trend-chip covering">${hName} covering</span>`;
-      } else {
-        coverHtml = `<span class="trend-chip trailing">${aName} covering</span>`;
-      }
-    }
-
-    // Pace vs O/U
-    let paceHtml = '';
-    const projected = calcLivePace(g);
-    if (projected !== null && vegasTotal) {
-      const diff = projected - vegasTotal.point;
-      const dir  = diff > 2 ? 'over' : diff < -2 ? 'under' : '';
-      const sign = diff > 0 ? '+' : '';
-      paceHtml = `<span class="trend-pace ${dir}">Pace ${projected.toFixed(0)} (${sign}${diff.toFixed(0)} vs O/U ${vegasTotal.point})</span>`;
-    } else if (vegasTotal) {
-      const curr = hs + as;
-      paceHtml = `<span class="trend-pace">Score total: ${curr} · O/U ${vegasTotal.point}</span>`;
-    }
-
-    liveScoreHtml = `
-      <div class="live-score">
-        <div class="live-score-row">
-          <div class="live-score-team">
-            <span class="live-score-name">${esc(displayName(g.aKey, g.away))}</span>
-            <span class="live-score-pts${awayUp ? ' winning' : homeUp ? ' losing' : ''}">${as}</span>
-          </div>
-          <span class="live-score-sep">—</span>
-          <div class="live-score-team live-score-team-home">
-            <span class="live-score-name">${esc(displayName(g.hKey, g.home))}</span>
-            <span class="live-score-pts${homeUp ? ' winning' : awayUp ? ' losing' : ''}">${hs}</span>
-          </div>
-        </div>
-        <div class="live-score-clock">${g.shortDetail || ''}</div>
-        ${(coverHtml || paceHtml) ? `<div class="live-score-trend">${coverHtml}${paceHtml}</div>` : ''}
-      </div>`;
-  }
-
-  // ── Final score widget ──
-  let finalScoreHtml = '';
-  if (final) {
-    const hs = parseInt(g.homeScore) || 0;
-    const as = parseInt(g.awayScore) || 0;
-    const homeWon = hs > as;
-    const awayWon = as > hs;
-    const actualMargin = hs - as;
-    const actualTotal = hs + as;
-
-    // Spread result row
-    let spreadRow = '';
-    if (pred) {
-      const modelLine = fmtSpread((-pred.margin).toFixed(1));
-      const actualStr = actualMargin > 0
-        ? `${esc(displayName(g.hKey, g.home))} +${actualMargin}`
-        : actualMargin < 0
-          ? `${esc(displayName(g.aKey, g.away))} +${Math.abs(actualMargin)}`
-          : 'Tie';
-      let coverBadge = '';
-      if (vegasSpread) {
-        const gap = actualMargin + vegasSpread.point;
-        const hShort = esc(displayName(g.hKey, g.home).split(' ')[0]);
-        const aShort = esc(displayName(g.aKey, g.away).split(' ')[0]);
-        if (Math.abs(gap) <= 0.5)  coverBadge = `<span class="fr-badge push">Push</span>`;
-        else if (gap > 0)          coverBadge = `<span class="fr-badge cover">${hShort} Covered ✓</span>`;
-        else                       coverBadge = `<span class="fr-badge no-cover">${aShort} Covered ✓</span>`;
-      }
-      spreadRow = `<div class="fr-row">
-        <span class="fr-label">SPREAD</span>
-        <span class="fr-val">Mdl ${modelLine}</span>
-        ${vegasSpread ? `<span class="fr-sep">·</span><span class="fr-val">Vegas ${fmtSpread(vegasSpread.point)}</span>` : ''}
-        <span class="fr-sep">·</span>
-        <span class="fr-actual">${actualStr}</span>
-        ${coverBadge}
-      </div>`;
-    }
-
-    // Total result row
-    let totalRow = '';
-    if (pred) {
-      let ouBadge = '';
-      if (vegasTotal) {
-        if (actualTotal > vegasTotal.point)       ouBadge = `<span class="fr-badge over">OVER ✓</span>`;
-        else if (actualTotal < vegasTotal.point)  ouBadge = `<span class="fr-badge under">UNDER ✓</span>`;
-        else                                      ouBadge = `<span class="fr-badge push">Push</span>`;
-      }
-      totalRow = `<div class="fr-row">
-        <span class="fr-label">TOTAL</span>
-        <span class="fr-val">Mdl ${pred.total.toFixed(1)}</span>
-        ${vegasTotal ? `<span class="fr-sep">·</span><span class="fr-val">O/U ${vegasTotal.point}</span>` : ''}
-        <span class="fr-sep">·</span>
-        <span class="fr-actual">Actual ${actualTotal}</span>
-        ${ouBadge}
-      </div>`;
-    }
-
-    finalScoreHtml = `
-      <div class="final-widget">
-        <div class="final-score-row">
-          <div class="live-score-team">
-            <span class="live-score-name">${esc(displayName(g.aKey, g.away))}</span>
-            <span class="live-score-pts${awayWon ? ' winning' : homeWon ? ' losing' : ''}">${as}</span>
-          </div>
-          <span class="live-score-sep">—</span>
-          <div class="live-score-team live-score-team-home">
-            <span class="live-score-name">${esc(displayName(g.hKey, g.home))}</span>
-            <span class="live-score-pts${homeWon ? ' winning' : awayWon ? ' losing' : ''}">${hs}</span>
-          </div>
-        </div>
-        <div class="final-results">${spreadRow}${totalRow}</div>
-      </div>`;
-  }
-
-  // ── Footer ratings ──
-  const aConfTag = g.aConf ? `<span class="conf-tag">${g.aConf}</span>` : '';
-  const hConfTag = g.hConf ? `<span class="conf-tag">${g.hConf}</span>` : '';
-
-  const footerHtml = pred
-    ? `<div class="card-ft">
-        <div class="ft-team">
-          <span class="ft-tname">${esc(displayName(g.aKey, g.away))} ${aConfTag}</span>
-          <span class="ft-stats">O ${pred.aRating.adjO.toFixed(1)} · D ${pred.aRating.adjD.toFixed(1)} · T ${pred.aRating.adjT.toFixed(1)}</span>
-        </div>
-        <div class="ft-div"></div>
-        <div class="ft-team">
-          <span class="ft-tname">${esc(displayName(g.hKey, g.home))} ${hConfTag}</span>
-          <span class="ft-stats">O ${pred.hRating.adjO.toFixed(1)} · D ${pred.hRating.adjD.toFixed(1)} · T ${pred.hRating.adjT.toFixed(1)}</span>
-        </div>
-        <button class="gd-btn" style="margin-left:auto;flex-shrink:0;" onclick="showGameModal('${g.id}')">Details</button>
-      </div>`
-    : `<div class="card-ft card-ft-warn">⚠ No Torvik match — ${esc(g.away)} @ ${esc(g.home)}</div>`;
-
-  const be = bestEdge(g);
-  const edgeCardCls = be >= 7 ? ' edge-hot' : be >= 4 ? ' edge-warm' : '';
-  const bothRanked  = g.awayRank <= 25 && g.homeRank <= 25;
-  const rankedCls   = (g.awayRank <= 25 || g.homeRank <= 25) ? ' ranked-game' : '';
-
-  const awayRankBadge = g.awayRank <= 25 ? `<span class="rank-badge">#${g.awayRank}</span>` : '';
-  const homeRankBadge = g.homeRank <= 25 ? `<span class="rank-badge">#${g.homeRank}</span>` : '';
-  const rankedMatchupBadge = bothRanked ? `<span class="ranked-badge">Ranked Matchup</span>` : '';
-
-  // Contextual badges
+  // ── Context tags ──
   function teamBadges(b2b, daysRest, injuries, form) {
     let s = '';
     if (b2b) s += `<span class="ctx-badge b2b-tag" title="Back-to-back game (played yesterday)">B2B</span>`;
     else if (daysRest === 2) s += `<span class="ctx-badge b2b-tag" style="opacity:.7" title="Short rest — played 2 days ago">SR</span>`;
-    if (injuries.length) s += `<span class="ctx-badge inj-flag" title="${esc(injuries.map(i=>i.name+' ('+i.status+(i.mpg?', ~'+i.mpg+' mpg':'')+')').join(', '))}">⚠ ${injuries.length > 1 ? injuries.length+' out' : injuries[0].name}</span>`;
+    if (injuries.length) s += `<span class="ctx-badge inj-flag" title="${esc(injuries.map(i=>i.name+' ('+i.status+(i.mpg?', ~'+i.mpg+' mpg':'')+')').join(', '))}">⚠ ${injuries.length > 1 ? injuries.length+' out' : 'Injury'}</span>`;
     if (form && Math.abs(form.net) >= 1.5) s += `<span class="ctx-badge form-tag ${form.net > 0 ? 'form-up' : 'form-dn'}" title="Last-14-day trend: adjO ${form.dO > 0?'+':''}${form.dO} / adjD ${form.dD > 0?'+':''}${form.dD}">${form.net > 0 ? '↑' : '↓'} ${Math.abs(form.net).toFixed(1)}</span>`;
     return s;
   }
-  // Confidence badge based on weeks into the season.
   // Torvik ratings are noisy early in the season — Nov/Dec MAE ~11 pts vs Jan+ ~8.5 pts.
-  // Torvik's 'games' field carries over from the prior season so we use the calendar date.
   function confidenceBadge() {
-    const now = new Date();
-    const month = now.getMonth() + 1; // 1-12
-    const day   = now.getDate();
-    // Season starts Nov 1; full weight ~Dec 10 (week 6)
-    if (month === 11 && day <= 14) return `<span class="ctx-badge early-tag" title="Season week 1-2 — Torvik ratings have very few games, predictions are less reliable">⚠ Early Season</span>`;
+    const now = new Date(), month = now.getMonth() + 1, day = now.getDate();
+    if (month === 11 && day <= 14) return `<span class="ctx-badge early-tag" title="Season week 1-2 — Torvik ratings have very few games, predictions are less reliable">⚠ Early season</span>`;
     if (month === 11 || (month === 12 && day <= 10)) return `<span class="ctx-badge early-tag" title="Early season — ratings still stabilizing, treat predictions with caution">Early</span>`;
     return '';
   }
-  function moveBadge(move) {
-    if (move == null || Math.abs(move) < 0.5) return '';
-    return `<span class="line-move ${move > 0 ? 'lm-up' : 'lm-dn'}" title="Line moved ${move > 0 ? 'toward home' : 'toward away'} since open">${move > 0 ? '↑' : '↓'}${Math.abs(move).toFixed(1)}</span>`;
-  }
-
-  const aCtx = teamBadges(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
-  const hCtx = teamBadges(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm);
-  const travelBadge = g.awayTravel ? `<span class="ctx-badge travel-tag" title="Away team traveling 2+ time zones">✈ travel</span>` : '';
-  const earlyBadge  = confidenceBadge();
-  // Public lean badge — show when ≥65% of bets on one side
-  function publicLeanBadge() {
+  function publicBadge() {
     if (!g.betting) return '';
     const { homeSpreadBetPct: h, awaySpreadBetPct: a } = g.betting;
     if (!h && !a) return '';
     const pct = Math.max(h, a);
     if (pct < 65) return '';
-    const side = h >= a ? displayName(g.hKey, g.home).split(' ').pop() : displayName(g.aKey, g.away).split(' ').pop();
-    return `<span class="ctx-badge public-tag" title="${pct}% of public bets on ${esc(side)} spread">🎰 ${pct}% public</span>`;
+    const side = h >= a ? teamAbbr(g, 'h') : teamAbbr(g, 'a');
+    return `<span class="ctx-badge public-tag" title="${pct}% of public bets on ${esc(side)} spread">${pct}% public</span>`;
   }
-  const publicBadge = publicLeanBadge();
+  function moveBadge(move) {
+    if (move == null || Math.abs(move) < 0.5) return '';
+    return `<span class="line-move ${move > 0 ? 'lm-up' : 'lm-dn'}" title="Line moved ${move > 0 ? 'toward home' : 'toward away'} since open">${move > 0 ? '↑' : '↓'}${Math.abs(move).toFixed(1)}</span>`;
+  }
+  const tags = [
+    g.neutral ? '<span class="ctx-badge">Neutral</span>' : '',
+    g.awayTravel ? `<span class="ctx-badge travel-tag" title="Away team traveling 2+ time zones">✈ Travel</span>` : '',
+    confidenceBadge(), publicBadge(),
+  ].join('');
 
+  // ── Top line: time / live / final ──
+  const gameTime = g.time ? new Date(g.time).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : '';
+  const conf = g.hConf && g.hConf === g.aConf ? g.hConf : 'Non-conf';
+  const status = live ? `<span class="gc-live">${esc(g.shortDetail || 'Live')}</span>`
+    : final ? '<b>Final</b>'
+    : `<b>${gameTime}</b>${g.broadcast ? ` · ${esc(g.broadcast)}` : ''}`;
+
+  // ── Team rows ──
+  function teamRow(side) {
+    const h = side === 'h';
+    const key = h ? g.hKey : g.aKey, full = h ? g.home : g.away;
+    const rank = h ? g.homeRank : g.awayRank, rec = h ? g.homeRecord : g.awayRecord;
+    const color = (h ? g.homeColor : g.awayColor) || '';
+    const line = vegasSpread ? fmtSpread((h ? vegasSpread.point : -vegasSpread.point)) : '—';
+    const pts = h ? hs : as, opp = h ? as : hs;
+    const badges = h ? teamBadges(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm) : teamBadges(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
+    return `<div class="gc-tm">
+      <span class="gc-logo" style="${color ? `--tc:#${esc(color)}` : ''}" aria-hidden="true">${esc(teamAbbr(g, side))}</span>
+      <span class="gc-name">${rank <= 25 ? `<span class="gc-rk">${rank}</span>` : ''}<span class="team-link" onclick="event.stopPropagation();showTeamModal('${key}','${esc(full)}')">${esc(displayName(key, full))}</span>${rec ? `<span class="gc-rec">${esc(rec)}</span>` : ''}${badges}</span>
+      <span class="gc-line">${line}</span>
+      ${live || final ? `<span class="gc-score${pts < opp ? ' trail' : ''}">${pts}</span>` : ''}
+    </div>`;
+  }
+
+  // ── Model vs market ──
+  let modelHtml;
+  if (!pred) {
+    modelHtml = `<div class="gc-model"><div class="gc-nomodel">No ratings match for this game</div></div>`;
+  } else {
+    const homeFav = pred.margin > 0;
+    const favAbbr = teamAbbr(g, homeFav ? 'h' : 'a');
+    const ours = `${favAbbr} ${fmtSpread((-Math.abs(pred.margin)).toFixed(1))}`;
+    const mkt = vegasSpread ? fmtSpread(homeFav ? vegasSpread.point : -vegasSpread.point) : null;
+    const edgeTxt = c => c ? `<span class="gc-e ${c.tier || ''}">${c.side} ${c.edge.toFixed(1)}</span>` : '<span class="gc-e">—</span>';
+    modelHtml = `<div class="gc-model">
+      <div class="gc-mm"><span class="gc-k">Spread</span><span class="gc-v">Ours <b>${ours}</b> · ${mkt != null ? `Mkt ${mkt}${moveBadge(g.spreadMove)}` : 'No line yet'}</span>${edgeTxt(lines.spread)}${edgeBar(lines.spread, 'spread')}</div>
+      <div class="gc-mm"><span class="gc-k">Total</span><span class="gc-v">Ours <b>${pred.total.toFixed(1)}</b> · ${vegasTotal ? `Mkt ${vegasTotal.point}${moveBadge(g.totalMove)}` : 'No line yet'}</span>${edgeTxt(lines.total)}${edgeBar(lines.total, 'total')}</div>
+    </div>`;
+  }
+
+  // ── Live / final note ──
+  let note = '';
+  if (live) {
+    const parts = [];
+    if (vegasSpread) {
+      const gap = hs - as + vegasSpread.point;
+      parts.push(Math.abs(gap) < 0.5 ? 'On the number' : `${teamAbbr(g, gap > 0 ? 'h' : 'a')} covering`);
+    }
+    const projected = calcLivePace(g);
+    if (projected !== null && vegasTotal) {
+      const diff = projected - vegasTotal.point;
+      parts.push(`Pace ${projected.toFixed(0)} vs O/U ${vegasTotal.point} (${diff > 0 ? '+' : ''}${diff.toFixed(0)})`);
+    }
+    if (parts.length) note = `<div class="gc-note live">${parts.join(' · ')}</div>`;
+  } else if (final && (vegasSpread || vegasTotal)) {
+    const parts = [];
+    if (vegasSpread) {
+      const gap = hs - as + vegasSpread.point;
+      parts.push(Math.abs(gap) < 0.5 ? 'Spread pushed' : `${teamAbbr(g, gap > 0 ? 'h' : 'a')} covered`);
+    }
+    if (vegasTotal) {
+      const sum = hs + as;
+      parts.push(sum === vegasTotal.point ? `Total pushed (${sum})` : `${sum > vegasTotal.point ? 'Over' : 'Under'} ${vegasTotal.point} (${sum})`);
+    }
+    note = `<div class="gc-note">${parts.join(' · ')}</div>`;
+  }
+
+  // ── The call ──
+  function result(c) {
+    if (!final) return '';
+    let r;
+    if (c.market === 'spread') {
+      const gap = hs - as + vegasSpread.point;
+      r = Math.abs(gap) < 0.5 ? 'push' : (gap > 0) === c.home ? 'won' : 'lost';
+    } else {
+      const sum = hs + as;
+      r = sum === vegasTotal.point ? 'push' : (sum > vegasTotal.point) === c.over ? 'won' : 'lost';
+    }
+    return `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>`;
+  }
+  let callHtml;
+  if (calls.length) {
+    callHtml = calls.map(c => `<span class="gc-callrow"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="gc-call-text">${esc(c.label)}</span>${result(c)}</span>`).join('');
+  } else if (!pred) {
+    callHtml = `<span class="gc-callrow"><span class="gc-pill none">No line</span><span class="gc-call-none">No model line for this game</span></span>`;
+  } else if (!vegasSpread && !vegasTotal) {
+    callHtml = `<span class="gc-callrow"><span class="gc-pill none">Waiting</span><span class="gc-call-none">Call posts when the market opens</span></span>`;
+  } else {
+    callHtml = `<span class="gc-callrow"><span class="gc-pill none">No play</span><span class="gc-call-none">Model is close to the market</span></span>`;
+  }
+
+  const rankedCls = (g.awayRank <= 25 || g.homeRank <= 25) ? ' ranked-game' : '';
   return `
-    <div class="card${edgeCardCls}${rankedCls}" id="game-${g.id}">
-      <div class="card-hd">
-        <div class="card-hd-teams">
-          ${awayRankBadge}<span class="team-away team-link" onclick="showTeamModal('${g.aKey}','${esc(g.away)}')">${esc(displayName(g.aKey, g.away))}</span>${aCtx}
-          <span class="card-vs">@</span>
-          ${homeRankBadge}<span class="team-home team-link" onclick="showTeamModal('${g.hKey}','${esc(g.home)}')">${esc(displayName(g.hKey, g.home))}</span>${hCtx}
-          ${g.neutral ? '<span class="neutral-tag">neutral</span>' : ''}${travelBadge}${earlyBadge}${publicBadge}
-        </div>
-        <div style="display:flex;align-items:center;gap:.4rem;">${rankedMatchupBadge}${statusBadge}</div>
-      </div>
-      ${liveScoreHtml}${finalScoreHtml}
-      <div class="card-bd">
-        <div class="mblock">
-          <div class="mblock-label">Spread (Home)</div>
-          ${spreadHtml}
-        </div>
-        <div class="mblock-div"></div>
-        <div class="mblock">
-          <div class="mblock-label">Total</div>
-          ${totalHtml}
-        </div>
-      </div>
-      ${footerHtml}
-      ${renderFactors(g)}
-    </div>
-  `;
+    <div class="gc${tier ? ` is-${tier}` : ''}${rankedCls}" id="game-${g.id}" role="button" tabindex="0"
+      onclick="showGameModal('${g.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showGameModal('${g.id}')}"
+      aria-label="${esc(displayName(g.aKey, g.away))} at ${esc(displayName(g.hKey, g.home))}, details">
+      <div class="gc-top"><span>${status}</span><span class="gc-conf">${esc(conf)}</span></div>
+      ${tags ? `<div class="gc-tags">${tags}</div>` : ''}
+      <div class="gc-teams">${teamRow('a')}${teamRow('h')}</div>
+      ${modelHtml}
+      ${note}
+      <div class="gc-call">${callHtml}<span class="gc-more">Details ›</span></div>
+    </div>`;
 }
 
 function scrollToGame(id) {
@@ -3226,19 +2915,17 @@ function renderTopPicks(games) {
   // Helper to build bar HTML from a snapshot array
   function buildPicksBar(snapshot, locked) {
     const cards = snapshot.map(p => {
-      const cls = p.edge >= 7 ? 'hot' : 'warm';
-      const typeLabel = p.type === 'spread' ? 'ATS' : 'O/U';
-      return `<div class="pick-card ${cls}" onclick="scrollToGame('${p.gameId}')">
-        <div class="pick-matchup">${esc(p.aShort)} @ ${esc(p.hShort)}</div>
+      const spread = p.type === 'spread';
+      const tier = p.edge >= (spread ? cfg.spreadTake : cfg.totalTake) ? 'take'
+                 : p.edge >= (spread ? cfg.spreadLean : cfg.totalLean) ? 'lean' : '';
+      return `<button class="pick-card ${tier}" onclick="scrollToGame('${p.gameId}')">
+        <div class="pick-top"><span class="gc-pill ${tier || 'none'}">${tier || 'Edge'}</span><span class="pick-edge">${p.edge.toFixed(1)}</span></div>
         <div class="pick-main">${esc(p.main)}</div>
-        <div class="pick-meta">
-          <span class="pick-edge">+${p.edge.toFixed(1)}</span>
-          <span class="pick-type-tag">${typeLabel}</span>
-        </div>
+        <div class="pick-matchup">${esc(p.aShort)} @ ${esc(p.hShort)} · ${spread ? 'Spread' : 'Total'}</div>
         <div class="pick-why">${esc(p.why)}</div>
-      </div>`;
+      </button>`;
     }).join('');
-    const title = locked ? '🔒 Top Picks (Locked)' : "Today's Top Picks<span class='edge-tip' data-tip='Edge = model spread minus Vegas line. Higher edge = stronger disagreement with Vegas.'>?</span>";
+    const title = locked ? `Top plays <span class="picks-lock">Locked at ${cfg.lockHour > 12 ? cfg.lockHour - 12 : cfg.lockHour || 12} ${cfg.lockHour >= 12 ? 'PM' : 'AM'}</span>` : 'Top plays';
     bar.style.display = '';
     bar.innerHTML = `
       <div class="picks-header">
@@ -3432,24 +3119,8 @@ function recordSpark(daily) {
 // ── Today's card (record band, left side) ─────────────────
 // Every spread/total that clears the Lean or Take threshold, biggest first
 function dayCalls(games) {
-  const calls = [];
-  for (const g of games) {
-    if (!g.pred) continue;
-    if (g.vegasSpread) {
-      const e = g.pred.margin + g.vegasSpread.point, a = Math.abs(e);
-      const tier = a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null;
-      if (tier) {
-        const home = e > 0, line = home ? g.vegasSpread.point : -g.vegasSpread.point;
-        calls.push({ g, tier, edge: a, label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}` });
-      }
-    }
-    if (g.vegasTotal) {
-      const e = g.pred.total - g.vegasTotal.point, a = Math.abs(e);
-      const tier = a >= cfg.totalTake ? 'take' : a >= cfg.totalLean ? 'lean' : null;
-      if (tier) calls.push({ g, tier, edge: a, label: `${e > 0 ? 'Over' : 'Under'} ${g.vegasTotal.point}` });
-    }
-  }
-  return calls.sort((x, y) => (y.tier === 'take') - (x.tier === 'take') || y.edge - x.edge);
+  return games.flatMap(g => gameCalls(g).map(c => ({ ...c, g })))
+    .sort((x, y) => (y.tier === 'take') - (x.tier === 'take') || y.edge - x.edge);
 }
 
 function renderRecordBand(games, liveN) {
@@ -3514,49 +3185,49 @@ function shiftDate(n) {
 }
 
 // ── Filter state ──────────────────────────────────────────
-const filters = { compact:false, hasOdds:false, edgeOnly:false, onlyRanked:false, sort:'edge', conference:'', tab:'all', search:'' };
+const filters = { compact:false, callsOnly:false, hasOdds:false, onlyRanked:false, sort:'edge', conference:'', tab:'all', search:'' };
 
-const FC_ID = { compact:'compact', hasOdds:'odds', edgeOnly:'edge', onlyRanked:'ranked' };
+const FC_ID = { callsOnly:'calls' };                                       // toggle buttons
+const FP_ID = { hasOdds:'fp-odds', onlyRanked:'fp-ranked', compact:'fp-compact' };  // filter-panel checkboxes
 
 function toggleFilter(key) {
   filters[key] = !filters[key];
   document.getElementById('fc-' + FC_ID[key])?.classList.toggle('on', filters[key]);
+  document.getElementById('fc-' + FC_ID[key])?.setAttribute('aria-pressed', String(filters[key]));
   if (key === 'compact') {
     document.getElementById('game-list').querySelector('.game-list-inner')
       ?.classList.toggle('compact-list', filters.compact);
   }
-  // Sync mobile checkboxes
-  const cbMap = { hasOdds:'mfp-odds', edgeOnly:'mfp-edge', onlyRanked:'mfp-ranked', compact:'mfp-compact' };
-  if (cbMap[key]) { const cb = document.getElementById(cbMap[key]); if (cb) cb.checked = filters[key]; }
-  updateMobileFilterCount();
+  const cb = document.getElementById(FP_ID[key]); if (cb) cb.checked = filters[key];
+  updateFilterCount();
   render(_lastGames);
 }
 
-function updateMobileFilterCount() {
-  const count = ['hasOdds','edgeOnly','onlyRanked','compact'].filter(k => filters[k]).length;
-  const el = document.getElementById('mobile-filter-count');
-  const btn = document.getElementById('mobile-filter-btn');
-  if (el) { el.textContent = count || ''; el.style.display = count ? 'inline-flex' : 'none'; }
-  if (btn) btn.classList.toggle('mfb-active', count > 0);
+function updateFilterCount() {
+  const n = ['hasOdds', 'onlyRanked'].filter(k => filters[k]).length + (filters.conference ? 1 : 0);
+  const el = document.getElementById('filter-count');
+  if (el) { el.textContent = n; el.hidden = !n; }
+  document.getElementById('filter-btn')?.classList.toggle('on', n > 0);
 }
 
-function toggleMobileFilters(e) {
+function toggleFilterPanel(e) {
   e.stopPropagation();
-  document.getElementById('mobile-filter-panel')?.classList.toggle('mfp-open');
+  const p = document.getElementById('filter-panel');
+  p.hidden = !p.hidden;
+  document.getElementById('filter-btn').setAttribute('aria-expanded', String(!p.hidden));
 }
 
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.mobile-filter-wrap')) {
-    document.getElementById('mobile-filter-panel')?.classList.remove('mfp-open');
-  }
-});
+function clearFilters() {
+  filters.hasOdds = filters.onlyRanked = false;
+  filters.conference = '';
+  for (const k of ['hasOdds', 'onlyRanked']) document.getElementById(FP_ID[k]).checked = false;
+  updateFilterCount();
+  render(_lastGames);
+}
 
 function setSort(val) {
   filters.sort = val;
-  document.querySelectorAll('.sort-pill').forEach(el =>
-    el.classList.toggle('active', el.dataset.sort === val)
-  );
-  const ms = document.getElementById('mobile-sort'); if (ms) ms.value = val;
+  const sel = document.getElementById('sort-select'); if (sel) sel.value = val;
   render(_lastGames);
 }
 
@@ -3586,45 +3257,27 @@ function clearSearch() {
 
 function setConference(c) {
   filters.conference = c;
+  updateFilterCount();
   render(_lastGames);
 }
 
 function drillConf(conf) {
   // Click conference header → filter to that conf, switch to edge sort
   filters.conference = conf;
-  filters.sort = 'edge';
-  document.querySelectorAll('.sort-pill').forEach(el =>
-    el.classList.toggle('active', el.dataset.sort === 'edge')
-  );
-  render(_lastGames);
+  setSort('edge');
+  updateFilterCount();
 }
 
 function updateConferenceFilter(games) {
-  const strip = document.getElementById('conf-strip');
-  const mobileWrap = document.getElementById('mobile-conf-wrap');
-  const mobileConf = document.getElementById('mobile-conf');
-  if (!strip) return;
+  const box = document.getElementById('conf-chips');
+  if (!box) return;
   const confs = [...new Set(
     games.flatMap(g => [g.hConf, g.aConf]).filter(c => c && c.length > 0)
   )].sort();
-  if (!confs.length) {
-    strip.style.display = 'none';
-    if (mobileConf) mobileConf.innerHTML = '<option value="">All Conferences</option>';
-    return;
-  }
-  strip.style.display = '';
-  strip.innerHTML =
-    `<span class="conf-strip-label">Conf</span>` +
-    `<button class="conf-pill all-pill${!filters.conference ? ' active' : ''}" onclick="setConference('')">All</button>` +
-    confs.map(c =>
-      `<button class="conf-pill${filters.conference === c ? ' active' : ''}" onclick="setConference('${esc(c)}')">${esc(c)}</button>`
-    ).join('');
-  // Mobile conf select
-  if (mobileWrap && mobileConf) {
-    mobileWrap.style.display = '';
-    mobileConf.innerHTML = `<option value="">All Conferences</option>` +
-      confs.map(c => `<option value="${esc(c)}"${filters.conference === c ? ' selected' : ''}>${esc(c)}</option>`).join('');
-  }
+  box.closest('.fp-confs').hidden = !confs.length;
+  const chip = (c, label) =>
+    `<button class="fp-chip" aria-pressed="${filters.conference === c}" onclick="setConference('${esc(c)}')">${esc(label)}</button>`;
+  box.innerHTML = chip('', 'All') + confs.map(c => chip(c, c)).join('');
 }
 
 let _lastGames = [];
@@ -3632,6 +3285,7 @@ let _lastGames = [];
 function render(games) {
   _lastGames = games || [];
   const el = document.getElementById('game-list');
+  el.classList.remove('loading');
   loadAccuracyStats();
   if (!games.length) {
     document.getElementById('top-picks-bar').style.display = 'none';
@@ -3658,7 +3312,7 @@ function render(games) {
   // Apply filters
   let visible = games.filter(g => {
     if (filters.hasOdds    && !g.vegasSpread && !g.vegasTotal)           return false;
-    if (filters.edgeOnly   && bestEdge(g) < 4)                            return false;
+    if (filters.callsOnly  && !gameCalls(g).length)                      return false;
     if (filters.onlyRanked && g.homeRank > 25 && g.awayRank > 25)        return false;
     if (filters.conference && g.hConf !== filters.conference && g.aConf !== filters.conference) return false;
     return true;
@@ -4214,7 +3868,7 @@ function toggleBacktest() {
   document.getElementById('top-picks-bar').style.display = btMode ? 'none' : '';
   document.getElementById('game-list').closest('.container').style.display = btMode ? 'none' : '';
   document.getElementById('sub-nav').style.display  = btMode ? 'none' : '';
-  document.getElementById('conf-strip').style.display = btMode ? 'none' : '';
+  if (btMode) document.getElementById('filter-panel').hidden = true;
   document.getElementById('rec-band').style.display = btMode ? 'none' : '';
   document.getElementById('bt-toggle').classList.toggle('active', btMode);
   if (btMode) {
@@ -4499,8 +4153,9 @@ async function refresh() {
     ]);
     currentIsoDate = isoDate;
     render(assembleGames());
-    document.getElementById('menu-updated').textContent =
-      'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const updated = 'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    document.getElementById('menu-updated').textContent = updated;
+    document.getElementById('sn-updated').textContent = updated;
     // Secondary data loads in background — each re-renders when done
     loadRecentTorvik().then(() => render(assembleGames())).catch(() => {});
     loadInjuries().then(() => render(assembleGames())).catch(() => {});
