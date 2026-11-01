@@ -1082,6 +1082,9 @@ input[type=date] {
 .rb-num{font-family:'Archivo','Inter',sans-serif;font-stretch:105%;font-weight:800;font-size:1.45rem;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--text);}
 .rb-num em{font-style:normal;font-size:.85rem;font-weight:700;margin-left:.35rem;color:var(--muted);}
 .rb-num em.good{color:var(--green);} .rb-num em.bad{color:var(--red);}
+.rb-seg{display:flex;gap:.6rem;}
+.rb-seg button{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--muted);opacity:.6;cursor:pointer;}
+.rb-seg button[aria-pressed="true"]{opacity:1;color:var(--text);text-decoration:underline;text-decoration-color:var(--blue);text-decoration-thickness:2px;text-underline-offset:4px;}
 .rb-sub{font-family:'Inter',sans-serif;font-size:.74rem;color:var(--muted);font-variant-numeric:tabular-nums;}
 .rb-stat-row{display:flex;justify-content:space-between;align-items:flex-end;gap:.6rem;}
 .rb-spark{width:110px;height:40px;flex:none;}
@@ -3031,7 +3034,8 @@ async function loadAccuracyStats() {
   _accLoading = true;
   const pad = n => String(n).padStart(2, '0');
   const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  const days = [...Array(30)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return iso(d); });
+  const dom = new Date().getDate();  // the calendar month needs up to 31 days of logs
+  const days = [...Array(Math.max(30, dom))].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return iso(d); });
   try {
     // Days before cfg.recordStart count as empty (e.g. opening-day games before the record began)
     const logs = await Promise.all(days.map(d => cfg.recordStart && d < cfg.recordStart ? [] : fetchNCAABLog(d, days[0])));
@@ -3039,8 +3043,9 @@ async function loadAccuracyStats() {
       td: tallyPicks(logs.slice(0, 1)),
       yd: tallyPicks(logs.slice(1, 2)),
       wk: tallyPicks(logs.slice(0, 7)),
-      mo: tallyPicks(logs),
-      daily: logs.map(l => tallyPicks([l]).take).reverse(),  // oldest first
+      mo: tallyPicks(logs.slice(0, dom)),   // calendar month: the 1st through today
+      l30: tallyPicks(logs.slice(0, 30)),
+      daily: logs.slice(0, 30).map(l => tallyPicks([l]).take).reverse(),  // oldest first
     };
     _accCacheTs = now;
     renderAccuracyBadges(_accCache);
@@ -3052,7 +3057,15 @@ async function loadAccuracyStats() {
   }
 }
 
-function renderAccuracyBadges({ td, yd, wk, mo, daily }) {
+// Which period the last record tile shows: calendar month or rolling 30 days
+let _recPeriod = localStorage.getItem('ncaab_rec_period') === 'l30' ? 'l30' : 'mo';
+function setRecPeriod(p) {
+  _recPeriod = p;
+  localStorage.setItem('ncaab_rec_period', p);
+  if (_accCache) renderAccuracyBadges(_accCache);
+}
+
+function renderAccuracyBadges({ td, yd, wk, mo, l30, daily }) {
   const el = document.getElementById('rb-stats');
   if (!el) return;
   const rec = ({ w, l, p }) => `${w}–${l}${p ? `–${p}` : ''}`;
@@ -3062,11 +3075,15 @@ function renderAccuracyBadges({ td, yd, wk, mo, daily }) {
   const tip = (lbl, { take, lean, earlyTake }) =>
     `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)}${early(earlyTake) ? ` · of the takes, ${early(earlyTake)}` : ''} (W–L–Push, graded vs the line at tip-off)`;
   const lp = pct(wk.lean);
+  const per = _recPeriod === 'l30' ? l30 : mo;
+  const perLbl = _recPeriod === 'l30' ? 'Last 30 days' : new Date().toLocaleDateString([], { month: 'long' });
   el.innerHTML = `
     <div class="rb-stat" title="${tip('Last 7 days', wk)}"><div class="rb-eyebrow">Takes this week</div>
       <div class="rb-stat-row"><div><div class="rb-num">${rec(wk.take)}${pctEm(wk.take)}</div><div class="rb-sub">Leans ${rec(wk.lean)}${lp == null ? '' : ` · ${lp}%`}</div></div>${recordSpark(daily)}</div></div>
     <div class="rb-stat" title="${tip('Today', td)}"><div class="rb-eyebrow">Today</div><div class="rb-num">${rec(td.take)}</div><div class="rb-sub">Yesterday ${rec(yd.take)}</div></div>
-    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">This month</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div>${early(mo.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(mo.earlyTake)}</div>` : ''}</div>`;
+    <div class="rb-stat" title="${tip(perLbl, per)}"><div class="rb-eyebrow rb-seg" role="group" aria-label="Record period">
+        <button aria-pressed="${_recPeriod === 'mo'}" onclick="setRecPeriod('mo')">This month</button><button aria-pressed="${_recPeriod === 'l30'}" onclick="setRecPeriod('l30')">Last 30</button></div>
+      <div class="rb-num">${rec(per.take)}${pctEm(per.take)}</div><div class="rb-sub">Leans ${rec(per.lean)}</div>${early(per.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(per.earlyTake)}</div>` : ''}</div>`;
 }
 
 // Running Takes net (wins − losses) over the last 30 days
