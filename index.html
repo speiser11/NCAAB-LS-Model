@@ -3062,15 +3062,11 @@ function renderAccuracyBadges({ td, yd, wk, mo, daily }) {
   const tip = (lbl, { take, lean, earlyTake }) =>
     `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)}${early(earlyTake) ? ` · of the takes, ${early(earlyTake)}` : ''} (W–L–Push, graded vs the line at tip-off)`;
   const lp = pct(wk.lean);
-  // Within 30 days of the record's start, "This month" is really "since <start>"
-  const start = cfg.recordStart && new Date(cfg.recordStart + 'T12:00');
-  const monthLbl = start && (Date.now() - start) < 30 * 864e5
-    ? 'Since ' + start.toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'This month';
   el.innerHTML = `
     <div class="rb-stat" title="${tip('Last 7 days', wk)}"><div class="rb-eyebrow">Takes this week</div>
       <div class="rb-stat-row"><div><div class="rb-num">${rec(wk.take)}${pctEm(wk.take)}</div><div class="rb-sub">Leans ${rec(wk.lean)}${lp == null ? '' : ` · ${lp}%`}</div></div>${recordSpark(daily)}</div></div>
     <div class="rb-stat" title="${tip('Today', td)}"><div class="rb-eyebrow">Today</div><div class="rb-num">${rec(td.take)}</div><div class="rb-sub">Yesterday ${rec(yd.take)}</div></div>
-    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">${monthLbl}</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div>${early(mo.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(mo.earlyTake)}</div>` : ''}</div>`;
+    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">This month</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div>${early(mo.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(mo.earlyTake)}</div>` : ''}</div>`;
 }
 
 // Running Takes net (wins − losses) over the last 30 days
