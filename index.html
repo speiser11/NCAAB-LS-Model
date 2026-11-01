@@ -1698,17 +1698,23 @@ const CONF_TZ = {
   'Conference USA':0,'Atlantic Sun':0,'ASUN':0,'Metro':0,'UAC':1,
 };
 
-// v3: reset totalOffset to 0 (regression calibration now built into formula)
 let cfg = {
   homeCourt:   3.5,
   scoreScale:  1.04,
-  totalOffset: -1.5,   // re-centered Nov 2026: -5 left totals 3.6 under Vegas on preseason ratings
+  // Total = intercept + slope × raw + neutral, raw = league-normalized expected points (predict()).
+  // Fitted on all 5,693 games of 2025-26 with point-in-time Torvik ratings; the old fixed
+  // 106.09 league average let totals drift from 1 under to 3 over the market through the season.
+  totalIntercept: 35.38,
+  totalSlope:     0.7709,
+  totalNeutral:   -2.21,
   lockHour:    10,
   oddsGistId:  '',
-  spreadLean:  3,      // NCAAB |model − Vegas| spread edge for a Lean
-  spreadTake:  6,      // ...and for a Take
+  spreadLean:  4,      // NCAAB |model − Vegas| spread edge for a Lean
+  spreadTake:  5,      // ...and for a Take
+  spreadMaxEdge: 8,    // above this the gap is more likely a ratings problem than an edge: no pick
   totalLean:   5,      // NCAAB total edge for a Lean
   totalTake:   8,      // ...and for a Take
+  maxPickLine: 15,     // no spread pick when the line is this big or bigger (blowouts: model untested there)
   earlyGames:  8,      // picks where either team has played fewer are "early season" in the record
   recordStart: '',     // YYYY-MM-DD: the record ignores pick logs before this date
   cfbScale:    1.05,   // FPI-to-market scale, fitted on the 2026 week-1 board
@@ -1892,13 +1898,17 @@ async function loadModelConfig() {
     const c = await res.json();
     cfg.homeCourt   = c.homeCourt   ?? cfg.homeCourt;
     cfg.scoreScale  = c.scoreScale  ?? cfg.scoreScale;
-    cfg.totalOffset = c.totalOffset ?? cfg.totalOffset;
+    cfg.totalIntercept = c.totalIntercept ?? cfg.totalIntercept;
+    cfg.totalSlope     = c.totalSlope     ?? cfg.totalSlope;
+    cfg.totalNeutral   = c.totalNeutral   ?? cfg.totalNeutral;
     cfg.oddsGistId  = c.oddsGistId  ?? '';
     cfg.lockHour    = c.lockHour    ?? cfg.lockHour;
     cfg.spreadLean  = c.spreadLean  ?? cfg.spreadLean;
     cfg.spreadTake  = c.spreadTake  ?? cfg.spreadTake;
     cfg.totalLean   = c.totalLean   ?? cfg.totalLean;
     cfg.totalTake   = c.totalTake   ?? cfg.totalTake;
+    cfg.maxPickLine = c.maxPickLine ?? cfg.maxPickLine;
+    cfg.spreadMaxEdge = c.spreadMaxEdge ?? cfg.spreadMaxEdge;
     cfg.earlyGames  = c.earlyGames  ?? cfg.earlyGames;
     cfg.recordStart = c.recordStart ?? cfg.recordStart;
     cfg.cfbScale    = c.cfbScale    ?? cfg.cfbScale;
@@ -2491,6 +2501,15 @@ function injuryImpact(injuries) {
   return Math.min(total, 4);
 }
 
+// League averages of the loaded ratings, recomputed when the ratings object changes.
+let _lgCache = null;
+function leagueAvg() {
+  if (_lgCache && _lgCache.src === ratings) return _lgCache;
+  const R = Object.values(ratings);
+  const mean = k => R.reduce((s, t) => s + t[k], 0) / (R.length || 1);
+  return (_lgCache = { src: ratings, adjD: mean('adjD'), adjT: mean('adjT') });
+}
+
 // Predict game: returns { margin, total, hScore, aScore, hRating, aRating, homeWinProb, awayWinProb }
 // margin > 0 → home team wins by that many (after home court adj)
 // hOverride/aOverride: optional pre-blended rating objects (for form adjustment)
@@ -2513,11 +2532,17 @@ function predict(homeKey, awayKey, neutral, hOverride = null, aOverride = null) 
 
   const homeWinProb = Math.round(normalCDF(margin / NCAAB_SIGMA) * 100);
 
+  // Total: expected points against the CURRENT league average, at KenPom-style
+  // possessions (tempo × tempo ÷ league tempo), mapped through the fitted line.
+  const lg  = leagueAvg();
+  const raw = (h.adjO * a.adjD / lg.adjD + a.adjO * h.adjD / lg.adjD) * (h.adjT * a.adjT / lg.adjT) / 100;
+  const total = cfg.totalIntercept + cfg.totalSlope * raw + (neutral ? cfg.totalNeutral : 0);
+
   return {
     margin:  Math.round(margin  * 10) / 10,
-    total:   Math.round(((hScore + aScore) * 0.847 + 18.7 + cfg.totalOffset) * 10) / 10,
-    hScore:  Math.round((hScore + hc / 2) * 10) / 10,
-    aScore:  Math.round((aScore - hc / 2) * 10) / 10,
+    total:   Math.round(total * 10) / 10,
+    hScore:  Math.round((total + margin) / 2 * 10) / 10,   // projected score, consistent with total and margin
+    aScore:  Math.round((total - margin) / 2 * 10) / 10,
     hRating: h,
     aRating: a,
     homeWinProb,
@@ -2800,7 +2825,8 @@ function gameLines(g) {
     const e = g.pred.margin + g.vegasSpread.point, a = Math.abs(e), home = e > 0;
     const line = home ? g.vegasSpread.point : -g.vegasSpread.point;
     out.spread = { market: 'spread', e, edge: a, home,
-      tier: a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null,
+      tier: Math.abs(g.vegasSpread.point) >= cfg.maxPickLine || a > cfg.spreadMaxEdge ? null
+          : a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null,
       side: teamAbbr(g, home ? 'h' : 'a'),
       label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}` };
   }
@@ -3012,7 +3038,7 @@ function renderTopPicks(games) {
     if (g.vegasSpread) {
       const se = g.pred.margin + g.vegasSpread.point;
       const absE = Math.abs(se);
-      if (absE >= 4) {
+      if (absE >= cfg.spreadLean && absE <= cfg.spreadMaxEdge && Math.abs(g.vegasSpread.point) < cfg.maxPickLine) {
         const backHome = se > 0;
         const favKey   = backHome ? g.hKey : g.aKey;
         const favFull  = backHome ? g.home : g.away;
@@ -3648,7 +3674,7 @@ function gdSummary(g) {
 }
 
 // The model's line, step by step. Mirrors the adjustments assembleGames() applies to predict():
-// home court, back-to-back (1.8 pts), away travel (0.75), injuries, and the total calibration.
+// home court, back-to-back (1.8 pts), away travel (0.75), injuries, and the neutral-site total adjustment.
 function lineBuild(g) {
   const p = g.pred;
   const hName = teamAbbr(g, 'h'), aName = teamAbbr(g, 'a');
@@ -3661,7 +3687,7 @@ function lineBuild(g) {
   if (restAdj) s.push([`Back-to-back (${g.hB2B && g.aB2B ? 'both' : g.hB2B ? hName : aName})`, restAdj]);
   if (g.awayTravel) s.push([`${aName} travel`, 0.75]);
   if (hasInj && Math.abs(aInj - hInj) >= 0.3) s.push(['Injuries', aInj - hInj]);
-  const t = [['Calibration', cfg.totalOffset]];
+  const t = g.neutral ? [['Neutral site', cfg.totalNeutral]] : [];
   if (restAdj) t.push(['Back-to-back fatigue', -Math.abs(restAdj) * 0.4]);
   if (hasInj && hInj + aInj >= 0.5) t.push(['Injuries', -(hInj + aInj) * 0.35]);
   const sum = a => a.reduce((x, [, v]) => x + v, 0);

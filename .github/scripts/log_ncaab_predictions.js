@@ -65,7 +65,10 @@ function picksFor(g, cfg) {
   const picks = [];
   if (g.vegasSpread) {
     const edge = g.pred.margin + g.vegasSpread.point;
-    const t = tier(Math.abs(edge), cfg.spreadLean, cfg.spreadTake);
+    // No spread pick on blowout lines (cfg.maxPickLine, e.g. 15+): untested there.
+    // ...nor above cfg.spreadMaxEdge (backtest: past ~8 pts the gap is ratings noise).
+    const t = Math.abs(g.vegasSpread.point) >= cfg.maxPickLine || Math.abs(edge) > cfg.spreadMaxEdge ? null
+            : tier(Math.abs(edge), cfg.spreadLean, cfg.spreadTake);
     if (t) {
       const home = edge > 0;
       picks.push({
