@@ -8,6 +8,7 @@
   "spreadTake": 6,
   "totalLean": 5,
   "totalTake": 8,
+  "maxPickLine": 15,
   "earlyGames": 8,
   "recordStart": "2026-11-01",
   "cfbScale": 1.05,

@@ -1709,6 +1709,7 @@ let cfg = {
   spreadTake:  6,      // ...and for a Take
   totalLean:   5,      // NCAAB total edge for a Lean
   totalTake:   8,      // ...and for a Take
+  maxPickLine: 15,     // no spread pick when the line is this big or bigger (blowouts: model untested there)
   earlyGames:  8,      // picks where either team has played fewer are "early season" in the record
   recordStart: '',     // YYYY-MM-DD: the record ignores pick logs before this date
   cfbScale:    1.05,   // FPI-to-market scale, fitted on the 2026 week-1 board
@@ -1899,6 +1900,7 @@ async function loadModelConfig() {
     cfg.spreadTake  = c.spreadTake  ?? cfg.spreadTake;
     cfg.totalLean   = c.totalLean   ?? cfg.totalLean;
     cfg.totalTake   = c.totalTake   ?? cfg.totalTake;
+    cfg.maxPickLine = c.maxPickLine ?? cfg.maxPickLine;
     cfg.earlyGames  = c.earlyGames  ?? cfg.earlyGames;
     cfg.recordStart = c.recordStart ?? cfg.recordStart;
     cfg.cfbScale    = c.cfbScale    ?? cfg.cfbScale;
@@ -2800,7 +2802,8 @@ function gameLines(g) {
     const e = g.pred.margin + g.vegasSpread.point, a = Math.abs(e), home = e > 0;
     const line = home ? g.vegasSpread.point : -g.vegasSpread.point;
     out.spread = { market: 'spread', e, edge: a, home,
-      tier: a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null,
+      tier: Math.abs(g.vegasSpread.point) >= cfg.maxPickLine ? null
+          : a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null,
       side: teamAbbr(g, home ? 'h' : 'a'),
       label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}` };
   }
@@ -3012,7 +3015,7 @@ function renderTopPicks(games) {
     if (g.vegasSpread) {
       const se = g.pred.margin + g.vegasSpread.point;
       const absE = Math.abs(se);
-      if (absE >= 4) {
+      if (absE >= 4 && Math.abs(g.vegasSpread.point) < cfg.maxPickLine) {
         const backHome = se > 0;
         const favKey   = backHome ? g.hKey : g.aKey;
         const favFull  = backHome ? g.home : g.away;
