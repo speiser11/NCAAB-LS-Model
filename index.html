@@ -1559,7 +1559,6 @@ const CONF_ID_MAP = {
   '25':'Southland','26':'SWAC','27':'Sun Belt','29':'WCC','30':'UAC',
   '44':'Mountain West','45':'Horizon','46':'ASUN','49':'Summit','62':'American',
 };
-const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/basketball_ncaab';
 const TORVIK    = 'https://barttorvik.com/trank.php?json=1';
 
 // Try CORS proxies in sequence — returns parsed JSON or throws
@@ -1593,7 +1592,6 @@ let lockedOddsList = [];  // Pre-game lines frozen at tip-off (from locked-odds 
 let refData      = {};  // ref name (lower) → { games, foulRate, ftRate } from KenPom
 let kenpomTeams  = {};  // normalized team key → { name, rank, adjEM, adjO, adjD, adjT, luck }
 let bettingMap   = {};  // `${hKey}|${aKey}` → { homeSpreadPct, awaySpreadPct, homeMoneyPct, awayMoneyPct }
-let oddsLeft     = null;
 const _odds404Dates    = new Set(); // dates known to 404 on locked-odds Gist
 const _oddsPendingDates = new Set(); // dates with a fetch currently in-flight
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
@@ -2056,18 +2054,37 @@ async function loadESPN(dateStr) {
 }
 
 // ══════════════════════════════════════════════════════════
-// DATA: THE ODDS API
+// DATA: ODDS (from the odds Gist the Fetch Odds workflow writes)
 // ══════════════════════════════════════════════════════════
-
-
+// The page never calls an odds provider itself — that would put the API key
+// in public page source and spend credits on every visit. The workflow saves:
+//   odds-{date}.json         latest lines, for today and tomorrow, every run
+//   locked-odds-{date}.json  each game's line frozen once it tips off
 async function loadOdds(isoDate) {
   // Determine today's local date for historical comparison
   const _n = new Date();
   const todayIso = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
+  lockedOddsList = [];
 
-  // ── Historical date: use stored data, never call the live API ──
+  const base = cfg.oddsGistId ? `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw` : null;
+  const gistJson = async name => {
+    if (!base) return null;
+    try {
+      const r = await fetch(`${base}/${name}`, { cache: 'no-store', signal: AbortSignal.timeout(8000) });
+      return r.ok ? await r.json() : null;
+    } catch(e) { return null; }
+  };
+
+  // ── Past date: the pre-game lines frozen at tip-off, else the last snapshot ──
   if (isoDate < todayIso) {
     setSt('st-odds', 'Odds: loading historical lines…', 'ok');
+    const saved = (await gistJson(`locked-odds-${isoDate}.json`)) || (await gistJson(`odds-${isoDate}.json`));
+    if (Array.isArray(saved) && saved.length) {
+      oddsList = saved;
+      setSt('st-odds', `Odds: ${oddsList.length} games (historical)`, 'ok');
+      return;
+    }
+    // Seasons before 2026-27 were archived in compact form on the ratings Gist
     const gistData = await fetchStoredOdds(isoDate);
     if (gistData.length > 0) {
       oddsList = gistToOddsFormat(gistData);
@@ -2079,85 +2096,35 @@ async function loadOdds(isoDate) {
     return;
   }
 
-  // Centralized odds: fetch live + locked-pregame files from Gist in parallel
-  if (cfg.oddsGistId && isoDate === todayIso) {
-    const base = `https://gist.githubusercontent.com/loganthein/${cfg.oddsGistId}/raw`;
-    try {
-      const [liveR, lockedR] = await Promise.all([
-        fetch(`${base}/odds-${isoDate}.json`,        { cache: 'no-store', signal: AbortSignal.timeout(8000) }),
-        fetch(`${base}/locked-odds-${isoDate}.json`, { cache: 'no-store', signal: AbortSignal.timeout(8000) }).catch(() => null),
-      ]);
-      if (liveR.ok) {
-        const live    = await liveR.json();
-        lockedOddsList = (lockedR?.ok ? await lockedR.json() : []);
-        const lockedMap = new Map(lockedOddsList.filter(g => g.id).map(g => [g.id, g]));
-        const liveIds   = new Set(live.map(g => g.id).filter(Boolean));
-        const nowMs     = Date.now();
-        oddsList = [
-          // Live games: use locked (pre-game) entry for started games
-          ...live.map(og => {
-            if (!og.id || !og.commence_time) return og;
-            const started = nowMs >= new Date(og.commence_time).getTime();
-            return (started && lockedMap.has(og.id)) ? lockedMap.get(og.id) : og;
-          }),
-          // Re-add started games that have since dropped from the live API
-          ...lockedOddsList.filter(og =>
-            !liveIds.has(og.id) &&
-            og.commence_time &&
-            nowMs >= new Date(og.commence_time).getTime()
-          ),
-        ];
-        setSt('st-odds', `Odds: ${oddsList.length} games (centralized)`, 'ok');
-        return;
-      }
-    } catch(e) { /* fall through to direct API path */ }
-  }
-
-  // 30-min session cache
-  const cc = sessionStorage.getItem('odds_cache');
-  const ct = parseInt(sessionStorage.getItem('odds_ts') || '0');
-  if (cc && Date.now() - ct < 30 * 60 * 1000) {
-    oddsList = JSON.parse(cc);
-    setSt('st-odds', `Odds: ${oddsList.length} games (cached)`, 'ok');
+  // ── Today / tomorrow: the workflow's latest snapshot ──
+  const [live, locked] = await Promise.all([
+    gistJson(`odds-${isoDate}.json`),
+    isoDate === todayIso ? gistJson(`locked-odds-${isoDate}.json`) : null,
+  ]);
+  if (!Array.isArray(live)) {
+    setSt('st-odds', base ? 'Odds: no lines posted for this date yet' : 'Odds: Gist ID not configured', 'warn');
+    oddsList = [];
     return;
   }
-
-  // Use noon UTC as boundaries so all US game times (ET through PT) are captured
-  const nextDay = new Date(isoDate + 'T00:00:00Z');
-  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-  const nextIso = nextDay.toISOString().slice(0, 10);
-  const FALLBACK_KEY = '4a78a7c6ae2eb0594f8ca57059dd14e4';
-  const url = `${ODDS_BASE}/odds/?apiKey=${FALLBACK_KEY}`
-    + `&regions=us&markets=spreads,totals&oddsFormat=american`
-    + `&commenceTimeFrom=${isoDate}T12:00:00Z&commenceTimeTo=${nextIso}T12:00:00Z`;
-
-  try {
-    // Try direct fetch first (works when server sets CORS headers),
-    // fall back through proxies if blocked (e.g. opened as file://)
-    let data;
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
-      oddsLeft = r.headers.get('x-requests-remaining');
-      if (!r.ok) {
-        const e = await r.json().catch(() => ({}));
-        setSt('st-odds', `Odds: error ${r.status}`, 'err');
-        showErr(`Odds API: ${e.message || r.statusText}`);
-        oddsList = []; return;
-      }
-      data = await r.json();
-    } catch {
-      // Direct fetch blocked — try via proxy
-      data = await fetchViaProxy(url);
-    }
-    oddsList = Array.isArray(data) ? data : [];
-    sessionStorage.setItem('odds_cache', JSON.stringify(oddsList));
-    sessionStorage.setItem('odds_ts', Date.now().toString());
-    setSt('st-odds', `Odds: ${oddsList.length} games${oddsLeft ? ` · ${oddsLeft} req left` : ''}`, 'ok');
-  } catch(e) {
-    setSt('st-odds', 'Odds: fetch error', 'err');
-    showErr(`Odds API failed: ${e.message}. Check Settings → key may be expired, or get a new free key at the-odds-api.com`);
-    oddsList = [];
-  }
+  lockedOddsList = Array.isArray(locked) ? locked : [];
+  const lockedMap = new Map(lockedOddsList.filter(g => g.id).map(g => [g.id, g]));
+  const liveIds   = new Set(live.map(g => g.id).filter(Boolean));
+  const nowMs     = Date.now();
+  oddsList = [
+    // Live games: use locked (pre-game) entry for started games
+    ...live.map(og => {
+      if (!og.id || !og.commence_time) return og;
+      const started = nowMs >= new Date(og.commence_time).getTime();
+      return (started && lockedMap.has(og.id)) ? lockedMap.get(og.id) : og;
+    }),
+    // Re-add started games that have since dropped from the live feed
+    ...lockedOddsList.filter(og =>
+      !liveIds.has(og.id) &&
+      og.commence_time &&
+      nowMs >= new Date(og.commence_time).getTime()
+    ),
+  ];
+  setSt('st-odds', `Odds: ${oddsList.length} games${isoDate === todayIso ? '' : ' (upcoming)'}`, 'ok');
 }
 
 // ══════════════════════════════════════════════════════════
@@ -4177,8 +4144,6 @@ async function refresh() {
 }
 
 function onDateChange() {
-  sessionStorage.removeItem('odds_cache');
-  sessionStorage.removeItem('odds_ts');
   lockedOddsList = [];
   localStorage.removeItem('picks_locked');
   localStorage.removeItem('picks_lock_date');

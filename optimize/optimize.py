@@ -14,12 +14,12 @@ Requirements:
   pip install requests pandas numpy tqdm scikit-learn
 
 Usage:
-  1. Paste your Odds API key into ODDS_API_KEY below
+  1. Set the ODDS_API_KEY environment variable (never paste the key into this file)
   2. python -X utf8 optimize.py
   3. First run fetches & caches all data (~20 min). Re-runs are instant.
 """
 
-import json, math, re, sys, time
+import json, math, os, re, sys, time
 import requests
 import numpy as np
 import pandas as pd
@@ -37,7 +37,7 @@ except ImportError:
 # ══════════════════════════════════════════════════════════
 # CONFIG
 # ══════════════════════════════════════════════════════════
-ODDS_API_KEY = "b3e1ccd8a2f25665490e3c35abde718c"
+ODDS_API_KEY = os.environ.get('ODDS_API_KEY', 'YOUR_KEY_HERE')  # never commit a key
 
 DATA_DIR = Path(__file__).parent / "data"
 
@@ -782,7 +782,7 @@ if __name__ == '__main__':
     print('=' * 64)
 
     if ODDS_API_KEY == 'YOUR_KEY_HERE':
-        print('ERROR: Set ODDS_API_KEY at the top of this script.')
+        print('ERROR: Set the ODDS_API_KEY environment variable.')
         sys.exit(1)
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
