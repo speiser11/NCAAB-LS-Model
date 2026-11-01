@@ -47,11 +47,8 @@ def consensus(sel):
                 if ln.get('main') and ln.get('line') is not None: return ln['line']
     return None
 
-# Every day of Nov 2025 (early season), then every 3rd day to early March.
-dates = [date(2025, 11, 3) + timedelta(days=i) for i in range(28)]
-d = date(2025, 12, 1)
-while d <= date(2026, 3, 8):
-    dates.append(d); d += timedelta(days=3)
+# Every day of the 2025-26 season, opening night through the title game.
+dates = [date(2025, 11, 3) + timedelta(days=i) for i in range((date(2026, 4, 6) - date(2025, 11, 3)).days + 1)]
 
 try:
     for day in dates:
