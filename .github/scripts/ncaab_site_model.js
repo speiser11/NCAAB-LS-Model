@@ -21,7 +21,7 @@ const vm   = require('vm');
 // Declarations taken verbatim from index.html, in dependency order.
 const NAMES = [
   'ESPN_URL', 'CONF_ID_MAP', 'CONF_TZ', 'ALIAS', 'cfg', 'NCAAB_SIGMA', 'FORM_WEIGHT',
-  'GIST_URL', 'GIST_META_URL', 'GIST_RAW', 'ODDS_BASE',
+  'GIST_URL', 'GIST_META_URL', 'GIST_RAW',
   'fetchViaProxy', 'cacheAge', 'normTeam', 'matchTeam', 'espnIdToKey', 'loadEspnIds', 'espnTeamKey', 'loadModelConfig', 'loadTorvik', 'parseTorvik',
   '_cleanConfName', 'loadConferences', 'loadESPN', 'loadOdds', 'fetchStoredOdds',
   'gistToOddsFormat', 'loadRestData', 'loadTeamInjuries', 'loadInjuries',
@@ -32,7 +32,7 @@ const NAMES = [
 // Mutable page state the functions above read and write.
 const STATE = `
 let ratings = {}, espnList = [], oddsList = [], lockedOddsList = [];
-let refData = {}, kenpomTeams = {}, bettingMap = {}, oddsLeft = null;
+let refData = {}, kenpomTeams = {}, bettingMap = {};
 const _odds404Dates = new Set(), _oddsPendingDates = new Set();
 let confIdMap = {}, teamIdToConf = {};  // espnIdToKey comes from index.html
 let teamsPlayedYesterday = new Set(), teamDaysRest = {}, recentRatings = {}, injuryMap = {};
@@ -91,15 +91,12 @@ async function load({ root }) {
   };
 
   // Relative URLs (data/model-config.json, data/ncaab-team-aliases.json) are
-  // read from the checkout. The Odds API is never called from here: the site
-  // only falls back to it when the centralized Gist is missing, and that
-  // fallback must not spend credits from a workflow.
+  // read from the checkout; everything else goes to the network.
   const siteFetch = async (url, opts) => {
     if (!/^https?:/.test(url)) {
       const body = fs.readFileSync(path.join(root, url), 'utf8');
       return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
     }
-    if (decodeURIComponent(url).includes('api.the-odds-api.com')) throw new Error('Odds API disabled in workflow');
     return fetch(url, opts);
   };
 

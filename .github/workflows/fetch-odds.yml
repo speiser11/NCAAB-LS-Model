@@ -18,16 +18,20 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+        # Today and tomorrow, so the site can show lines a day ahead without
+        # calling the provider from the browser (odds-{date}.json per day).
         run: |
-          DATE=$(date -u +%Y-%m-%d)
-          NEXT=$(date -u -d '+1 day' +%Y-%m-%d 2>/dev/null || date -u -v+1d +%Y-%m-%d)
-
-          curl -sf \
-            "https://api.the-odds-api.com/v4/sports/basketball_ncaab/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=spreads,totals&oddsFormat=american&commenceTimeFrom=${DATE}T12:00:00Z&commenceTimeTo=${NEXT}T12:00:00Z" \
-            -o /tmp/odds-raw.json \
-            || { echo "Odds API fetch failed, keeping existing Gist data"; exit 0; }
-
-          DATE=$DATE python3 .github/scripts/fetch_odds.py
+          for OFFSET in 0 1; do
+            DAY=$(date -u -d "+${OFFSET} day" +%Y-%m-%d)
+            NEXT=$(date -u -d "+$((OFFSET + 1)) day" +%Y-%m-%d)
+            if curl -sf \
+              "https://api.the-odds-api.com/v4/sports/basketball_ncaab/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=spreads,totals&oddsFormat=american&commenceTimeFrom=${DAY}T12:00:00Z&commenceTimeTo=${NEXT}T12:00:00Z" \
+              -o /tmp/odds-raw.json; then
+              DATE=$DAY python3 .github/scripts/fetch_odds.py
+            else
+              echo "Odds API fetch failed for ${DAY}, keeping existing Gist data"
+            fi
+          done
 
       - name: Fetch MLB moneylines and push to Gist
         env:
