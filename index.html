@@ -1108,7 +1108,12 @@ input[type=date] {
 .gc-tags{display:flex;flex-wrap:wrap;gap:.25rem;padding:.2rem .95rem 0;}
 .gc-teams{display:flex;flex-direction:column;gap:.45rem;padding:.45rem .95rem .6rem;}
 .gc-tm{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;align-items:center;gap:.55rem;}
-.gc-logo{width:28px;height:28px;border-radius:50%;background:var(--tc,var(--surface2));color:#fff;font-family:'Archivo','Inter',sans-serif;font-stretch:75%;font-weight:800;font-size:.55rem;display:grid;place-items:center;box-shadow:0 0 0 1px var(--border);overflow:hidden;}
+.gc-logo{position:relative;width:28px;height:28px;border-radius:50%;background:var(--tc,var(--surface2));color:#fff;font-family:'Archivo','Inter',sans-serif;font-stretch:75%;font-weight:800;font-size:.55rem;display:grid;place-items:center;box-shadow:0 0 0 1px var(--border);overflow:hidden;}
+.gc-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--surface);}
+.gc-logo:has(img){box-shadow:none;}
+[data-theme="dark"] .gc-logo img.lg-l,[data-theme="light"] .gc-logo img.lg-d{display:none;}
+.gd-logos{display:flex;align-items:center;gap:.5rem;margin-bottom:.45rem;font-size:.75rem;color:var(--muted);}
+.gc-logo.gd-logo{width:36px;height:36px;font-size:.62rem;}
 .gc-name{display:flex;align-items:baseline;flex-wrap:wrap;gap:.1rem .35rem;min-width:0;font-weight:700;font-size:.95rem;color:var(--text);}
 .gc-name .team-link{cursor:pointer;}
 .gc-name .team-link:hover{text-decoration:underline;}
@@ -2112,6 +2117,10 @@ async function loadESPN(dateStr) {
         awayAbbr:    away?.team?.abbreviation || '',
         homeColor:   home?.team?.color || '',
         awayColor:   away?.team?.color || '',
+        homeLogo:    home?.team?.logo || '',
+        awayLogo:    away?.team?.logo || '',
+        homeLogoDark: home?.team?.logoDark || '',
+        awayLogoDark: away?.team?.logoDark || '',
         homeRecord:  home?.records?.find(x => x.type === 'total')?.summary || home?.records?.[0]?.summary || '',
         awayRecord:  away?.records?.find(x => x.type === 'total')?.summary || away?.records?.[0]?.summary || '',
         broadcast:   comp?.broadcasts?.[0]?.names?.[0] || '',
@@ -2764,6 +2773,19 @@ function teamAbbr(g, side) {
   return ab || displayName(side === 'h' ? g.hKey : g.aKey, side === 'h' ? g.home : g.away).split(' ').pop();
 }
 
+// Team logo (ESPN; a dark-mode version when ESPN has one) over a team-colour badge.
+// If an image fails to load it removes itself and the badge shows through.
+function teamLogo(g, side, cls = 'gc-logo') {
+  const h = side === 'h';
+  const id = h ? g.homeTeamId : g.awayTeamId;
+  const color = (h ? g.homeColor : g.awayColor) || '';
+  const base = `https://a.espncdn.com/i/teamlogos/ncaa/500`;
+  const light = (h ? g.homeLogo : g.awayLogo) || (id ? `${base}/${id}.png` : '');
+  const dark  = (h ? g.homeLogoDark : g.awayLogoDark) || (id ? `${base}-dark/${id}.png` : '') || light;
+  const img = (src, c) => src ? `<img class="${c}" src="${esc(src)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  return `<span class="${cls}" style="${color ? `--tc:#${esc(color)}` : ''}" aria-hidden="true">${esc(teamAbbr(g, side))}${img(light, 'lg-l')}${img(dark, 'lg-d')}</span>`;
+}
+
 // The model's read on one game against the market.
 // spread.e > 0 favors the home side; total.e > 0 favors the over. tier: 'take' | 'lean' | null.
 function gameLines(g) {
@@ -2859,7 +2881,7 @@ function renderCard(g) {
     const pts = h ? hs : as, opp = h ? as : hs;
     const badges = h ? teamBadges(g.hB2B, g.hDaysRest, g.hInjuries||[], g.hForm) : teamBadges(g.aB2B, g.aDaysRest, g.aInjuries||[], g.aForm);
     return `<div class="gc-tm">
-      <span class="gc-logo" style="${color ? `--tc:#${esc(color)}` : ''}" aria-hidden="true">${esc(teamAbbr(g, side))}</span>
+      ${teamLogo(g, side)}
       <span class="gc-name">${rank <= 25 ? `<span class="gc-rk">${rank}</span>` : ''}<span class="team-link" onclick="event.stopPropagation();showTeamModal('${key}','${esc(full)}')">${esc(displayName(key, full))}</span>${rec ? `<span class="gc-rec">${esc(rec)}</span>` : ''}${badges}</span>
       <span class="gc-line">${line}</span>
       ${live || final ? `<span class="gc-score${pts < opp ? ' trail' : ''}">${pts}</span>` : ''}
@@ -3517,6 +3539,7 @@ function renderGameDetails() {
   document.getElementById('gd-header').innerHTML = `
     <div class="gd-head-top">
       <div>
+        <div class="gd-logos">${teamLogo(g, 'a', 'gc-logo gd-logo')}<span>at</span>${teamLogo(g, 'h', 'gc-logo gd-logo')}</div>
         <div class="gd-matchup">${esc(label(g.awayRank, g.aKey, g.away))} at ${esc(label(g.homeRank, g.hKey, g.home))}</div>
         <div class="gd-time">${esc(when)}${g.broadcast ? ` · ${esc(g.broadcast)}` : ''}${conf ? ` · ${esc(conf)}` : ''}${g.neutral ? ' · Neutral site' : ''}</div>
       </div>
