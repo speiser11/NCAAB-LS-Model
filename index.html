@@ -1173,6 +1173,76 @@ input[type=date] {
 #top-picks-bar .pick-matchup{font-family:'Inter',sans-serif;font-size:.74rem;margin:0;}
 #top-picks-bar .pick-why{font-family:'Inter',sans-serif;font-size:.7rem;margin-top:.2rem;padding-top:.4rem;border-top:1px solid var(--border);}
 
+/* ── Game details drawer (NCAAB): Summary / Deep dive ── */
+.gd-overlay.gd-drawer{padding:0;justify-content:flex-end;align-items:stretch;overflow:hidden;}
+.gd-drawer .gd-modal{margin:0;max-width:500px;height:100%;border-radius:0;border-width:0 0 0 1px;display:flex;flex-direction:column;font-family:'Inter',sans-serif;}
+.gd-drawer .gd-header{flex-direction:column;align-items:stretch;gap:.75rem;padding:calc(env(safe-area-inset-top,0px) + 1rem) 1.1rem .85rem;background:var(--surface);}
+.gd-drawer .gd-body{flex:1;overflow-y:auto;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);}
+.gd-drawer .gd-matchup{font-family:'Archivo','Inter',sans-serif;font-stretch:105%;font-weight:800;font-size:1.15rem;line-height:1.2;}
+.gd-drawer .gd-time{font-size:.78rem;margin-top:.2rem;}
+.gd-drawer .gd-close{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);font-size:.85rem;}
+.gd-drawer .gd-section{padding:.9rem 1.1rem;}
+.gd-drawer .gd-section-title{font-size:.66rem;color:var(--muted);margin-bottom:.6rem;}
+.gd-drawer .gd-table{font-size:.82rem;}
+.gd-head-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;}
+.gd-tabs{display:flex;gap:4px;background:var(--surface2);border-radius:10px;padding:3px;}
+.gd-tabs button{flex:1;border:0;background:none;padding:.45rem;border-radius:8px;font-family:'Inter',sans-serif;font-weight:700;font-size:.84rem;color:var(--muted);cursor:pointer;}
+.gd-tabs button[aria-selected="true"]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.15);}
+.gd-call{margin:1rem 1.1rem .3rem;border-radius:12px;padding:.8rem .9rem;display:flex;flex-direction:column;gap:.45rem;background:var(--surface-green);}
+.gd-call.lean{background:var(--surface-yellow);}
+.gd-call-row{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;}
+.gd-call-row strong{font-family:'Archivo','Inter',sans-serif;font-weight:800;font-size:1.2rem;color:var(--text);}
+.gd-plain{margin:.55rem 1.1rem 0;font-size:.88rem;line-height:1.5;color:var(--text);}
+.gd-state{margin:.9rem 1.1rem 0;border-radius:12px;padding:.75rem .9rem;background:var(--surface2);display:flex;flex-direction:column;gap:.2rem;font-size:.84rem;color:var(--muted);}
+.gd-state b{font-family:'Archivo','Inter',sans-serif;font-size:1rem;color:var(--text);}
+.gd-state.live b{color:var(--red);}
+.gd-call + .gd-plain + .gd-section,.gd-plain + .gd-section,.gd-state + .gd-section{margin-top:.6rem;border-top:1px solid var(--border);}
+.gd-bars{display:grid;gap:1.1rem;}
+.gd-bar-head{display:flex;justify-content:space-between;align-items:baseline;font-size:.82rem;margin-bottom:.45rem;color:var(--text);}
+.gd-bar-head span{color:var(--muted);font-variant-numeric:tabular-nums;}
+.gd-bar-head .take{color:var(--green);font-weight:700;} .gd-bar-head .lean{color:var(--yellow);font-weight:700;}
+.gd-bar .eb{height:16px;}
+.gd-bar .eb::before{top:5px;height:6px;}
+.gd-bar .eb-tk{height:16px;}
+.gd-bar .eb-mid{height:22px;top:-3px;}
+.gd-bar .eb-fill{top:5px;height:6px;}
+.gd-ends{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:.35rem;}
+.gd-note{margin:.6rem 0 0;font-size:.76rem;color:var(--muted);line-height:1.45;}
+.gd-section.gd-note{margin:0;}
+.gd-sub{font-size:.76rem;font-weight:600;color:var(--text);margin:.2rem 0 .1rem;}
+.gd-note + .gd-sub{margin-top:1rem;}
+.gd-facts{list-style:none;margin:0;padding:0;display:grid;gap:.4rem;}
+.gd-facts li{display:grid;grid-template-columns:64px 1fr;gap:.6rem;align-items:baseline;font-size:.84rem;color:var(--text);padding:.5rem .65rem;background:var(--surface2);border-radius:9px;line-height:1.4;}
+.gd-facts li.ctx{background:none;border:1px dashed var(--border);color:var(--muted);}
+.gd-facts .k{font-size:.64rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+.gd-deeplink{display:flex;justify-content:space-between;align-items:center;gap:.75rem;width:calc(100% - 2.2rem);margin:.4rem 1.1rem 1rem;padding:.8rem .9rem;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-family:'Inter',sans-serif;font-weight:700;font-size:.9rem;text-align:left;cursor:pointer;}
+.gd-deeplink small{display:block;font-weight:500;font-size:.76rem;color:var(--muted);margin-top:.15rem;}
+.gd-deeplink:hover{border-color:var(--blue);}
+.wf{display:grid;gap:.4rem;}
+.wf-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 72px;gap:.6rem;align-items:center;font-size:.8rem;color:var(--muted);}
+.wf-l{min-width:0;}
+.wf-t{position:relative;height:14px;}
+.wf-mk{position:absolute;top:-4px;bottom:-4px;border-left:1.5px dashed var(--red);}
+.wf-b{position:absolute;top:2px;height:10px;border-radius:3px;background:var(--blue);opacity:.85;}
+.wf-b.neg{background:var(--muted);}
+.wf-row.base .wf-b{background:var(--muted);opacity:.5;}
+.wf-row.total{border-top:1px solid var(--border);padding-top:.4rem;font-weight:700;color:var(--text);}
+.wf-row.total .wf-b{background:var(--text);opacity:1;}
+.wf-v{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--text);}
+.wf-key{display:flex;align-items:center;gap:.4rem;margin-top:.5rem;font-size:.74rem;color:var(--muted);}
+.wf-key i{height:12px;border-left:1.5px dashed var(--red);}
+.mv{position:relative;height:60px;margin:.2rem 0 0;}
+.mv::before{content:"";position:absolute;left:0;right:0;top:29px;height:2px;background:var(--border);}
+.mv-pt{position:absolute;top:24px;transform:translateX(-50%);}
+.mv-pt i{display:block;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--muted);}
+.mv-pt em{position:absolute;left:50%;transform:translateX(-50%);top:17px;font-style:normal;font-size:.68rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.mv-pt.now em{top:auto;bottom:17px;}
+.mv-pt.now i{border-color:var(--text);background:var(--text);}
+.mv-pt.ours i{border-color:var(--blue);background:var(--blue);}
+.mv-pt.ours em{color:var(--blue);font-weight:700;}
+.mv-pt.now em{color:var(--text);font-weight:600;}
+.mv-pt.open{z-index:1;} .mv-pt.now{z-index:2;} .mv-pt.ours{z-index:3;}
+
 /* ── Controls: status tabs · Takes & Leans · updated · sort · filters ── */
 #sub-nav .sub-nav-right{margin-left:auto;display:flex;align-items:center;gap:.5rem;padding:.35rem .9rem;}
 .sn-updated{font-family:'Inter',sans-serif;font-size:.72rem;color:var(--muted);white-space:nowrap;}
@@ -1192,6 +1262,8 @@ input[type=date] {
 .fp-clear{align-self:flex-end;border:0;background:none;color:var(--blue);font-family:'Inter',sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;padding:.25rem 0;}
 
 @media(max-width:640px){
+  .gd-overlay.gd-drawer{align-items:flex-end;}
+  .gd-drawer .gd-modal{height:auto;max-height:90vh;max-width:none;border-radius:18px 18px 0 0;border-width:1px 0 0;}
   .site-header{position:relative;}
   #sub-nav{top:0;flex-wrap:wrap;overflow:visible;}
   #sub-nav .status-tabs{width:100%;overflow-x:auto;}
@@ -2839,16 +2911,8 @@ function renderCard(g) {
 
   // ── The call ──
   function result(c) {
-    if (!final) return '';
-    let r;
-    if (c.market === 'spread') {
-      const gap = hs - as + vegasSpread.point;
-      r = Math.abs(gap) < 0.5 ? 'push' : (gap > 0) === c.home ? 'won' : 'lost';
-    } else {
-      const sum = hs + as;
-      r = sum === vegasTotal.point ? 'push' : (sum > vegasTotal.point) === c.over ? 'won' : 'lost';
-    }
-    return `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>`;
+    const r = callResult(g, c);
+    return r ? `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>` : '';
   }
   let callHtml;
   if (calls.length) {
@@ -3404,6 +3468,8 @@ function render(games) {
     </div>`;
   }
 
+  if (_gdGameId && document.getElementById('gd-overlay').classList.contains('open')) renderGameDetails();
+
   el.innerHTML = `<div class="game-list-inner ${compactCls}">
     ${group('Live', 'live', live)}
     ${group('Upcoming', 'upcoming', upcoming)}
@@ -3416,108 +3482,241 @@ function render(games) {
 // ══════════════════════════════════════════════════════════
 function closeGameModal() {
   document.getElementById('gd-overlay').classList.remove('open');
+  _gdGameId = null;
 }
 
-function showGameModal(gameId) {
-  const g = _lastGames.find(x => x.id === gameId);
-  if (!g) return;
-  const { pred, vegasSpread, vegasTotal } = g;
-  const aName = displayName(g.aKey, g.away);
-  const hName = displayName(g.hKey, g.home);
-  const gameTime = g.time ? new Date(g.time).toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'TBD';
+// ── Game details: Summary (the call, in plain words) / Deep dive (everything else) ──
+let _gdGameId = null, _gdTab = 'sum';
 
+function showGameModal(gameId) {
+  if (!_lastGames.some(x => x.id === gameId)) return;
+  _gdGameId = gameId;
+  _gdTab = 'sum';
+  const ov = document.getElementById('gd-overlay');
+  ov.classList.add('gd-drawer');
+  renderGameDetails();
+  ov.classList.add('open');
+}
+
+function setGdTab(tab) {
+  _gdTab = tab;
+  renderGameDetails();
+  document.getElementById('gd-body').scrollTop = 0;
+}
+
+function renderGameDetails() {
+  const g = _lastGames.find(x => x.id === _gdGameId);
+  if (!g) { closeGameModal(); return; }
+  const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
+  const final = g.statusName === 'STATUS_FINAL';
+  const when = live ? (g.shortDetail || 'Live') : final ? 'Final'
+    : g.time ? new Date(g.time).toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : 'TBD';
+  const conf = g.hConf && g.hConf === g.aConf ? g.hConf : '';
+  const label = (rank, key, full) => `${rank <= 25 ? `#${rank} ` : ''}${displayName(key, full)}`;
+  const tab = (t, txt) => `<button role="tab" aria-selected="${_gdTab === t}" onclick="setGdTab('${t}')">${txt}</button>`;
   document.getElementById('gd-header').innerHTML = `
-    <div>
-      <div class="gd-matchup">${esc(aName)} @ ${esc(hName)}</div>
-      <div class="gd-time">${gameTime}${g.neutral ? ' · Neutral Site' : ''}${g.awayTravel ? ' · Travel' : ''}</div>
+    <div class="gd-head-top">
+      <div>
+        <div class="gd-matchup">${esc(label(g.awayRank, g.aKey, g.away))} at ${esc(label(g.homeRank, g.hKey, g.home))}</div>
+        <div class="gd-time">${esc(when)}${g.broadcast ? ` · ${esc(g.broadcast)}` : ''}${conf ? ` · ${esc(conf)}` : ''}${g.neutral ? ' · Neutral site' : ''}</div>
+      </div>
+      <button class="gd-close" onclick="closeGameModal()" aria-label="Close">✕</button>
     </div>
-    <button class="gd-close" onclick="closeGameModal()">✕</button>`;
+    <div class="gd-tabs" role="tablist">${tab('sum', 'Summary')}${tab('deep', 'Deep dive')}</div>`;
+  document.getElementById('gd-body').innerHTML = _gdTab === 'deep' ? gdDeep(g) : gdSummary(g);
+}
+
+// 'won' | 'lost' | 'push' for a call on a finished game, else null
+function callResult(g, c) {
+  if (g.statusName !== 'STATUS_FINAL') return null;
+  const hs = parseInt(g.homeScore) || 0, as = parseInt(g.awayScore) || 0;
+  if (c.market === 'spread') {
+    const gap = hs - as + g.vegasSpread.point;
+    return Math.abs(gap) < 0.5 ? 'push' : (gap > 0) === c.home ? 'won' : 'lost';
+  }
+  const sum = hs + as;
+  return sum === g.vegasTotal.point ? 'push' : (sum > g.vegasTotal.point) === c.over ? 'won' : 'lost';
+}
+
+// Why the model's number moved, as [label, text] pairs (luck is context only)
+function gdReasons(g) {
+  const aName = displayName(g.aKey, g.away), hName = displayName(g.hKey, g.home);
+  const out = [];
+  for (const [team, list] of [[aName, g.aInjuries], [hName, g.hInjuries]])
+    for (const i of list || []) out.push(['Injury', `${team}: ${i.name} (${i.status}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]);
+  if (g.aB2B) out.push(['Rest', `${aName} on a back-to-back`]);
+  if (g.hB2B) out.push(['Rest', `${hName} on a back-to-back`]);
+  if (!g.aB2B && g.aDaysRest === 2) out.push(['Rest', `${aName} on short rest (2 days)`]);
+  if (!g.hB2B && g.hDaysRest === 2) out.push(['Rest', `${hName} on short rest (2 days)`]);
+  if (!g.hB2B && !g.aB2B && g.hDaysRest != null && g.aDaysRest != null && Math.abs(g.hDaysRest - g.aDaysRest) >= 3)
+    out.push(['Rest', `${g.hDaysRest > g.aDaysRest ? hName : aName} has ${Math.abs(g.hDaysRest - g.aDaysRest)} more days of rest`]);
+  if (g.awayTravel) out.push(['Travel', `${aName} crossing 2+ time zones`]);
+  for (const [team, f] of [[aName, g.aForm], [hName, g.hForm]])
+    if (f?.net && Math.abs(f.net) >= 1.5) out.push(['Form', `${team} ${f.net > 0 ? 'trending up' : 'trending down'} (${f.net > 0 ? '+' : ''}${f.net.toFixed(1)} net efficiency, last 14 days)`]);
+  return out;
+}
+
+function gdSummary(g) {
+  const { pred, vegasSpread, vegasTotal } = g;
+  const lines = gameLines(g), calls = gameCalls(g);
+  const hName = displayName(g.hKey, g.home), aName = displayName(g.aKey, g.away);
+  const tierWord = c => c.tier === 'take' ? 'Take' : 'Lean';
+  const mark = c => c.market === 'spread'
+    ? (c.tier === 'take' ? cfg.spreadTake : cfg.spreadLean)
+    : (c.tier === 'take' ? cfg.totalTake : cfg.totalLean);
+  const sentence = c => {
+    if (c.market === 'total')
+      return `Our total is ${pred.total.toFixed(1)}; the market is ${vegasTotal.point}. That ${c.edge.toFixed(1)}-point gap is past the ${tierWord(c)} mark (${mark(c)}).`;
+    const ours = pred.margin > 0 ? hName : aName;
+    const mkt = vegasSpread.point === 0 ? 'calls it a pick\'em'
+      : `has ${vegasSpread.point < 0 ? hName : aName} by ${Math.abs(vegasSpread.point)}`;
+    return `We have ${ours} by ${Math.abs(pred.margin).toFixed(1)}; the market ${mkt}. That ${c.edge.toFixed(1)}-point gap is past the ${tierWord(c)} mark (${mark(c)}).`;
+  };
 
   let html = '';
+  if (calls.length) {
+    const tier = calls.some(c => c.tier === 'take') ? 'take' : 'lean';
+    html += `<div class="gd-call ${tier}">${calls.map(c => {
+      const r = callResult(g, c);
+      return `<div class="gd-call-row"><span class="gc-pill ${c.tier}">${c.tier}</span><strong>${esc(c.label)}</strong>${r ? `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>` : ''}</div>`;
+    }).join('')}</div>`;
+    html += calls.map(c => `<p class="gd-plain">${esc(sentence(c))}</p>`).join('');
+  } else {
+    const [t, s] = !pred ? ['No model line', 'No ratings match for this game.']
+      : !vegasSpread && !vegasTotal ? ['Waiting on the market', 'Odds are not posted yet. The call appears when the market opens.']
+      : ['No play', 'The model is inside the Lean marks on both the spread and the total.'];
+    html += `<div class="gd-state"><b>${t}</b><span>${s}</span></div>`;
+  }
 
-  // ── Prediction ──
+  // Live / final
+  const hs = parseInt(g.homeScore) || 0, as = parseInt(g.awayScore) || 0;
+  if (g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME') {
+    const parts = [`${hName} ${hs}, ${aName} ${as}.`];
+    if (vegasSpread) { const gap = hs - as + vegasSpread.point; parts.push(Math.abs(gap) < 0.5 ? 'On the number.' : `${gap > 0 ? hName : aName} covering.`); }
+    const pace = calcLivePace(g);
+    if (pace !== null && vegasTotal) parts.push(`On pace for ${pace.toFixed(0)} against ${vegasTotal.point}.`);
+    html += `<div class="gd-state live"><b>Live · ${esc(g.shortDetail || '')}</b><span>${esc(parts.join(' '))}</span></div>`;
+  } else if (g.statusName === 'STATUS_FINAL') {
+    html += `<div class="gd-state"><b>Final · ${esc(aName)} ${as}, ${esc(hName)} ${hs}</b></div>`;
+  }
+
   if (pred) {
-    const hWins = pred.margin > 0;
-    const aWins = pred.margin < 0;
-    const favName = hWins ? hName.split(' ').pop() : aName.split(' ').pop();
-    html += `<div class="gd-section">
-      <div class="gd-section-title">Model Prediction</div>
-      <div class="gd-scores">
-        <div class="gd-score-team">
-          <div class="gd-score-name">${esc(aName)}</div>
-          <div class="gd-score-pts${aWins ? ' gd-winner' : ''}">${((pred.total - pred.margin) / 2).toFixed(0)}</div>
-        </div>
-        <div class="gd-score-sep">—</div>
-        <div class="gd-score-team">
-          <div class="gd-score-name">${esc(hName)}</div>
-          <div class="gd-score-pts${hWins ? ' gd-winner' : ''}">${((pred.total + pred.margin) / 2).toFixed(0)}</div>
-        </div>
-      </div>
-      <div class="gd-summary-row">
-        <span>Margin: <span class="gd-summary-val">${favName} ${Math.abs(pred.margin).toFixed(1)}</span></span>
-        <span>Total: <span class="gd-summary-val">${pred.total.toFixed(1)}</span></span>
-      </div>
-      <div class="gd-wp-row">
-        <div class="gd-wp-label"><span class="gd-wp-name">${esc(aName)}</span><span class="gd-wp-pct">${pred.awayWinProb}%</span></div>
-        <div class="gd-wp-bar"><div class="gd-wp-fill" style="width:${pred.awayWinProb}%;background:${pred.awayWinProb>=60?'var(--green)':pred.awayWinProb>=40?'var(--yellow)':'var(--muted)'}"></div></div>
-      </div>
-      <div class="gd-wp-row">
-        <div class="gd-wp-label"><span class="gd-wp-name">${esc(hName)}</span><span class="gd-wp-pct">${pred.homeWinProb}%</span></div>
-        <div class="gd-wp-bar"><div class="gd-wp-fill" style="width:${pred.homeWinProb}%;background:${pred.homeWinProb>=60?'var(--green)':pred.homeWinProb>=40?'var(--yellow)':'var(--muted)'}"></div></div>
-      </div>
-    </div>`;
+    const bar = (c, market, ends, name) => `<div class="gd-bar">
+        <div class="gd-bar-head"><b>${name}</b>${c ? `<span class="${c.tier || ''}">${c.tier ? tierWord(c) + ' · ' : ''}${esc(c.market === 'spread' ? c.side : (c.over ? 'Over' : 'Under'))} ${c.edge.toFixed(1)}</span>` : '<span>No market line</span>'}</div>
+        ${edgeBar(c, market)}
+        <div class="gd-ends"><span>${esc(ends[0])}</span><span>Agrees</span><span>${esc(ends[1])}</span></div></div>`;
+    const fav = pred.margin > 0 ? hName : aName, wp = pred.margin > 0 ? pred.homeWinProb : pred.awayWinProb;
+    html += `<div class="gd-section"><div class="gd-section-title">Our line against the market</div>
+      <div class="gd-bars">${bar(lines.spread, 'spread', [teamAbbr(g, 'a'), teamAbbr(g, 'h')], 'Spread')}${bar(lines.total, 'total', ['Under', 'Over'], 'Total')}</div>
+      <p class="gd-note">Ticks mark Lean and Take. The bar grows toward the side we like. Win chance: ${esc(fav)} ${wp}%.</p></div>`;
   }
 
-  // ── vs Vegas ──
-  if (pred && (vegasSpread || vegasTotal)) {
-    const sEdge = vegasSpread ? pred.margin - (-vegasSpread.point) : null;
-    const tEdge = vegasTotal  ? pred.total  - vegasTotal.point    : null;
-    const eCls  = e => e === null ? '' : Math.abs(e) >= 1.5 ? 'gd-edge-pos' : 'gd-edge-neu';
-    let moveStr = '';
-    if (g.spreadMove != null && Math.abs(g.spreadMove) >= 0.5) moveStr += `Spread ${g.spreadMove>0?'↑':'↓'}${Math.abs(g.spreadMove).toFixed(1)} `;
-    if (g.totalMove  != null && Math.abs(g.totalMove)  >= 0.5) moveStr += `Total ${g.totalMove>0?'↑':'↓'}${Math.abs(g.totalMove).toFixed(1)}`;
-    html += `<div class="gd-section">
-      <div class="gd-section-title">vs Vegas</div>
-      <table class="gd-table">
-        <tr><th></th><th>Model</th><th>Vegas</th><th>Edge</th></tr>
-        ${vegasSpread ? `<tr>
-          <td>Spread</td>
-          <td>${fmtSpread((-pred.margin).toFixed(1))} ${esc(spreadFavName(-pred.margin,g.hKey,g.home,g.aKey,g.away))}</td>
-          <td>${fmtSpread(vegasSpread.point)} ${esc(spreadFavName(vegasSpread.point,g.hKey,g.home,g.aKey,g.away))}</td>
-          <td class="${eCls(sEdge)}">${sEdge!==null?(sEdge>0?'+':'')+sEdge.toFixed(1):'—'}</td>
-        </tr>` : ''}
-        ${vegasTotal ? `<tr>
-          <td>Total</td>
-          <td>${pred.total.toFixed(1)}</td>
-          <td>${vegasTotal.point}</td>
-          <td class="${eCls(tEdge)}">${tEdge!==null?(tEdge>0?'+':'')+tEdge.toFixed(1):'—'}</td>
-        </tr>` : ''}
-      </table>
-      ${moveStr ? `<div class="gd-move">Line movement: ${moveStr.trim()}</div>` : ''}
+  const reasons = gdReasons(g).slice(0, 3);
+  if (reasons.length) html += `<div class="gd-section"><div class="gd-section-title">Top reasons</div><ul class="gd-facts">${
+    reasons.map(([k, t]) => `<li><span class="k">${k}</span><span>${esc(t)}</span></li>`).join('')}</ul></div>`;
+
+  html += `<button class="gd-deeplink" onclick="setGdTab('deep')"><span>Deep dive<small>How the line is built, line movement, ratings, Four Factors, refs</small></span><span aria-hidden="true">›</span></button>`;
+  return html;
+}
+
+// The model's line, step by step. Mirrors the adjustments assembleGames() applies to predict():
+// home court, back-to-back (1.8 pts), away travel (0.75), injuries, and the total calibration.
+function lineBuild(g) {
+  const p = g.pred;
+  const hName = teamAbbr(g, 'h'), aName = teamAbbr(g, 'a');
+  const hc = g.neutral ? 0 : cfg.homeCourt;
+  const restAdj = (g.hB2B ? -1.8 : 0) + (g.aB2B ? 1.8 : 0);
+  const hasInj = (g.hInjuries || []).length || (g.aInjuries || []).length;
+  const hInj = injuryImpact(g.hInjuries || []), aInj = injuryImpact(g.aInjuries || []);
+  const s = [];
+  if (hc) s.push(['Home court', hc]);
+  if (restAdj) s.push([`Back-to-back (${g.hB2B && g.aB2B ? 'both' : g.hB2B ? hName : aName})`, restAdj]);
+  if (g.awayTravel) s.push([`${aName} travel`, 0.75]);
+  if (hasInj && Math.abs(aInj - hInj) >= 0.3) s.push(['Injuries', aInj - hInj]);
+  const t = [['Calibration', cfg.totalOffset]];
+  if (restAdj) t.push(['Back-to-back fatigue', -Math.abs(restAdj) * 0.4]);
+  if (hasInj && hInj + aInj >= 0.5) t.push(['Injuries', -(hInj + aInj) * 0.35]);
+  const sum = a => a.reduce((x, [, v]) => x + v, 0);
+  return {
+    spread: [['Team ratings', p.margin - sum(s), 'base'], ...s.map(([l, v]) => [l, v, 'adj']), ['Our spread', p.margin, 'total']],
+    total:  [['Ratings and pace', p.total - sum(t), 'base'], ...t.map(([l, v]) => [l, v, 'adj']), ['Our total', p.total, 'total']],
+  };
+}
+
+// Waterfall rows: base bar, each adjustment as a step, then the result; dashed line = market
+function waterfall(steps, market, fmt, fromZero) {
+  let run = 0;
+  const rows = steps.map(([label, v, kind]) => {
+    if (kind === 'base') { run = v; return { label, v, kind, from: fromZero ? 0 : null, to: v }; }
+    if (kind === 'adj') { const r = { label, v, kind, from: run, to: run + v }; run += v; return r; }
+    return { label, v, kind, from: fromZero ? 0 : null, to: v };
+  });
+  const vals = rows.flatMap(r => r.from == null ? [r.to] : [r.from, r.to]).concat(market == null ? [] : [market]);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * .1 || 1;
+  if (fromZero) lo = Math.min(lo, 0) - (lo < 0 ? pad : 0); else lo -= pad * 2;
+  hi += pad;
+  const x = v => ((v ?? lo) - lo) / (hi - lo) * 100;
+  return `<div class="wf">${rows.map(r => `<div class="wf-row ${r.kind}">
+      <span class="wf-l">${esc(r.label)}</span>
+      <div class="wf-t">${market != null ? `<i class="wf-mk" style="left:${x(market)}%"></i>` : ''}<b class="wf-b${r.kind === 'adj' && r.v < 0 ? ' neg' : ''}" style="left:${x(Math.min(r.from ?? lo, r.to))}%;width:${Math.max(1, Math.abs(x(r.to) - x(r.from)))}%"></b></div>
+      <span class="wf-v">${r.kind === 'adj' ? (r.v > 0 ? '+' : '−') + Math.abs(r.v).toFixed(1) : esc(fmt(r.to))}</span></div>`).join('')}</div>`;
+}
+
+// Open → now → ours on one number line
+function moveLine(open, now, ours, fmt, what) {
+  if (now == null) return `<p class="gd-note">No ${what} line posted.</p>`;
+  if (open == null || open === now) return `<p class="gd-note">${what[0].toUpperCase() + what.slice(1)} ${fmt(now)}, no movement since open. Ours ${fmt(ours)}.</p>`;
+  const lo = Math.min(open, now, ours), hi = Math.max(open, now, ours), span = hi - lo || 1;
+  const x = v => 6 + (v - lo) / span * 88;
+  const toward = Math.abs(ours - now) < Math.abs(ours - open);
+  const mk = (v, cls, lbl) => `<span class="mv-pt ${cls}" style="left:${x(v)}%"><i></i><em>${lbl} ${fmt(v)}</em></span>`;
+  return `<div class="mv">${mk(open, 'open', 'Open')}${mk(now, 'now', 'Now')}${mk(ours, 'ours', 'Ours')}</div>
+    <p class="gd-note">${what[0].toUpperCase() + what.slice(1)} moved ${Math.abs(now - open).toFixed(1).replace(/\.0$/, '')} ${Math.abs(now - open) === 1 ? 'point' : 'points'} ${toward ? 'toward' : 'away from'} our number since open.</p>`;
+}
+
+function gdDeep(g) {
+  const { pred, vegasSpread, vegasTotal } = g;
+  if (!pred) return '<div class="gd-section gd-note">No ratings match for this game, so there is no model line to break down.</div>';
+  const aName = displayName(g.aKey, g.away), hName = displayName(g.hKey, g.home);
+  const hAb = teamAbbr(g, 'h'), aAb = teamAbbr(g, 'a');
+  const margin = v => Math.abs(v) < .05 ? 'Even' : `${v > 0 ? hAb : aAb} ${Math.abs(v).toFixed(1)}`;
+  const build = lineBuild(g);
+  let html = `<div class="gd-section"><div class="gd-section-title">How we got to our spread</div>
+      ${waterfall(build.spread, vegasSpread ? -vegasSpread.point : null, margin, true)}
+      <div class="wf-key">${vegasSpread ? `<i></i>Market: ${margin(-vegasSpread.point)}` : 'No market line yet.'}</div></div>
+    <div class="gd-section"><div class="gd-section-title">How we got to our total</div>
+      ${waterfall(build.total, vegasTotal ? vegasTotal.point : null, v => v.toFixed(1), false)}
+      <div class="wf-key">${vegasTotal ? `<i></i>Market: ${vegasTotal.point}` : 'No market line yet.'}</div></div>
+    <div class="gd-section"><div class="gd-section-title">Line movement</div>
+      <div class="gd-sub">${esc(hAb)} spread</div>
+      ${moveLine(vegasSpread && g.spreadMove != null ? vegasSpread.point - g.spreadMove : null, vegasSpread?.point, -pred.margin, v => fmtSpread(Math.round(v * 10) / 10), 'spread')}
+      <div class="gd-sub">Total</div>
+      ${moveLine(vegasTotal && g.totalMove != null ? vegasTotal.point - g.totalMove : null, vegasTotal?.point, pred.total, v => (Math.round(v * 10) / 10).toString(), 'total')}
     </div>`;
-  }
 
   // ── Team Ratings ──
-  if (pred) {
+  {
     const a = pred.aRating, h = pred.hRating;
     const hi = (av, hv, lower=false) => lower ? (av<hv?['gd-edge-pos','']:av>hv?['','gd-edge-pos']:['','']) : (av>hv?['gd-edge-pos','']:av<hv?['','gd-edge-pos']:['','']);
     const [aO,hO] = hi(a.adjO, h.adjO);
     const [aD,hD] = hi(a.adjD, h.adjD, true);
     const [aB,hB] = hi(a.barthag, h.barthag);
     html += `<div class="gd-section">
-      <div class="gd-section-title">Team Ratings</div>
+      <div class="gd-section-title">Team ratings</div>
       <table class="gd-table">
         <tr><th></th><th>${esc(aName)}</th><th>${esc(hName)}</th></tr>
-        <tr><td>Adj Offense</td><td class="${aO}">${a.adjO.toFixed(1)}</td><td class="${hO}">${h.adjO.toFixed(1)}</td></tr>
-        <tr><td>Adj Defense</td><td class="${aD}">${a.adjD.toFixed(1)}</td><td class="${hD}">${h.adjD.toFixed(1)}</td></tr>
+        <tr><td>Adj offense</td><td class="${aO}">${a.adjO.toFixed(1)}</td><td class="${hO}">${h.adjO.toFixed(1)}</td></tr>
+        <tr><td>Adj defense</td><td class="${aD}">${a.adjD.toFixed(1)}</td><td class="${hD}">${h.adjD.toFixed(1)}</td></tr>
         <tr><td>Tempo</td><td>${a.adjT.toFixed(1)}</td><td>${h.adjT.toFixed(1)}</td></tr>
         <tr><td>Barthag</td><td class="${aB}">${a.barthag.toFixed(3)}</td><td class="${hB}">${h.barthag.toFixed(3)}</td></tr>
       </table>
+      <p class="gd-note">Points per 100 possessions, adjusted for opponent. Lower defense is better.</p>
     </div>`;
   }
 
   // ── Four Factors ──
-  if (pred?.aRating?.oEfg && pred?.hRating?.oEfg) {
+  if (pred.aRating.oEfg && pred.hRating.oEfg) {
     const a = pred.aRating, h = pred.hRating;
     const factors = [
       { name:'eFG%', aDelta:a.oEfg-h.dEfg, hDelta:h.oEfg-a.dEfg, invert:false },
@@ -3528,47 +3727,25 @@ function showGameModal(gameId) {
     const ffCls = (d, inv) => { const v = inv?-d:d; return v>=1?'gd-edge-pos':v<=-1?'gd-edge-neg':'gd-edge-neu'; };
     const fmt = v => (v>0?'+':'')+v.toFixed(1);
     html += `<div class="gd-section">
-      <div class="gd-section-title">Four Factors <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.58rem;color:var(--muted)">offense vs opponent defense</span></div>
+      <div class="gd-section-title">Four Factors matchup</div>
       <table class="gd-table">
-        <tr><th></th><th>${esc(aName.split(' ').pop())}</th><th>${esc(hName.split(' ').pop())}</th></tr>
+        <tr><th></th><th>${esc(aAb)} offense</th><th>${esc(hAb)} offense</th></tr>
         ${factors.map(f=>`<tr><td>${f.name}</td><td class="${ffCls(f.aDelta,f.invert)}">${fmt(f.aDelta)}</td><td class="${ffCls(f.hDelta,f.invert)}">${fmt(f.hDelta)}</td></tr>`).join('')}
       </table>
+      <p class="gd-note">Each offense against what the other defense allows. Green favors the offense.</p>
     </div>`;
   }
 
-  // ── Contextual Factors ──
-  const ctx = [];
-  if (g.aB2B) ctx.push(['⚠️', `${esc(aName)} on a back-to-back (−1.8 pts applied)`]);
-  if (g.hB2B) ctx.push(['⚠️', `${esc(hName)} on a back-to-back (−1.8 pts applied)`]);
-  if (!g.aB2B && g.aDaysRest === 2) ctx.push(['😓', `${esc(aName)} on short rest (2 days)`]);
-  if (!g.hB2B && g.hDaysRest === 2) ctx.push(['😓', `${esc(hName)} on short rest (2 days)`]);
-  if (!g.hB2B && !g.aB2B && g.hDaysRest != null && g.aDaysRest != null) {
-    const diff = g.hDaysRest - g.aDaysRest;
-    if (Math.abs(diff) >= 3) ctx.push(['🛌', `Rest advantage: ${diff > 0 ? esc(hName) : esc(aName)} has ${Math.abs(diff)} more days rest`]);
-  }
-  if (g.awayTravel) ctx.push(['✈️', 'Away team crossing 2+ time zones']);
-  if (g.aForm?.net && Math.abs(g.aForm.net)>=1.5) ctx.push([g.aForm.net>0?'📈':'📉', `${esc(aName)} form: ${g.aForm.net>0?'+':''}${g.aForm.net.toFixed(1)} net efficiency`]);
-  if (g.hForm?.net && Math.abs(g.hForm.net)>=1.5) ctx.push([g.hForm.net>0?'📈':'📉', `${esc(hName)} form: ${g.hForm.net>0?'+':''}${g.hForm.net.toFixed(1)} net efficiency`]);
-  (g.aInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(aName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
-  (g.hInjuries||[]).forEach(i => ctx.push(['🩹', `${esc(hName)}: ${esc(i.name)} (${esc(i.status)}${i.mpg ? `, ~${i.mpg} mpg` : ''})`]));
-  // KenPom luck shown as context only — tested against 16k games, found to add noise (+0.39 MAE), not applied to model
-  if (g.hLuck != null && Math.abs(g.hLuck) >= 0.05) {
-    const icon = g.hLuck > 0 ? '🍀' : '📉';
-    const dir  = g.hLuck > 0 ? `lucky (+${(g.hLuck*100).toFixed(0)}% wins vs expected)` : `unlucky (${(g.hLuck*100).toFixed(0)}% wins vs expected)`;
-    ctx.push([icon, `${esc(hName)} KenPom luck: ${dir} — context only, not applied to model`]);
-  }
-  if (g.aLuck != null && Math.abs(g.aLuck) >= 0.05) {
-    const icon = g.aLuck > 0 ? '🍀' : '📉';
-    const dir  = g.aLuck > 0 ? `lucky (+${(g.aLuck*100).toFixed(0)}% wins vs expected)` : `unlucky (${(g.aLuck*100).toFixed(0)}% wins vs expected)`;
-    ctx.push([icon, `${esc(aName)} KenPom luck: ${dir} — context only, not applied to model`]);
-  }
-  if (ctx.length) {
-    html += `<div class="gd-section">
-      <div class="gd-section-title">Contextual Factors</div>
-      <ul class="gd-ctx-list">
-        ${ctx.map(([icon,text])=>`<li class="gd-ctx-item"><span class="gd-ctx-icon">${icon}</span><span>${text}</span></li>`).join('')}
-      </ul>
-    </div>`;
+  // ── Every factor, with KenPom luck as context ──
+  // KenPom luck: tested against 16k games, adds noise (+0.39 MAE), so it is not applied to the model
+  const facts = gdReasons(g);
+  for (const [name, luck] of [[hName, g.hLuck], [aName, g.aLuck]])
+    if (luck != null && Math.abs(luck) >= 0.05)
+      facts.push(['Luck', `${name} KenPom luck ${luck > 0 ? '+' : ''}${(luck * 100).toFixed(0)}% wins vs expected`, true]);
+  if (facts.length) {
+    html += `<div class="gd-section"><div class="gd-section-title">Every factor</div><ul class="gd-facts">${
+      facts.map(([k, t, ctx]) => `<li class="${ctx ? 'ctx' : ''}"><span class="k">${k}</span><span>${esc(t)}</span></li>`).join('')}</ul>
+      ${facts.some(f => f[2]) ? '<p class="gd-note">Dashed items are context only. They are not part of our line.</p>' : ''}</div>`;
   }
 
   // ── Refs ──
@@ -3594,7 +3771,7 @@ function showGameModal(gameId) {
     const b = g.betting;
     const hi = pct => pct >= 60 ? ' style="color:var(--accent);font-weight:700"' : '';
     html += `<div class="gd-section">
-      <div class="gd-section-title">Public Betting (ActionNetwork)</div>
+      <div class="gd-section-title">Public betting (ActionNetwork)</div>
       <table class="gd-table">
         <tr><th></th><th>${esc(aName)}</th><th>${esc(hName)}</th></tr>
         ${b.homeSpreadBetPct||b.awaySpreadBetPct ? `<tr><td>Spread tickets</td><td${hi(b.awaySpreadBetPct)}>${b.awaySpreadBetPct}%</td><td${hi(b.homeSpreadBetPct)}>${b.homeSpreadBetPct}%</td></tr>` : ''}
@@ -3608,9 +3785,7 @@ function showGameModal(gameId) {
     </div>`;
   }
 
-  if (!html) html = '<div class="gd-section" style="color:var(--muted);font-size:.82rem;">No prediction data available.</div>';
-  document.getElementById('gd-body').innerHTML = html;
-  document.getElementById('gd-overlay').classList.add('open');
+  return html;
 }
 
 function closeTeamModal() {
@@ -4176,7 +4351,7 @@ function onDateChange() {
   document.getElementById('date-pick').value     = _todayVal;
   document.getElementById('mlb-date-pick').value = _todayVal;
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeTeamModal(); closeMenu(); closeHow(); }
+    if (e.key === 'Escape') { closeTeamModal(); closeGameModal(); closeMenu(); closeHow(); }
   });
   TeamResolver.init(); // fire-and-forget — resolver used opportunistically for display names
   refresh();
@@ -6475,6 +6650,7 @@ function calcMLBF5(g, pitchers) {
 function showMLBGameModal(gameId) {
   const g = mlbGameList.find(x => x.id === gameId);
   if (!g) return;
+  document.getElementById('gd-overlay').classList.remove('gd-drawer');
 
   const pitchers = mlbPitcherMap.get(`${normMLBTeam(g.away)}|${normMLBTeam(g.home)}|${g._gameNumber || 1}`) || {};
   const ap = pitchers.away;
