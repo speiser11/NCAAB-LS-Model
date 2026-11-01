@@ -25,7 +25,7 @@ const NAMES = [
   'fetchViaProxy', 'cacheAge', 'normTeam', 'matchTeam', 'espnIdToKey', 'loadEspnIds', 'espnTeamKey', 'loadModelConfig', 'loadTorvik', 'parseTorvik',
   '_cleanConfName', 'loadConferences', 'loadESPN', 'loadOdds', 'fetchStoredOdds',
   'gistToOddsFormat', 'loadRestData', 'loadTeamInjuries', 'loadInjuries',
-  'normalCDF', 'injuryImpact', 'predict', 'blendRatings', 'getFormDelta', 'getLine',
+  'normalCDF', 'injuryImpact', '_lgCache', 'leagueAvg', 'predict', 'blendRatings', 'getFormDelta', 'getLine',
   'assembleGames', 'todayStr', 'toISODate',
 ];
 
