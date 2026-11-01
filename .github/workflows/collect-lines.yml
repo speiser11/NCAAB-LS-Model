@@ -1,0 +1,23 @@
+name: Collect backtest lines (BettingPros)
+on:
+  push:
+    branches: [backtest-data]
+    paths: ['collect_lines.py', '.github/workflows/collect-lines.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - env:
+          ODDS_PROVIDER_KEY: ${{ secrets.ODDS_PROVIDER_KEY }}
+          MAX_CALLS: '450'
+        run: python3 collect_lines.py
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lines-2025-26.json
+          git commit -m "Backtest lines: $(python3 -c "import json;d=json.load(open('lines-2025-26.json'));print(len(d['dates_done']),'dates,',len(d['games']),'games')")" || echo "nothing new"
+          git push
