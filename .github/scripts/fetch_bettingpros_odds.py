@@ -20,6 +20,7 @@ Env: ODDS_PROVIDER_KEY (BettingPros API key), GIST_ID, GIST_PAT,
 """
 
 import argparse, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 import gist_api
@@ -39,13 +40,16 @@ date_str = os.environ['DATE']
 teams    = json.loads((Path(__file__).resolve().parents[2] / 'data' / 'ncaab-bettingpros-ids.json').read_text())
 
 PACE = 1.0                        # seconds between calls; BettingPros rate-limits bursts (429)
+calls = 0                         # the plan allows 1,000 calls a day; each run prints its count
 
 def get(path, **q):
     """GET with pacing; on 429 waits (Retry-After, else 5/10/20/40s) and retries."""
     url = f'{BASE}/{path}?' + urllib.parse.urlencode(q)
     req = urllib.request.Request(url, headers={'x-api-key': key, 'User-Agent': 'trueline-fetch-odds'})
+    global calls
     for wait in (5, 10, 20, 40, None):
         time.sleep(PACE)
+        calls += 1
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.loads(r.read())
@@ -96,7 +100,10 @@ for ev in events:
     }
 print(f'{date_str}: {len(events)} NCAAB events, {len(games)} with both teams D1')
 
-ids = list(games)
+# Lines only for games that haven't started: a started game's line is already
+# frozen in the pick log and locked-odds, and skipping them saves calls.
+now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+ids = [i for i, g in games.items() if g['commence_time'] > now]
 try:
     for i in range(0, len(ids), 25):     # 25 events × 2 markets = one 50-offer page
         chunk = ':'.join(str(x) for x in ids[i:i + 25])
@@ -121,7 +128,20 @@ except urllib.error.URLError as e:
     print(f'BettingPros offers fetch failed for {date_str}: {e} — keeping existing Gist data')
     sys.exit(0)
 
-out = []
+# Started games keep the entry from the last run (the line just before tip-off),
+# read from the Gist rather than spending calls on them.
+def previous_file():
+    if args.out:
+        return []
+    url = f'https://gist.githubusercontent.com/loganthein/{os.environ["GIST_ID"]}/raw/odds-{date_str}.json?t={int(time.time())}'
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers={'Cache-Control': 'no-cache'}), timeout=15) as r:
+            return json.loads(r.read())
+    except Exception:
+        return []
+
+fresh = {f"bp-{i}" for i in ids}
+out = [g for g in previous_file() if g.get('id') not in fresh and g.get('commence_time', '') <= now]
 for g in sorted(games.values(), key=lambda g: g['commence_time']):
     if not g['markets']:
         continue                          # no lines posted yet
@@ -135,7 +155,9 @@ for g in sorted(games.values(), key=lambda g: g['commence_time']):
     })
 n_sp = sum(1 for g in out if any(m['key'] == 'spreads' for m in g['bookmakers'][0]['markets']))
 n_to = sum(1 for g in out if any(m['key'] == 'totals' for m in g['bookmakers'][0]['markets']))
-print(f'{date_str}: {len(out)} games with lines ({n_sp} spreads, {n_to} totals)')
+out.sort(key=lambda g: g['commence_time'])
+print(f'{date_str}: {len(out)} games with lines ({n_sp} spreads, {n_to} totals); '
+      f'{len(games) - len(ids)} already started; {calls} BettingPros calls')
 
 content = json.dumps(out)
 if args.out:

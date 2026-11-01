@@ -5,6 +5,11 @@ on:
     - cron: '*/30 12-23 * * *'
     - cron: '*/30 0-6 * * *'
   workflow_dispatch:
+    inputs:
+      tomorrow:
+        description: "Also refresh tomorrow's NCAAB lines now"
+        type: boolean
+        default: false
 
 jobs:
   fetch-odds:
@@ -18,13 +23,15 @@ jobs:
           ODDS_PROVIDER_KEY: ${{ secrets.ODDS_PROVIDER_KEY }}
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
-        # Today and tomorrow (US Eastern game dates), so the site can show lines
-        # a day ahead without calling the provider from the browser.
+        # Today every run; tomorrow (so the site can show lines a day ahead) only
+        # in the first run of ~9am, 1pm, 5pm and 9pm ET — the BettingPros plan
+        # allows 1,000 calls a day and a full slate costs ~9.
         run: |
-          for OFFSET in 0 1; do
-            DATE=$(TZ=America/New_York date -d "+${OFFSET} day" +%Y-%m-%d) \
-              python3 .github/scripts/fetch_bettingpros_odds.py
-          done
+          DATE=$(TZ=America/New_York date +%Y-%m-%d) python3 .github/scripts/fetch_bettingpros_odds.py
+          H=$(TZ=America/New_York date +%H); M=$(date +%M)
+          if [ "${{ inputs.tomorrow }}" = "true" ] || { [[ " 09 13 17 21 " == *" $H "* ]] && [ "$M" -lt 30 ]; }; then
+            DATE=$(TZ=America/New_York date -d '+1 day' +%Y-%m-%d) python3 .github/scripts/fetch_bettingpros_odds.py
+          fi
 
       - name: Fetch MLB moneylines and push to Gist
         if: false  # MLB off-season; uses the retired Odds API key. Needs a BettingPros port to resume.
