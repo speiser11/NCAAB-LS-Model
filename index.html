@@ -1824,6 +1824,11 @@ function normTeam(raw) {
 
 // Find Torvik key that best matches a full team name (ESPN or Odds API)
 function matchTeam(fullName) {
+  // An exact Torvik team name (what the odds files carry) is its own key —
+  // checked before the resolver, which renames e.g. "Stephen F. Austin" → "SFA".
+  const direct = normTeam(fullName);
+  if (ratings[direct]) return direct;
+
   const canonical = TeamResolver.getCanonical(fullName);
   const norm = normTeam(canonical);
   if (ratings[norm]) return norm;
