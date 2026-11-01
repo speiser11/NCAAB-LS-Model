@@ -22,7 +22,7 @@ const vm   = require('vm');
 const NAMES = [
   'ESPN_URL', 'CONF_ID_MAP', 'CONF_TZ', 'ALIAS', 'cfg', 'NCAAB_SIGMA', 'FORM_WEIGHT',
   'GIST_URL', 'GIST_META_URL', 'GIST_RAW',
-  'fetchViaProxy', 'cacheAge', 'normTeam', 'matchTeam', 'espnIdToKey', 'loadEspnIds', 'espnTeamKey', 'loadModelConfig', 'loadTorvik', 'parseTorvik',
+  'fetchViaProxy', 'cacheAge', 'normTeam', 'matchTeam', 'espnIdToKey', 'savedPicks', 'loadEspnIds', 'espnTeamKey', 'loadModelConfig', 'loadTorvik', 'parseTorvik',
   '_cleanConfName', 'loadConferences', 'loadESPN', 'loadOdds', 'fetchStoredOdds',
   'gistToOddsFormat', 'loadRestData', 'loadTeamInjuries', 'loadInjuries',
   'normalCDF', 'injuryImpact', '_lgCache', 'leagueAvg', 'predict', 'blendRatings', 'getFormDelta', 'getLine',

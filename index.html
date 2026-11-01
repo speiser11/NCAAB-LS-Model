@@ -1677,6 +1677,7 @@ const _oddsPendingDates = new Set(); // dates with a fetch currently in-flight
 let confIdMap    = {};  // ESPN conferenceId → short name (static fallback)
 let teamIdToConf = {};  // ESPN team id → conference short name (from groups API)
 let espnIdToKey  = {};  // ESPN team id → Torvik key, every D1 team (data/ncaab-espn-ids.json)
+let savedPicks   = {};  // ESPN game id → its pre-game pick log entry (ncaab-log), frozen at tip-off
 
 // ── Contextual model data ──────────────────────────────────
 let teamsPlayedYesterday = new Set(); // ESPN team IDs of teams that played yesterday
@@ -2728,8 +2729,21 @@ function assembleGames() {
     // Public betting % from ActionNetwork
     const betting = bettingMap[`${hKey}|${aKey}`] || null;
 
+    // Once a game has tipped, show the pick that was saved before tip-off (and is
+    // what gets graded), not a fresh calculation with today's model and lines.
+    const saved = g.statusName !== 'STATUS_SCHEDULED' ? savedPicks[g.id] || null : null;
+    let shown = pred;
+    if (saved && pred) {
+      const m = saved.model.margin, t = saved.model.total;
+      const hwp = Math.round(normalCDF(m / NCAAB_SIGMA) * 100);
+      shown = { ...pred, margin: m, total: t, hScore: Math.round((t + m) / 2 * 10) / 10,
+                aScore: Math.round((t - m) / 2 * 10) / 10, homeWinProb: hwp, awayWinProb: 100 - hwp };
+      vegasSpread = saved.vegas.spread != null ? { point: saved.vegas.spread } : null;
+      vegasTotal  = saved.vegas.total  != null ? { point: saved.vegas.total }  : null;
+    }
+
     return {
-      ...g, hKey, aKey, pred, vegasSpread, vegasTotal,
+      ...g, hKey, aKey, pred: shown, vegasSpread, vegasTotal, saved,
       hConf, aConf,
       spreadMove, totalMove,
       hB2B, aB2B, hDaysRest, aDaysRest,
@@ -2777,7 +2791,7 @@ function startLiveRefresh() {
   if (_liveTimer) return;
   _liveTimer = setInterval(async () => {
     try {
-      await loadESPN(getDateStr());
+      await Promise.all([loadESPN(getDateStr()), loadSavedPicks(toISODate(getDateStr()))]);
       _lastESPNRefresh = new Date();
       render(assembleGames());
     } catch(e) { /* silent — will retry next interval */ }
@@ -2821,11 +2835,14 @@ function teamLogo(g, side, cls = 'gc-logo') {
 function gameLines(g) {
   const out = { spread: null, total: null };
   if (!g.pred) return out;
+  // A tipped game keeps the tier it was saved with, even if thresholds changed since.
+  const savedTier = m => g.saved.picks.find(p => p.market === m)?.tier || null;
   if (g.vegasSpread) {
     const e = g.pred.margin + g.vegasSpread.point, a = Math.abs(e), home = e > 0;
     const line = home ? g.vegasSpread.point : -g.vegasSpread.point;
     out.spread = { market: 'spread', e, edge: a, home,
-      tier: Math.abs(g.vegasSpread.point) >= cfg.maxPickLine || a > cfg.spreadMaxEdge ? null
+      tier: g.saved ? savedTier('spread')
+          : Math.abs(g.vegasSpread.point) >= cfg.maxPickLine || a > cfg.spreadMaxEdge ? null
           : a >= cfg.spreadTake ? 'take' : a >= cfg.spreadLean ? 'lean' : null,
       side: teamAbbr(g, home ? 'h' : 'a'),
       label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}` };
@@ -2833,7 +2850,7 @@ function gameLines(g) {
   if (g.vegasTotal) {
     const e = g.pred.total - g.vegasTotal.point, a = Math.abs(e);
     out.total = { market: 'total', e, edge: a, over: e > 0,
-      tier: a >= cfg.totalTake ? 'take' : a >= cfg.totalLean ? 'lean' : null,
+      tier: g.saved ? savedTier('total') : a >= cfg.totalTake ? 'take' : a >= cfg.totalLean ? 'lean' : null,
       side: e > 0 ? 'O' : 'U',
       label: `${e > 0 ? 'Over' : 'Under'} ${g.vegasTotal.point}` };
   }
@@ -3119,6 +3136,15 @@ async function fetchNCAABLog(isoDate, todayIso) {
   } catch(e) { /* missing day = no picks */ }
   if (isoDate < todayIso) _ncaabLogCache[isoDate] = entries;
   return entries;
+}
+
+// The pick log for the date on screen. Once a game tips, cards show this — the
+// pick and line that were saved and get graded — instead of recalculating it
+// with whatever the model and thresholds are now.
+async function loadSavedPicks(isoDate) {
+  const n = new Date();
+  const todayIso = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+  savedPicks = Object.fromEntries((await fetchNCAABLog(isoDate, todayIso)).map(e => [e.game_id, e]));
 }
 
 // { take, lean, earlyTake } as {w,l,p} over every graded pick in the given logs.
@@ -4366,6 +4392,7 @@ async function refresh() {
       loadESPN(dateStr),
       loadRestData(dateStr),
       loadOdds(isoDate),
+      loadSavedPicks(isoDate),
     ]);
     currentIsoDate = isoDate;
     render(assembleGames());
