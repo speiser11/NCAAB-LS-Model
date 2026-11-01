@@ -1229,9 +1229,9 @@ input[type=date] {
     <span class="brand-ncaab">TrueLine</span><span class="brand-model"> LS</span>
   </div>
   <nav class="sport-nav" id="sport-nav" aria-label="Sport">
-    <button class="sp-tab" data-sport="ncaab">NCAAB</button>
-    <button class="sp-tab active" data-sport="mlb">MLB</button>
-    <!-- NFL/CFB hidden while not in use; remove `hidden` to bring them back -->
+    <button class="sp-tab active" data-sport="ncaab">NCAAB</button>
+    <!-- MLB/NFL/CFB hidden while not in use; remove `hidden` to bring them back -->
+    <button class="sp-tab" data-sport="mlb" hidden>MLB</button>
     <button class="sp-tab" data-sport="nfl" hidden>NFL</button>
     <button class="sp-tab" data-sport="cfb" hidden>CFB</button>
   </nav>
@@ -1242,7 +1242,7 @@ input[type=date] {
       <button class="search-clear" id="search-clear" onclick="clearSearch()" style="display:none" title="Clear">✕</button>
     </div>
   </div>
-  <div class="date-step" id="date-step" hidden>
+  <div class="date-step" id="date-step">
     <button onclick="shiftDate(-1)" title="Previous day" aria-label="Previous day">‹</button>
     <input type="date" id="date-pick" onchange="onDateChange()" aria-label="Date">
     <button onclick="shiftDate(1)" title="Next day" aria-label="Next day">›</button>
@@ -1258,7 +1258,7 @@ input[type=date] {
   </div>
 </div>
 
-<div id="ncaab-view" style="display:none">
+<div id="ncaab-view">
 <section class="rec-band" id="rec-band" aria-label="Model record">
   <div class="rb-today">
     <div class="rb-eyebrow" id="rb-eyebrow">Today's card</div>
@@ -1314,7 +1314,7 @@ input[type=date] {
 </div>
 </div><!-- /#ncaab-view -->
 
-<div id="mlb-view">
+<div id="mlb-view" style="display:none">
   <div class="mlb-sub-nav">
     <div class="mlb-sub-nav-left">
       <span class="mlb-season-tag">2026 Regular Season</span>
@@ -1632,6 +1632,7 @@ let cfg = {
   totalLean:   5,      // NCAAB total edge for a Lean
   totalTake:   8,      // ...and for a Take
   earlyGames:  8,      // picks where either team has played fewer are "early season" in the record
+  recordStart: '',     // YYYY-MM-DD: the record ignores pick logs before this date
   cfbScale:    1.05,   // FPI-to-market scale, fitted on the 2026 week-1 board
   cfbHfa:      3.5,    // home-field points, fitted alongside the scale
   cfbSigma:    16,     // SD of CFB game margin, for turning a spread into a win %
@@ -1816,6 +1817,7 @@ async function loadModelConfig() {
     cfg.totalLean   = c.totalLean   ?? cfg.totalLean;
     cfg.totalTake   = c.totalTake   ?? cfg.totalTake;
     cfg.earlyGames  = c.earlyGames  ?? cfg.earlyGames;
+    cfg.recordStart = c.recordStart ?? cfg.recordStart;
     cfg.cfbScale    = c.cfbScale    ?? cfg.cfbScale;
     cfg.cfbHfa      = c.cfbHfa      ?? cfg.cfbHfa;
     cfg.cfbSigma    = c.cfbSigma    ?? cfg.cfbSigma;
@@ -3064,7 +3066,8 @@ async function loadAccuracyStats() {
   const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
   const days = [...Array(30)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - i); return iso(d); });
   try {
-    const logs = await Promise.all(days.map(d => fetchNCAABLog(d, days[0])));
+    // Days before cfg.recordStart count as empty (e.g. opening-day games before the record began)
+    const logs = await Promise.all(days.map(d => cfg.recordStart && d < cfg.recordStart ? [] : fetchNCAABLog(d, days[0])));
     _accCache = {
       td: tallyPicks(logs.slice(0, 1)),
       yd: tallyPicks(logs.slice(1, 2)),
@@ -3092,11 +3095,15 @@ function renderAccuracyBadges({ td, yd, wk, mo, daily }) {
   const tip = (lbl, { take, lean, earlyTake }) =>
     `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)}${early(earlyTake) ? ` · of the takes, ${early(earlyTake)}` : ''} (W–L–Push, graded vs the line at tip-off)`;
   const lp = pct(wk.lean);
+  // Within 30 days of the record's start, "This month" is really "since <start>"
+  const start = cfg.recordStart && new Date(cfg.recordStart + 'T12:00');
+  const monthLbl = start && (Date.now() - start) < 30 * 864e5
+    ? 'Since ' + start.toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'This month';
   el.innerHTML = `
     <div class="rb-stat" title="${tip('Last 7 days', wk)}"><div class="rb-eyebrow">Takes this week</div>
       <div class="rb-stat-row"><div><div class="rb-num">${rec(wk.take)}${pctEm(wk.take)}</div><div class="rb-sub">Leans ${rec(wk.lean)}${lp == null ? '' : ` · ${lp}%`}</div></div>${recordSpark(daily)}</div></div>
     <div class="rb-stat" title="${tip('Today', td)}"><div class="rb-eyebrow">Today</div><div class="rb-num">${rec(td.take)}</div><div class="rb-sub">Yesterday ${rec(yd.take)}</div></div>
-    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">This month</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div>${early(mo.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(mo.earlyTake)}</div>` : ''}</div>`;
+    <div class="rb-stat" title="${tip('Last 30 days', mo)}"><div class="rb-eyebrow">${monthLbl}</div><div class="rb-num">${rec(mo.take)}${pctEm(mo.take)}</div><div class="rb-sub">Leans ${rec(mo.lean)}</div>${early(mo.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(mo.earlyTake)}</div>` : ''}</div>`;
 }
 
 // Running Takes net (wins − losses) over the last 30 days
@@ -7538,8 +7545,8 @@ function renderCFB() {
   });
 })();
 
-// Default to MLB on load — must be after all variable/function declarations
-mlbRefresh();
+// Default to NCAAB on load — must be after all variable/function declarations
+setSport('ncaab');
 </script>
 </body>
 </html>
