@@ -26,7 +26,7 @@ const NAMES = [
   '_cleanConfName', 'loadConferences', 'loadESPN', 'loadOdds', 'fetchStoredOdds',
   'gistToOddsFormat', 'loadRestData', 'loadTeamInjuries', 'loadInjuries',
   'linePrices', 'normalCDF', 'injuryImpact', '_lgCache', 'leagueAvg', 'predict', 'blendRatings', 'getFormDelta', 'getLine',
-  'assembleGames', 'todayStr', 'toISODate',
+  'assembleGames', 'todayStr', 'toISODate', 'fmtSpread', 'betRange',
 ];
 
 // Mutable page state the functions above read and write.
@@ -132,6 +132,7 @@ async function load({ root }) {
     }
     globalThis.__run = __run;
     globalThis.__matchTeam = matchTeam;
+    globalThis.__betRange = betRange;
     globalThis.__ratings = () => ratings;
   `, ctx);
 
@@ -139,6 +140,7 @@ async function load({ root }) {
     run: dateStr => ctx.__run(dateStr),
     matchTeam: name => ctx.__matchTeam(name),  // valid after run()
     ratings: () => ctx.__ratings(),
+    betRange: (g, c) => ctx.__betRange(g, c),   // the site's "Still a bet at" text
   };
 }
 

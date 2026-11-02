@@ -127,18 +127,22 @@ const pickLabel = p => p.market === 'spread'
   : `${p.side === 'over' ? 'Over' : 'Under'} ${p.line}`;
 const etTime = iso => new Date(iso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' });
 
-// One push per run listing every new or upgraded pick (ntfy.sh topic in NTFY_TOPIC).
+const fmtPrice = n => n == null ? '' : ` (${n > 0 ? '+' : ''}${n})`;
+
+// One push per run listing new takes and leans upgraded to takes (ntfy.sh topic in
+// NTFY_TOPIC). New leans don't alert; they're on the site.
 async function notify(changes) {
   const topic = process.env.NTFY_TOPIC;
-  if (!topic || !changes.length) return;
-  const takes = changes.filter(c => c.pick.tier === 'take').length;
-  const body = changes.map(({ kind, pick, game, commence }) =>
-    `${kind === 'upgrade' ? 'UPGRADED TO TAKE' : pick.tier.toUpperCase()}: ${pickLabel(pick)} | ${game}, ${etTime(commence)} ET (edge ${pick.edge})`).join('\n');
+  const takes = changes.filter(c => c.pick.tier === 'take');
+  if (!topic || !takes.length) return;
+  const body = takes.map(({ kind, pick, game, commence, range }) =>
+    `${kind === 'upgrade' ? 'UPGRADED TO TAKE' : 'TAKE'}: ${pickLabel(pick)}${fmtPrice(pick.price)} | ${game}, ${etTime(commence)} ET (edge ${pick.edge})` +
+    (range ? `\n   Still a bet at: ${range}` : '')).join('\n');
   try {
     const r = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
       method: 'POST', body,
-      headers: { Title: `TrueLine: ${changes.length} new pick${changes.length > 1 ? 's' : ''}${takes ? ` (${takes} take${takes > 1 ? 's' : ''})` : ''}`,
-                 Tags: 'basketball', Priority: takes ? 'high' : 'default', Click: 'https://truelinels.net' },
+      headers: { Title: `TrueLine: ${takes.length} new take${takes.length > 1 ? 's' : ''}`,
+                 Tags: 'basketball', Priority: 'high', Click: 'https://truelinels.net' },
     });
     console.log(`Notification: HTTP ${r.status}`);
   } catch (e) {
@@ -201,7 +205,11 @@ async function main() {
       picks: posted.picks,
       result: null,
     };
-    for (const c of posted.changes) changes.push({ ...c, game: entry.game, commence: entry.commence });
+    for (const c of posted.changes) {
+      const p = c.pick;
+      const range = model.betRange(g, { market: p.market, home: p.sideIsHome, over: p.side === 'over' });
+      changes.push({ ...c, game: entry.game, commence: entry.commence, range });
+    }
     if (prev && JSON.stringify({ ...prev, logged_at: 0 }) === JSON.stringify({ ...entry, logged_at: 0 })) continue;
     byId.set(g.id, entry);
     written++;
@@ -215,7 +223,7 @@ async function main() {
   console.log(`Writing ${filename}: ${out.length} games, ${nPicks} leans/takes.`);
   console.log(`Gist PATCH status: ${await gistPatch(filename, out)}`);
   if (!open) console.log(`Before ${POST_HOUR}am ET: games updated, no picks posted.`);
-  console.log(`New/upgraded picks this run: ${changes.length}`);
+  console.log(`New/upgraded picks this run: ${changes.length} (${changes.filter(c => c.pick.tier === 'take').length} takes alerted)`);
   await notify(changes);
 }
 
