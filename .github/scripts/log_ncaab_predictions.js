@@ -94,6 +94,56 @@ function picksFor(g, cfg) {
   return picks;
 }
 
+// Picks are posted, not recalculated. From POST_HOUR (US Eastern) on, the first
+// time a game crosses the lean/take line its pick is posted with that line and
+// time, and it stays even if the line moves — the line you could have bet is the
+// one graded (fill_ncaab_results.py adds closing-line value). A lean whose edge
+// grows into take range on the same side is upgraded at the new line; the
+// original is kept in `was`. Returns the game's picks and what changed.
+const POST_HOUR = 9;
+function postPicks(prev, current, nowIso, open) {
+  // Picks saved before posting existed (no posted_at) are re-derived, not kept.
+  const picks = (prev || []).filter(p => p.posted_at);
+  const changes = [];
+  for (const c of current) {
+    const i = picks.findIndex(p => p.market === c.market);
+    if (i < 0) {
+      if (!open) continue;
+      picks.push({ ...c, posted_at: nowIso });
+      changes.push({ kind: 'new', pick: picks[picks.length - 1] });
+    } else if (open && picks[i].tier === 'lean' && c.tier === 'take' && picks[i].side === c.side) {
+      const { tier, line, edge, posted_at } = picks[i];
+      picks[i] = { ...c, posted_at: nowIso, was: { tier, line, edge, posted_at } };
+      changes.push({ kind: 'upgrade', pick: picks[i] });
+    }
+  }
+  return { picks, changes };
+}
+
+const pickLabel = p => p.market === 'spread'
+  ? `${p.side} ${p.line > 0 ? '+' : ''}${p.line}`
+  : `${p.side === 'over' ? 'Over' : 'Under'} ${p.line}`;
+const etTime = iso => new Date(iso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' });
+
+// One push per run listing every new or upgraded pick (ntfy.sh topic in NTFY_TOPIC).
+async function notify(changes) {
+  const topic = process.env.NTFY_TOPIC;
+  if (!topic || !changes.length) return;
+  const takes = changes.filter(c => c.pick.tier === 'take').length;
+  const body = changes.map(({ kind, pick, game, commence }) =>
+    `${kind === 'upgrade' ? 'UPGRADED TO TAKE' : pick.tier.toUpperCase()}: ${pickLabel(pick)} | ${game}, ${etTime(commence)} ET (edge ${pick.edge})`).join('\n');
+  try {
+    const r = await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
+      method: 'POST', body,
+      headers: { Title: `TrueLine: ${changes.length} new pick${changes.length > 1 ? 's' : ''}${takes ? ` (${takes} take${takes > 1 ? 's' : ''})` : ''}`,
+                 Tags: 'basketball', Priority: takes ? 'high' : 'default', Click: 'https://truelinels.net' },
+    });
+    console.log(`Notification: HTTP ${r.status}`);
+  } catch (e) {
+    console.log(`Notification failed (picks are saved regardless): ${e.message}`);
+  }
+}
+
 async function main() {
   const isoDate = process.env.DATE || easternToday();
   const espnDate = isoDate.replace(/-/g, '');
@@ -107,6 +157,9 @@ async function main() {
   const log = (await gistFetch(filename)) || [];
   const byId = new Map(log.map(e => [e.game_id, e]));
   const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const open = new Date(now).getHours() >= POST_HOUR;   // TZ=America/New_York in the workflow
+  const changes = [];
   let written = 0, frozen = 0, unrated = 0;
 
   for (const g of games) {
@@ -117,6 +170,7 @@ async function main() {
     if (!g.pred) { unrated++; continue; }
 
     const prev = byId.get(g.id);
+    const posted = postPicks(prev?.picks, picksFor(g, cfg), nowIso, open);
     const entry = {
       game_id:   g.id,
       game:      `${g.away} @ ${g.home}`,
@@ -142,9 +196,10 @@ async function main() {
         spread: g.vegasSpread?.point ?? null,  // home line (− = home favored)
         total:  g.vegasTotal?.point ?? null,
       },
-      picks: picksFor(g, cfg),
+      picks: posted.picks,
       result: null,
     };
+    for (const c of posted.changes) changes.push({ ...c, game: entry.game, commence: entry.commence });
     if (prev && JSON.stringify({ ...prev, logged_at: 0 }) === JSON.stringify({ ...entry, logged_at: 0 })) continue;
     byId.set(g.id, entry);
     written++;
@@ -157,9 +212,12 @@ async function main() {
   const nPicks = out.reduce((s, e) => s + e.picks.length, 0);
   console.log(`Writing ${filename}: ${out.length} games, ${nPicks} leans/takes.`);
   console.log(`Gist PATCH status: ${await gistPatch(filename, out)}`);
+  if (!open) console.log(`Before ${POST_HOUR}am ET: games updated, no picks posted.`);
+  console.log(`New/upgraded picks this run: ${changes.length}`);
+  await notify(changes);
 }
 
-module.exports = { picksFor };
+module.exports = { picksFor, postPicks };
 
 if (require.main === module) {
   main().catch(e => { console.error(`ERROR: ${e.message}`); process.exit(1); });

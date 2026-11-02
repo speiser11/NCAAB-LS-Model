@@ -67,6 +67,22 @@ def grade(pick, home_score, away_score):
         diff = (total - pick['line']) if pick['side'] == 'over' else (pick['line'] - total)
     return 'win' if diff > 0 else 'loss' if diff < 0 else 'push'
 
+def closing_value(pick, entry):
+    """(closing line for the pick's side, CLV in points; + = we beat the close).
+    The entry's vegas line is its last save before tip-off; the pick keeps the
+    line it was posted at."""
+    v = entry.get('vegas') or {}
+    if pick['market'] == 'spread':
+        c = v.get('spread')
+        if c is None:
+            return None, None
+        close = c if pick['sideIsHome'] else -c
+        return close, round(pick['line'] - close, 1)
+    c = v.get('total')
+    if c is None:
+        return None, None
+    return c, round((c - pick['line']) if pick['side'] == 'over' else (pick['line'] - c), 1)
+
 def fill_date(date_str):
     """Returns True on a clean pass."""
     filename = f'ncaab-log-{date_str}.json'
@@ -89,6 +105,7 @@ def fill_date(date_str):
         hs, as_ = finals[e['game_id']]
         for p in e['picks']:
             p['outcome'] = grade(p, hs, as_)
+            p['close'], p['clv'] = closing_value(p, e)
         e['result'] = {'homeScore': hs, 'awayScore': as_}
         updated += 1
         graded = ', '.join(f"{p['tier']} {p['market']} {p['outcome']}" for p in e['picks']) or 'no picks'
