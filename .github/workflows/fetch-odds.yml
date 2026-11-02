@@ -129,6 +129,7 @@ jobs:
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}   # push alerts for new/upgraded picks (ntfy.sh)
           TZ: America/New_York
         run: node .github/scripts/log_ncaab_predictions.js
 
