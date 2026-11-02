@@ -988,7 +988,7 @@ input[type=date] {
 .mlb-pick-row-action.hit{color:var(--green);}
 .mlb-pick-row-action.miss{color:#e05252;}
 .mlb-pick-row-model{font-size:.68rem;color:var(--accent);font-weight:600;margin-top:.1rem;}
-.mlb-pick-row-why{font-size:.65rem;color:var(--muted);margin-top:.1rem;}
+.mlb-pick-row-why{font-size:.65rem;color:var(--muted);margin-top:.1rem;white-space:pre-line;}
 .mlb-legend-btn{background:none;border:1px solid var(--border);border-radius:50%;width:1.25rem;height:1.25rem;font-size:.6rem;font-weight:700;color:var(--muted);cursor:pointer;line-height:1.25rem;text-align:center;flex-shrink:0;}
 .mlb-legend-btn:hover{background:var(--surface2);color:var(--text);}
 .mlb-legend-section{padding:.75rem 1rem;border-bottom:1px solid var(--border);}
@@ -1158,6 +1158,8 @@ input[type=date] {
 .gc-pill.lost{background:var(--red);color:var(--surface);}
 .gc-call-text{font-weight:700;font-size:.9rem;color:var(--text);}
 .gc-call-note{font-size:.72rem;color:var(--muted);margin-left:.4rem;}
+.gc-call-range{flex-basis:100%;font-size:.72rem;color:var(--muted);}
+.gd-call .gc-call-range{font-size:.78rem;}
 .gc-call-none{font-size:.82rem;color:var(--muted);}
 .gc-more{margin-left:auto;font-size:.8rem;font-weight:600;color:var(--blue);white-space:nowrap;}
 .compact-list .gc-model,.compact-list .gc-tags{display:none;}
@@ -2914,7 +2916,38 @@ function gameLines(g) {
   }
   return out;
 }
-const gameCalls = g => { const l = gameLines(g); return [l.spread, l.total].filter(c => c && c.tier); };
+// "Still a bet at": the lines where a posted pick's side is still a take / lean
+// under the current model, so nobody has to do the threshold math. Spreads are a
+// window (cfg.spreadMaxEdge caps the gap, cfg.maxPickLine the line); totals are
+// open-ended (Over at X or lower, Under at X or higher). Lines step by half points.
+function betRange(g, c) {
+  if (!g.pred || g.statusName !== 'STATUS_SCHEDULED') return '';
+  const up = v => Math.ceil(v * 2 - 1e-9) / 2;          // smallest half-point >= v
+  const dn = v => Math.floor(v * 2 + 1e-9) / 2;         // largest half-point <= v
+  const below = v => Math.ceil(v * 2 - 1e-9) / 2 - .5;  // largest half-point < v
+  if (c.market === 'spread') {
+    const M = c.home ? g.pred.margin : -g.pred.margin;   // our margin for the side we took
+    const cap = cfg.maxPickLine - .5;
+    const span = (lo, hi) => {
+      lo = Math.max(lo, -cap); hi = Math.min(hi, cap);
+      if (lo > hi) return null;
+      const f = v => fmtSpread(v.toFixed(1));
+      if (lo === hi) return f(lo);
+      return hi <= 0 ? `${f(hi)} to ${f(lo)}` : `${f(lo)} to ${f(hi)}`;   // smaller number first
+    };
+    const take = span(up(cfg.spreadTake - M), dn(cfg.spreadMaxEdge - M));
+    const lean = span(up(cfg.spreadLean - M), below(cfg.spreadTake - M));
+    return [take && `Take ${take}`, lean && `Lean ${lean}`].filter(Boolean).join(' · ');
+  }
+  const T = g.pred.total;
+  if (c.over) {
+    const t = dn(T - cfg.totalTake), l = dn(T - cfg.totalLean);
+    return `Take ≤ ${t} · Lean ${l > t + .5 ? `${t + .5}–${l}` : l}`;
+  }
+  const t = up(T + cfg.totalTake), l = up(T + cfg.totalLean);
+  return `Take ≥ ${t} · Lean ${l < t - .5 ? `${l}–${t - .5}` : l}`;
+}
+const gameCalls = g => { const l = gameLines(g); return [l.spread, l.total].filter(c => c && c.tier).map(c => ({ ...c, range: betRange(g, c) })); };
 
 // Edge bar: centre = agrees with the market, fill grows toward the side the model likes,
 // ticks mark Lean and Take on both sides.
@@ -3044,7 +3077,7 @@ function renderCard(g) {
   }
   let callHtml;
   if (calls.length) {
-    callHtml = calls.map(c => `<span class="gc-callrow"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="gc-call-text">${esc(c.label)}</span>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${result(c)}</span>`).join('');
+    callHtml = calls.map(c => `<span class="gc-callrow"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="gc-call-text">${esc(c.label)}</span>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${result(c)}</span>${c.range ? `<span class="gc-call-range">Still a bet at: ${esc(c.range)}</span>` : ''}`).join('');
   } else if (!pred) {
     callHtml = `<span class="gc-callrow"><span class="gc-pill none">No line</span><span class="gc-call-none">No model line for this game</span></span>`;
   } else if (!vegasSpread && !vegasTotal) {
@@ -3092,7 +3125,8 @@ function showNCAABPicks() {
       : `${g.statusName === 'STATUS_SCHEDULED' ? 'now' : 'closed'} ${fmtLine(c.nowLine)}${c.nowPrice != null ? ` (${fmtPrice(c.nowPrice)})` : ''}`;
     const p = (g.saved?.picks || []).find(x => x.market === c.market);
     const detail = [p?.posted_at ? `Posted ${time(p.posted_at)}` : '', nowTxt,
-                    p?.was ? `upgraded from lean at ${fmtLine(p.was.line)}` : ''].filter(Boolean).join(' · ');
+                    p?.was ? `upgraded from lean at ${fmtLine(p.was.line)}` : ''].filter(Boolean).join(' · ')
+                 + (c.range ? `\nStill a bet at: ${c.range}` : '');
     const moved = !c.active;
     const icon = r === 'won' ? '✅' : r === 'lost' ? '❌' : r === 'push' ? '➖' : live ? '🔴' : c.tier === 'take' ? '🔥' : '📊';
     return `<div class="mlb-pick-row ncaab-pick-row${moved ? ' moved' : ''}" onclick="closeNCAABPicks();scrollToGame('${g.id}')">
@@ -3687,13 +3721,13 @@ function gdSummary(g) {
     ? (c.tier === 'take' ? cfg.spreadTake : cfg.spreadLean)
     : (c.tier === 'take' ? cfg.totalTake : cfg.totalLean);
   const sentence = c => {
-    if (c.e == null) return `Posted at ${c.label.split(' ').pop()}; the market has no line right now. The pick still counts.`;
-    if (c.market === 'total')
-      return `Our total is ${pred.total.toFixed(1)}; the market is ${vegasTotal.point}. That ${c.edge.toFixed(1)}-point gap is past the ${tierWord(c)} mark (${mark(c)}).`;
-    const ours = pred.margin > 0 ? hName : aName;
-    const mkt = vegasSpread.point === 0 ? 'calls it a pick\'em'
-      : `has ${vegasSpread.point < 0 ? hName : aName} by ${Math.abs(vegasSpread.point)}`;
-    return `We have ${ours} by ${Math.abs(pred.margin).toFixed(1)}; the market ${mkt}. That ${c.edge.toFixed(1)}-point gap is past the ${tierWord(c)} mark (${mark(c)}).`;
+    // Describes the posted pick (its line and gap when posted); the current line follows.
+    const fmt = v => c.market === 'spread' ? fmtSpread(v.toFixed(1)) : String(v);
+    const now = c.nowLine == null ? ' The market has no line right now; the pick still counts.'
+      : c.nowLine !== c.line ? ` The line ${g.statusName === 'STATUS_SCHEDULED' ? 'is now' : 'closed at'} ${fmt(c.nowLine)}.` : '';
+    const posted = `Posted at ${c.label}, a ${c.edge.toFixed(1)}-point gap, past the ${tierWord(c)} mark (${mark(c)}).`;
+    if (c.market === 'total') return `Our total is ${pred.total.toFixed(1)}. ${posted}${now}`;
+    return `We have ${pred.margin > 0 ? hName : aName} by ${Math.abs(pred.margin).toFixed(1)}. ${posted}${now}`;
   };
 
   let html = '';
@@ -3701,7 +3735,7 @@ function gdSummary(g) {
     const tier = calls.some(c => c.tier === 'take') ? 'take' : 'lean';
     html += `<div class="gd-call ${tier}">${calls.map(c => {
       const r = callResult(g, c);
-      return `<div class="gd-call-row"><span class="gc-pill ${c.tier}">${c.tier}</span><strong>${esc(c.label)}</strong>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${r ? `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>` : ''}</div>`;
+      return `<div class="gd-call-row"><span class="gc-pill ${c.tier}">${c.tier}</span><strong>${esc(c.label)}</strong>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${r ? `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>` : ''}</div>${c.range ? `<div class="gc-call-range">Still a bet at: ${esc(c.range)}</div>` : ''}`;
     }).join('')}</div>`;
     html += calls.map(c => `<p class="gd-plain">${esc(sentence(c))}</p>`).join('');
   } else {
