@@ -1002,6 +1002,14 @@ input[type=date] {
 .mlb-legend-desc{font-size:.72rem;color:var(--text);}
 .mlb-legend-note{font-size:.63rem;color:var(--muted);padding:.5rem 1rem .75rem;}
 .mlb-pick-row-edge{font-size:.65rem;font-weight:600;padding:.15rem .4rem;border-radius:4px;background:var(--surface2);color:var(--muted);flex-shrink:0;white-space:nowrap;}
+.ncaab-pick-row.moved .mlb-pick-row-icon,.ncaab-pick-row.moved .mlb-pick-row-body,.ncaab-pick-row.moved .mlb-pick-row-edge{opacity:.45;}
+.np-pill{font-size:.6rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;white-space:nowrap;}
+.np-pill.moved{background:var(--surface2);color:var(--text);border:1px dashed var(--muted);}
+.np-pill.won{background:var(--green);color:var(--surface);}
+.np-pill.lost{background:var(--red);color:var(--surface);}
+.np-pill.push{background:var(--surface2);color:var(--muted);}
+.rb-big.clickable{cursor:pointer;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;text-decoration-color:rgba(255,255,255,.35);}
+.rb-big.clickable:hover{text-decoration-color:currentColor;}
 .mlb-picks-empty{padding:1.5rem;text-align:center;color:var(--muted);font-size:.8rem;}
 .picks-view-all{background:none;border:1px solid var(--border);border-radius:6px;font-size:.65rem;font-weight:600;color:var(--accent);cursor:pointer;padding:.2rem .6rem;margin-left:.5rem;white-space:nowrap;}
 .picks-view-all:hover{background:var(--surface);}
@@ -1343,7 +1351,7 @@ input[type=date] {
 <section class="rec-band" id="rec-band" aria-label="Model record">
   <div class="rb-today">
     <div class="rb-eyebrow" id="rb-eyebrow">Today's card</div>
-    <div class="rb-big" id="rb-big">Loading…</div>
+    <div class="rb-big" id="rb-big" role="button" tabindex="0" onkeydown="if((event.key==='Enter'||event.key===' ')&&this.onclick){event.preventDefault();this.onclick();}">Loading…</div>
     <div class="rb-line"><span id="rb-line"></span> <button class="rb-how" id="rb-how-btn" onclick="toggleHow(event)" aria-expanded="false" aria-controls="rb-how-pop">How to read this</button></div>
   </div>
   <div class="rb-stats" id="rb-stats">
@@ -1541,6 +1549,17 @@ input[type=date] {
       <button class="mlb-picks-modal-close" onclick="closeMLBNukeModal()">✕</button>
     </div>
     <div id="mlb-nuke-modal-body"></div>
+  </div>
+</div>
+
+<!-- NCAAB Picks Summary Modal -->
+<div class="mlb-picks-overlay" id="ncaab-picks-overlay" onclick="if(event.target===this)closeNCAABPicks()">
+  <div class="mlb-picks-modal" role="dialog" aria-modal="true" aria-labelledby="ncaab-picks-title">
+    <div class="mlb-picks-modal-hd">
+      <span class="mlb-picks-modal-title" id="ncaab-picks-title">Today's Picks</span>
+      <button class="mlb-picks-modal-close" onclick="closeNCAABPicks()" aria-label="Close">✕</button>
+    </div>
+    <div id="ncaab-picks-body"></div>
   </div>
 </div>
 
@@ -2578,6 +2597,20 @@ function getFormDelta(key) {
   return { dO: Math.round(dO * 10) / 10, dD: Math.round(dD * 10) / 10, net };
 }
 
+// Prices (American odds) for each side from the first book with the market —
+// the odds file carries one book, the BettingPros consensus.
+function linePrices(bookmakers, market, homeTeamKey) {
+  const outs = bookmakers.map(bm => bm.markets?.find(m => m.key === market)).find(Boolean)?.outcomes || [];
+  if (market === 'totals') {
+    const pr = n => outs.find(o => normTeam(o.name) === n)?.price ?? null;
+    return { overPrice: pr('over'), underPrice: pr('under') };
+  }
+  if (outs.length !== 2) return { homePrice: null, awayPrice: null };
+  const homeIdx = outs.findIndex(o => (matchTeam(o.name) || normTeam(o.name)) === homeTeamKey);
+  if (homeIdx < 0) return { homePrice: null, awayPrice: null };
+  return { homePrice: outs[homeIdx].price ?? null, awayPrice: outs[1 - homeIdx].price ?? null };
+}
+
 // Extract consensus (averaged) line from all bookmakers for a given market
 function getLine(bookmakers, market, homeTeamKey) {
   const allPts = {};
@@ -2612,13 +2645,13 @@ function getLine(bookmakers, market, homeTeamKey) {
     }
     if (!pts.length) return null;
     const avg = pts.reduce((s, p) => s + p, 0) / pts.length;
-    return { point: Math.round(avg * 2) / 2 };
+    return { point: Math.round(avg * 2) / 2, ...linePrices(bookmakers, 'spreads', homeTeamKey) };
   }
   if (market === 'totals') {
     const overPts = (allPts['over'] || allPts[Object.keys(allPts).find(k => k.includes('over'))] || []);
     if (!overPts.length) return null;
     const avg = overPts.reduce((s, p) => s + p, 0) / overPts.length;
-    return { point: Math.round(avg * 2) / 2 };
+    return { point: Math.round(avg * 2) / 2, ...linePrices(bookmakers, 'totals', homeTeamKey) };
   }
   return null;
 }
@@ -2838,34 +2871,46 @@ function gameLines(g) {
   if (!g.pred) return out;
   // Leans and takes are the POSTED picks from the pick log: posted from 9am ET the
   // first time a game crosses the line, never withdrawn, graded at the posted line.
-  // The edge (e) stays live so the bars show where the model stands now.
+  // The edge (e) stays live so the bars show where the model stands now; e is null
+  // when a posted pick's market has no line right now.
+  // `active` = would it still be a pick at the current line? (false = greyed in the
+  // picks list, but it still counts.)
   const posted = m => (g.saved?.picks || []).find(p => p.market === m) || null;
   const note = (p, now, at) => {
     if (!p.posted_at) return '';
     const t = new Date(p.posted_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     return [`posted ${t}`,
-            now !== at ? `${g.statusName === 'STATUS_SCHEDULED' ? 'now' : 'closed'} ${now}` : '',
+            now != null && now !== at ? `${g.statusName === 'STATUS_SCHEDULED' ? 'now' : 'closed'} ${now}` : '',
             p.was ? `upgraded from lean at ${p.market === 'spread' ? fmtSpread(p.was.line) : p.was.line}` : '']
       .filter(Boolean).join(' · ');
   };
-  if (g.vegasSpread) {
-    const e = g.pred.margin + g.vegasSpread.point, p = posted('spread');
+  const ps = posted('spread');
+  if (g.vegasSpread || ps) {
+    const v = g.vegasSpread, p = ps;
+    const e = v ? g.pred.margin + v.point : null;
     const home = p ? p.sideIsHome : e > 0;
-    const line = p ? p.line : (home ? g.vegasSpread.point : -g.vegasSpread.point);
-    const now = home ? g.vegasSpread.point : -g.vegasSpread.point;
+    const now = v ? (home ? v.point : -v.point) : null;
+    const line = p ? p.line : now;
+    const active = e != null && (e > 0) === home && Math.abs(v.point) < cfg.maxPickLine
+                && Math.abs(e) >= cfg.spreadLean && Math.abs(e) <= cfg.spreadMaxEdge;
     out.spread = { market: 'spread', e, edge: p ? p.edge : Math.abs(e), home, line, tier: p ? p.tier : null,
+      price: p ? p.price ?? null : null, nowLine: now, nowPrice: v ? (home ? v.homePrice : v.awayPrice) ?? null : null, active,
       side: teamAbbr(g, home ? 'h' : 'a'),
       label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}`,
-      note: p ? note(p, fmtSpread(now.toFixed(1)), fmtSpread(line.toFixed(1))) : '' };
+      note: p ? note(p, now == null ? null : fmtSpread(now.toFixed(1)), fmtSpread(line.toFixed(1))) : '' };
   }
-  if (g.vegasTotal) {
-    const e = g.pred.total - g.vegasTotal.point, p = posted('total');
+  const pt = posted('total');
+  if (g.vegasTotal || pt) {
+    const v = g.vegasTotal, p = pt;
+    const e = v ? g.pred.total - v.point : null;
     const over = p ? p.side === 'over' : e > 0;
-    const line = p ? p.line : g.vegasTotal.point;
+    const line = p ? p.line : v.point;
+    const active = e != null && (e > 0) === over && Math.abs(e) >= cfg.totalLean;
     out.total = { market: 'total', e, edge: p ? p.edge : Math.abs(e), over, line, tier: p ? p.tier : null,
+      price: p ? p.price ?? null : null, nowLine: v ? v.point : null, nowPrice: v ? (over ? v.overPrice : v.underPrice) ?? null : null, active,
       side: over ? 'O' : 'U',
       label: `${over ? 'Over' : 'Under'} ${line}`,
-      note: p ? note(p, String(g.vegasTotal.point), String(line)) : '' };
+      note: p ? note(p, v ? String(v.point) : null, String(line)) : '' };
   }
   return out;
 }
@@ -2878,7 +2923,7 @@ function edgeBar(c, market) {
   const take = market === 'spread' ? cfg.spreadTake : cfg.totalTake;
   const max = take * 1.6, pos = v => 50 + Math.max(-1, Math.min(1, v / max)) * 50;
   const ticks = [-take, -lean, lean, take].map(v => `<span class="eb-tk" style="left:${pos(v)}%"></span>`).join('');
-  const fill = c ? `<span class="eb-fill ${c.tier || ''}" style="left:${Math.min(50, pos(c.e))}%;width:${Math.abs(pos(c.e) - 50)}%"></span>` : '';
+  const fill = c && c.e != null ? `<span class="eb-fill ${c.tier || ''}" style="left:${Math.min(50, pos(c.e))}%;width:${Math.abs(pos(c.e) - 50)}%"></span>` : '';
   return `<div class="eb">${ticks}${fill}<span class="eb-mid"></span></div>`;
 }
 
@@ -3022,6 +3067,67 @@ function renderCard(g) {
     </div>`;
 }
 
+// ── NCAAB picks summary (tap "N Takes · N Leans") ─────────
+// Every posted pick for the day: line and odds when posted, when, where the line is
+// now, result. A pick the line has since moved past is greyed — it still counts.
+let _ncaabGames = [];
+const fmtPrice = n => n == null ? '' : n > 0 ? `+${n}` : `${n}`;
+function showNCAABPicks() {
+  const games = _ncaabGames;
+  const calls = games.flatMap(g => gameCalls(g).map(c => ({ g, c })))
+    .sort((x, y) => (x.g.time || '').localeCompare(y.g.time || '') || y.c.edge - x.c.edge);
+  const isToday = currentIsoDate === toISODate(todayStr());
+  document.getElementById('ncaab-picks-title').textContent = isToday ? "Today's Picks"
+    : 'Picks · ' + new Date(currentIsoDate + 'T12:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const body = document.getElementById('ncaab-picks-body');
+  const time = iso => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const row = ({ g, c }) => {
+    const a = displayName(g.aKey, g.away), h = displayName(g.hKey, g.home);
+    const r = callResult(g, c);
+    const live = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME';
+    const state = r || live ? `${live ? 'Live' : 'Final'} · ${a} ${parseInt(g.awayScore) || 0}, ${h} ${parseInt(g.homeScore) || 0}`
+                : g.time ? `Tips ${time(g.time)}` : '';
+    const fmtLine = v => c.market === 'spread' ? fmtSpread(v.toFixed(1)) : String(v);
+    const nowTxt = c.nowLine == null ? 'no line right now'
+      : `${g.statusName === 'STATUS_SCHEDULED' ? 'now' : 'closed'} ${fmtLine(c.nowLine)}${c.nowPrice != null ? ` (${fmtPrice(c.nowPrice)})` : ''}`;
+    const p = (g.saved?.picks || []).find(x => x.market === c.market);
+    const detail = [p?.posted_at ? `Posted ${time(p.posted_at)}` : '', nowTxt,
+                    p?.was ? `upgraded from lean at ${fmtLine(p.was.line)}` : ''].filter(Boolean).join(' · ');
+    const moved = !c.active;
+    const icon = r === 'won' ? '✅' : r === 'lost' ? '❌' : r === 'push' ? '➖' : live ? '🔴' : c.tier === 'take' ? '🔥' : '📊';
+    return `<div class="mlb-pick-row ncaab-pick-row${moved ? ' moved' : ''}" onclick="closeNCAABPicks();scrollToGame('${g.id}')">
+      <span class="mlb-pick-row-icon">${icon}</span>
+      <div class="mlb-pick-row-body">
+        <div class="mlb-pick-row-matchup">${esc(a)} @ ${esc(h)} · ${c.market === 'spread' ? 'Spread' : 'Total'}${state ? ' · ' + esc(state) : ''}</div>
+        <div class="mlb-pick-row-action ${r === 'won' ? 'hit' : r === 'lost' ? 'miss' : c.tier}">${esc(c.label)}${c.price != null ? ` <span style="font-weight:500">(${fmtPrice(c.price)})</span>` : ''}</div>
+        <div class="mlb-pick-row-why">${esc(detail)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
+        <span class="mlb-pick-row-edge">edge ${c.edge.toFixed(1)}</span>
+        ${r ? `<span class="np-pill ${r}">${r === 'won' ? 'Won' : r === 'lost' ? 'Lost' : 'Push'}</span>` : ''}
+        ${moved ? `<span class="np-pill moved" title="At the current line this would no longer be a ${c.tier}. It was posted, so it still counts.">Moved · still counts</span>` : ''}
+      </div>
+    </div>`;
+  };
+  const rec = list => {
+    const rs = list.map(({ g, c }) => callResult(g, c)).filter(Boolean);
+    if (!rs.length) return '';
+    const n = k => rs.filter(x => x === k).length;
+    return ` · ${n('won')}–${n('lost')}${n('push') ? `–${n('push')}` : ''}`;
+  };
+  const takes = calls.filter(x => x.c.tier === 'take'), leans = calls.filter(x => x.c.tier === 'lean');
+  let html = '';
+  if (takes.length) html += `<div class="mlb-picks-section-label">🔥 Takes (${takes.length})${rec(takes)}</div>` + takes.map(row).join('');
+  if (leans.length) html += `<div class="mlb-picks-section-label">📊 Leans (${leans.length})${rec(leans)}</div>` + leans.map(row).join('');
+  body.innerHTML = html
+    ? html + `<div class="mlb-legend-note">Picks post from 9am ET and stay posted. Odds are when the pick was posted; results are graded at the posted line. Greyed = the line has moved enough that it wouldn't be a pick now. It still counts.</div>`
+    : '<div class="mlb-picks-empty">No picks yet. Picks post from 9am ET.</div>';
+  document.getElementById('ncaab-picks-overlay').classList.add('open');
+}
+function closeNCAABPicks() {
+  document.getElementById('ncaab-picks-overlay').classList.remove('open');
+}
+
 function scrollToGame(id) {
   const el = document.getElementById('game-' + id);
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3037,7 +3143,7 @@ function renderTopPicks(games) {
   const short = (key, full) => displayName(key, full);
   bar.style.display = '';
   bar.innerHTML = `
-    <div class="picks-header"><span class="top-picks-title" id="picks-title">Top plays</span></div>
+    <div class="picks-header"><span class="top-picks-title" id="picks-title">Top plays</span><button class="picks-view-all" onclick="showNCAABPicks()">View all ›</button></div>
     <div class="picks-row">${picks.map(({ g, c }) => `
       <button class="pick-card ${c.tier}" onclick="scrollToGame('${g.id}')">
         <div class="pick-top"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="pick-edge">${c.edge.toFixed(1)}</span></div>
@@ -3185,6 +3291,7 @@ function dayCalls(games) {
 }
 
 function renderRecordBand(games, liveN) {
+  _ncaabGames = games;
   const calls = dayCalls(games);
   const takes = calls.filter(c => c.tier === 'take').length, leans = calls.length - takes;
   const isToday = currentIsoDate === toISODate(todayStr());
@@ -3193,7 +3300,11 @@ function renderRecordBand(games, liveN) {
   document.getElementById('rb-eyebrow').textContent =
     `${day}${games.length ? ` · ${games.length} games` : ''}${liveN ? ` · ${liveN} live` : ''}`;
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  document.getElementById('rb-big').textContent = calls.length ? `${plural(takes, 'Take')} · ${plural(leans, 'Lean')}` : 'No plays';
+  const big = document.getElementById('rb-big');
+  big.textContent = calls.length ? `${plural(takes, 'Take')} · ${plural(leans, 'Lean')}` : 'No plays';
+  big.classList.toggle('clickable', calls.length > 0);
+  big.onclick = calls.length ? () => showNCAABPicks() : null;
+  big.title = calls.length ? 'See every pick with its line, odds and when it was posted' : '';
   let line;
   if (!games.length) line = 'No games on this date.';
   else if (calls.length) {
@@ -3576,6 +3687,7 @@ function gdSummary(g) {
     ? (c.tier === 'take' ? cfg.spreadTake : cfg.spreadLean)
     : (c.tier === 'take' ? cfg.totalTake : cfg.totalLean);
   const sentence = c => {
+    if (c.e == null) return `Posted at ${c.label.split(' ').pop()}; the market has no line right now. The pick still counts.`;
     if (c.market === 'total')
       return `Our total is ${pred.total.toFixed(1)}; the market is ${vegasTotal.point}. That ${c.edge.toFixed(1)}-point gap is past the ${tierWord(c)} mark (${mark(c)}).`;
     const ours = pred.margin > 0 ? hName : aName;
@@ -4363,7 +4475,7 @@ function onDateChange() {
   document.getElementById('date-pick').value     = _todayVal;
   document.getElementById('mlb-date-pick').value = _todayVal;
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeTeamModal(); closeGameModal(); closeMenu(); closeHow(); }
+    if (e.key === 'Escape') { closeTeamModal(); closeGameModal(); closeMenu(); closeHow(); closeNCAABPicks(); }
   });
   TeamResolver.init(); // fire-and-forget — resolver used opportunistically for display names
   refresh();

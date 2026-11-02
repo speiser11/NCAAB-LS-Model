@@ -75,6 +75,7 @@ function picksFor(g, cfg) {
         market: 'spread', tier: t,
         side: home ? g.home : g.away, sideIsHome: home,
         line: home ? g.vegasSpread.point : -g.vegasSpread.point,
+        price: (home ? g.vegasSpread.homePrice : g.vegasSpread.awayPrice) ?? null,   // American odds when posted
         edge: Math.round(Math.abs(edge) * 10) / 10,
       });
     }
@@ -87,6 +88,7 @@ function picksFor(g, cfg) {
         market: 'total', tier: t,
         side: edge > 0 ? 'over' : 'under',
         line: g.vegasTotal.point,
+        price: (edge > 0 ? g.vegasTotal.overPrice : g.vegasTotal.underPrice) ?? null,
         edge: Math.round(Math.abs(edge) * 10) / 10,
       });
     }
