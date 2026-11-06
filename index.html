@@ -1090,6 +1090,7 @@ input[type=date] {
 .rb-num{font-family:'Archivo','Inter',sans-serif;font-stretch:105%;font-weight:800;font-size:1.45rem;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--text);}
 .rb-num em{font-style:normal;font-size:.85rem;font-weight:700;margin-left:.35rem;color:var(--muted);}
 .rb-num em.good{color:var(--green);} .rb-num em.bad{color:var(--red);}
+.rb-mkt b{font-weight:700;color:var(--text);} .rb-mkt b.good{color:var(--green);} .rb-mkt b.bad{color:var(--red);}
 .rb-seg{display:flex;gap:.6rem;}
 .rb-seg button{background:none;border:0;padding:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--muted);opacity:.6;cursor:pointer;}
 .rb-seg button[aria-pressed="true"]{opacity:1;color:var(--text);text-decoration:underline;text-decoration-color:var(--blue);text-decoration-thickness:2px;text-underline-offset:4px;}
@@ -3220,14 +3221,26 @@ async function loadSavedPicks(isoDate) {
 
 // { take, lean, earlyTake } as {w,l,p} over every graded pick in the given logs.
 // earlyTake: takes where either team had played < cfg.earlyGames when picked.
+// spread / total: takes + leans by market, with closing-line value (pick.clv from
+// fill_ncaab_results.py: points the closing line moved our way after posting).
 function tallyPicks(logs) {
-  const rec = { take: { w:0, l:0, p:0 }, lean: { w:0, l:0, p:0 }, earlyTake: { w:0, l:0, p:0 } };
+  const mkt = () => ({ w:0, l:0, p:0, clv:0, clvN:0, beat:0, worse:0 });
+  const rec = { take: { w:0, l:0, p:0 }, lean: { w:0, l:0, p:0 }, earlyTake: { w:0, l:0, p:0 },
+                spread: mkt(), total: mkt() };
   for (const e of logs.flat()) {
     const games = Math.min(e.model?.hGames ?? Infinity, e.model?.aGames ?? Infinity);
     for (const pk of (e.picks || [])) {
       if (!pk.outcome || !rec[pk.tier]) continue;
-      rec[pk.tier][pk.outcome[0]]++;  // 'win' → w, …
-      if (pk.tier === 'take' && games < cfg.earlyGames) rec.earlyTake[pk.outcome[0]]++;
+      const o = pk.outcome[0];  // 'win' → w, …
+      rec[pk.tier][o]++;
+      if (pk.tier === 'take' && games < cfg.earlyGames) rec.earlyTake[o]++;
+      const m = rec[pk.market];
+      if (!m) continue;
+      m[o]++;
+      if (typeof pk.clv === 'number') {
+        m.clv += pk.clv; m.clvN++;
+        if (pk.clv > 0) m.beat++; else if (pk.clv < 0) m.worse++;
+      }
     }
   }
   return rec;
@@ -3286,8 +3299,15 @@ function renderAccuracyBadges({ td, yd, wk, mo, l30, daily }) {
   const pct = ({ w, l }) => w + l ? Math.round(w / (w + l) * 100) : null;
   const pctEm = r => { const p = pct(r); return p == null ? '' : `<em class="${p >= 60 ? 'good' : p < 50 ? 'bad' : ''}">${p}%</em>`; };
   const early = r => r.w + r.l + r.p ? `early season (a team under ${cfg.earlyGames} games) ${rec(r)}` : '';
-  const tip = (lbl, { take, lean, earlyTake }) =>
-    `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)}${early(earlyTake) ? ` · of the takes, ${early(earlyTake)}` : ''} (W–L–Push, graded vs the line at tip-off)`;
+  const clvTxt = m => m.clvN ? `${m.clv / m.clvN >= 0 ? '+' : '−'}${Math.abs(m.clv / m.clvN).toFixed(1)}` : null;
+  const mktTip = (name, m) => m.w + m.l + m.p
+    ? ` · ${name} ${rec(m)}${m.clvN ? `, CLV ${clvTxt(m)} (beat the close ${m.beat} of ${m.clvN}, worse ${m.worse})` : ''}` : '';
+  const tip = (lbl, { take, lean, earlyTake, spread, total }) =>
+    `${lbl}: Takes ${rec(take)} · Leans ${rec(lean)}${early(earlyTake) ? ` · of the takes, ${early(earlyTake)}` : ''}` +
+    `${mktTip('Spreads', spread)}${mktTip('Totals', total)} (W–L–Push, graded at the posted line; CLV = avg points the closing line moved our way)`;
+  // "Spreads 5–11 · CLV +0.7": takes + leans by market, CLV green when we beat the close
+  const mktLine = (name, m) => m.w + m.l + m.p
+    ? `<div class="rb-sub rb-mkt">${name} ${rec(m)}${m.clvN ? ` · CLV <b class="${m.clv > 0 ? 'good' : m.clv < 0 ? 'bad' : ''}">${clvTxt(m)}</b>` : ''}</div>` : '';
   const lp = pct(wk.lean);
   const per = _recPeriod === 'l30' ? l30 : mo;
   const perLbl = _recPeriod === 'l30' ? 'Last 30 days' : new Date().toLocaleDateString([], { month: 'long' });
@@ -3297,7 +3317,7 @@ function renderAccuracyBadges({ td, yd, wk, mo, l30, daily }) {
     <div class="rb-stat" title="${tip('Today', td)}"><div class="rb-eyebrow">Today</div><div class="rb-num">${rec(td.take)}</div><div class="rb-sub">Yesterday ${rec(yd.take)}</div></div>
     <div class="rb-stat" title="${tip(perLbl, per)}"><div class="rb-eyebrow rb-seg" role="group" aria-label="Record period">
         <button aria-pressed="${_recPeriod === 'mo'}" onclick="setRecPeriod('mo')">This month</button><button aria-pressed="${_recPeriod === 'l30'}" onclick="setRecPeriod('l30')">Last 30</button></div>
-      <div class="rb-num">${rec(per.take)}${pctEm(per.take)}</div><div class="rb-sub">Leans ${rec(per.lean)}</div>${early(per.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(per.earlyTake)}</div>` : ''}</div>`;
+      <div class="rb-num">${rec(per.take)}${pctEm(per.take)}</div><div class="rb-sub">Leans ${rec(per.lean)}</div>${early(per.earlyTake) ? `<div class="rb-sub">Early-season takes ${rec(per.earlyTake)}</div>` : ''}${mktLine('Spreads', per.spread)}${mktLine('Totals', per.total)}</div>`;
 }
 
 // Running Takes net (wins − losses) over the last 30 days
@@ -3356,7 +3376,8 @@ function toggleHow(e) {
   pop.innerHTML = `
     <div><b>Take</b><p>The model's spread is ${cfg.spreadTake}+ points from the market, or its total is ${cfg.totalTake}+ away. Takes make up the record.</p></div>
     <div><b>Lean</b><p>A gap of ${cfg.spreadLean}+ on the spread or ${cfg.totalLean}+ on the total. Tracked separately, shown under the Takes record.</p></div>
-    <div><b>Record</b><p>Picks are logged before tip-off and graded against that line after the game. Pushes don't count as wins or losses.</p></div>`;
+    <div><b>Record</b><p>Picks post from 9am ET and are graded at the line they were posted at. Pushes don't count as wins or losses. Spreads and Totals lines count takes and leans together.</p></div>
+    <div><b>CLV</b><p>Closing-line value: on average, how many points the line moved our way between posting and tip-off. Positive means the market moved toward our pick, a sign the model is finding real value even when results run cold.</p></div>`;
   pop.hidden = false;
   document.getElementById('rb-how-btn').setAttribute('aria-expanded', 'true');
 }
