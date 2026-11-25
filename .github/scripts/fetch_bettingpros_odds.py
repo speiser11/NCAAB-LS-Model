@@ -7,6 +7,8 @@ The output keeps the shape the site already parses (it was The Odds API's), one
 bookmaker: BettingPros' consensus line, so nothing downstream changes:
   {id, commence_time, home_team, away_team,
    bookmakers: [{key, title, markets: [{key: 'spreads'|'totals', outcomes: [...]}]}]}
+Also writes odds-books-{DATE}.json: each sportsbook's own line, price and bet link
+per outcome (see SLIP_BOOKS), for the site's "Bet" buttons.
 
 Teams are matched by BettingPros team id through data/ncaab-bettingpros-ids.json
 (all 365 D1 teams, audited 1:1 against Torvik) and written under their exact
@@ -79,6 +81,25 @@ def main_line(selection):
                 return ln['line'], ln.get('cost')
     return None
 
+# Sportsbooks whose own line, price and link go to odds-books-{DATE}.json for the
+# site's "Bet" buttons. BettingPros returns a per-book `link`; for the first seven
+# it opens that book with the bet on the slip, for theScore the game page and for
+# BetRivers only its homepage. Kept out of odds-{DATE}.json (the links are long
+# and that file is re-read every refresh); the model uses only the consensus line.
+SLIP_BOOKS = {'dk': 12, 'fd': 10, 'fan': 14, 'hr': 49, 'czr': 13, 'mgm': 19,
+              'b365': 24, 'score': 33, 'br': 18}
+
+def book_lines(selection):
+    """{'dk': {point, price, link}, ...} for SLIP_BOOKS that have an active main line."""
+    books = {b['id']: b for b in selection.get('books', [])}
+    out = {}
+    for key, book_id in SLIP_BOOKS.items():
+        for ln in (books.get(book_id) or {}).get('lines', []):
+            if ln.get('main') and ln.get('active') and not ln.get('is_off') and ln.get('line') is not None:
+                out[key] = {'point': ln['line'], 'price': ln.get('cost'), 'link': ln.get('link') or None}
+                break
+    return out
+
 try:
     events = get_all('events', 'events', sport='NCAAB', date=date_str)
 except urllib.error.URLError as e:
@@ -119,11 +140,13 @@ try:
                 if offer['market_id'] == SPREAD:
                     side = sel.get('participant')
                     name = g['home_team'] if side == g['_home_bp'] else g['away_team']
-                    outcomes.append({'name': name, 'point': ml[0], 'price': ml[1]})
+                    outcomes.append({'name': name, 'point': ml[0], 'price': ml[1], '_books': book_lines(sel)})
                 elif sel.get('selection') in ('over', 'under'):
-                    outcomes.append({'name': sel['selection'].title(), 'point': ml[0], 'price': ml[1]})
+                    outcomes.append({'name': sel['selection'].title(), 'point': ml[0], 'price': ml[1], '_books': book_lines(sel)})
             if len(outcomes) == 2:
-                g['markets']['spreads' if offer['market_id'] == SPREAD else 'totals'] = outcomes
+                mkey = 'spreads' if offer['market_id'] == SPREAD else 'totals'
+                g['markets'][mkey] = [{k: v for k, v in o.items() if k != '_books'} for o in outcomes]
+                g.setdefault('books', {})[mkey] = {o['name']: o['_books'] for o in outcomes if o['_books']}
 except urllib.error.URLError as e:
     print(f'BettingPros offers fetch failed for {date_str}: {e} — keeping existing Gist data')
     sys.exit(0)
@@ -160,9 +183,18 @@ print(f'{date_str}: {len(out)} games with lines ({n_sp} spreads, {n_to} totals);
       f'{len(games) - len(ids)} already started; {calls} BettingPros calls')
 
 content = json.dumps(out)
+# Per-book lines for upcoming games: {game id: {spreads|totals: {outcome name: {book: {point, price, link}}}}}
+books = json.dumps({g['id']: g['books'] for g in games.values() if g.get('books') and g['markets']})
 if args.out:
     Path(args.out).write_text(content)
-    print(f'Wrote {args.out}')
+    Path(args.out + '.books.json').write_text(books)
+    print(f'Wrote {args.out} and {args.out}.books.json')
 else:
     print(f'Gist PATCH odds-{date_str}.json: '
           f'{gist_api.patch(os.environ["GIST_ID"], os.environ["GIST_PAT"], f"odds-{date_str}.json", content, "fetch-bettingpros-odds")}')
+    # Separate write: if it fails, the lines above (what the model and picks use) are already saved.
+    try:
+        print(f'Gist PATCH odds-books-{date_str}.json ({len(books) // 1024} KB): '
+              f'{gist_api.patch(os.environ["GIST_ID"], os.environ["GIST_PAT"], f"odds-books-{date_str}.json", books, "fetch-bettingpros-odds")}')
+    except Exception as e:
+        print(f'Gist PATCH odds-books-{date_str}.json failed ({e}) — bet buttons keep the previous file')
