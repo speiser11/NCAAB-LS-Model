@@ -19,6 +19,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Fetch NCAAB odds (BettingPros) and push to Gist
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           ODDS_PROVIDER_KEY: ${{ secrets.ODDS_PROVIDER_KEY }}
           GIST_PAT: ${{ secrets.GIST_PAT }}
@@ -90,12 +91,14 @@ jobs:
           DATE=$DATE python3 .github/scripts/fetch_alt_odds.py
 
       - name: Lock commenced games
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
         run: python3 .github/scripts/lock_games.py
 
       - name: Log MLB model predictions
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
@@ -107,6 +110,7 @@ jobs:
       # outage, a failed run) heals itself instead of staying unscored forever.
       # Days that are already complete cost one Gist read and no write.
       - name: Fill MLB results (recent days)
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
@@ -116,6 +120,7 @@ jobs:
           DATE=$YESTERDAY python3 .github/scripts/fill_mlb_results.py
 
       - name: Fill MLB results (today)
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
@@ -126,6 +131,7 @@ jobs:
       # Re-logs each NCAAB game every run until tip-off, then freezes it — the
       # frozen pick is what the site's takes/leans record grades.
       - name: Log NCAAB model predictions
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
@@ -134,6 +140,7 @@ jobs:
         run: node .github/scripts/log_ncaab_predictions.js
 
       - name: Fill NCAAB results (recent days)
+        continue-on-error: true   # a one-off failure doesn't stop later steps; see Health check
         env:
           GIST_PAT: ${{ secrets.GIST_PAT }}
           GIST_ID: ${{ secrets.ODDS_GIST_ID }}
@@ -141,3 +148,15 @@ jobs:
         run: |
           DATE=$(TZ=America/New_York date +%Y-%m-%d)
           DATE=$DATE python3 .github/scripts/fill_ncaab_results.py
+
+      # Every step above continues on error, so a one-off blip (e.g. the Gist API
+      # returning 500 for a few seconds) no longer fails the run. This fails it
+      # (and GitHub emails) only after 3 runs in a row have had a failing step,
+      # then every 8 failing runs while it lasts.
+      - name: Health check
+        if: always()
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+          GIST_ID: ${{ secrets.ODDS_GIST_ID }}
+          OUTCOMES: ${{ join(steps.*.outcome, ' ') }}
+        run: python3 .github/scripts/health_check.py
