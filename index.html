@@ -1168,6 +1168,27 @@ input[type=date] {
 .bet-btn.none{color:var(--muted);border-style:dashed;}
 .bet-btn:hover{background:var(--surface2);}
 .ncaab-pick-row .bet-links{margin-top:.3rem;}
+.bet-more{display:contents;}
+.bet-more>summary{list-style:none;cursor:pointer;font-size:.72rem;font-weight:600;color:var(--blue);padding:.18rem .3rem;white-space:nowrap;}
+.bet-more>summary::-webkit-details-marker{display:none;}
+.bet-more[open]>summary{color:var(--muted);}
+.bet-menu{flex-basis:100%;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:.15rem;}
+.bet-row{display:grid;grid-template-columns:1fr auto 3.2rem 4.6rem;gap:.5rem;align-items:center;padding:.38rem .6rem;font-size:.74rem;text-decoration:none;color:var(--text);border-top:1px solid var(--border);font-variant-numeric:tabular-nums;}
+.bet-row:first-child{border-top:none;}
+.bet-row:hover{background:var(--surface2);}
+.bet-row .br-name{font-weight:600;}
+.bet-row .br-name em{font-style:normal;font-size:.62rem;font-weight:700;color:var(--green);margin-left:.25rem;}
+.bet-row .br-num{font-weight:700;text-align:right;}
+.bet-row .br-tier{font-size:.66rem;font-weight:700;text-align:center;}
+.bet-row.take .br-tier{color:var(--green);} .bet-row.lean .br-tier{color:var(--yellow);} .bet-row.none .br-tier{color:var(--muted);font-weight:500;}
+.bet-row.none .br-num{color:var(--muted);}
+.bet-row .br-does{font-size:.64rem;color:var(--muted);text-align:right;}
+.bet-row .br-num,.bet-row .br-name{white-space:nowrap;}
+@media (max-width:520px){
+  .bet-row{grid-template-columns:1fr auto 2.7rem;gap:.1rem .45rem;}
+  .bet-row .br-does{grid-column:1;grid-row:2;text-align:left;margin-top:-.15rem;}
+  .bet-row.slip .br-does{display:none;}
+}
 .gd-call .gc-call-range{font-size:.78rem;}
 .gc-call-none{font-size:.82rem;color:var(--muted);}
 .gc-more{margin-left:auto;font-size:.8rem;font-weight:600;color:var(--blue);white-space:nowrap;}
@@ -2228,10 +2249,20 @@ async function loadOdds(isoDate) {
   }
 
   // ── Today / tomorrow: the workflow's latest snapshot ──
-  const [live, locked] = await Promise.all([
+  const [live, locked, books] = await Promise.all([
     gistJson(`odds-${isoDate}.json`),
     isoDate === todayIso ? gistJson(`locked-odds-${isoDate}.json`) : null,
+    gistJson(`odds-books-${isoDate}.json`),   // per-sportsbook lines + bet links (Bet buttons)
   ]);
+  // Hang each sportsbook's line on its outcome: outcome.books = {dk: {point, price, link}, …}
+  if (Array.isArray(live) && books && typeof books === 'object') {
+    for (const og of live) {
+      const gb = books[og.id];
+      if (!gb) continue;
+      for (const m of og.bookmakers?.[0]?.markets || [])
+        for (const o of m.outcomes || []) if (gb[m.key]?.[o.name]) o.books = gb[m.key][o.name];
+    }
+  }
   if (!Array.isArray(live)) {
     setSt('st-odds', base ? 'Odds: no lines posted for this date yet' : 'Odds: Gist ID not configured', 'warn');
     oddsList = [];
@@ -2975,21 +3006,40 @@ function tierAt(g, c, line) {
 }
 
 // "Bet" buttons: each sportsbook's own number for the pick's side, colored by the
-// tier at that number, linking to that book with the bet on the slip (links come
-// from BettingPros). Pre-game only.
-const SLIP_BOOKS = [['dk', 'DK', 'DraftKings'], ['fd', 'FD', 'FanDuel']];
+// tier at that number (same rules as posted picks). DraftKings and FanDuel show as
+// buttons; "All books" lists every book, best number first. Links come from
+// BettingPros (odds-books-{date}.json). Pre-game only.
+// [key, short, name, what the link does]
+const SLIP_BOOKS = [
+  ['dk', 'DK', 'DraftKings', 'slip'], ['fd', 'FD', 'FanDuel', 'slip'], ['fan', 'Fanatics', 'Fanatics', 'slip'],
+  ['hr', 'Hard Rock', 'Hard Rock', 'slip'], ['czr', 'Caesars', 'Caesars', 'slip'], ['mgm', 'BetMGM', 'BetMGM', 'slip'],
+  ['b365', 'bet365', 'bet365', 'slip'], ['score', 'theScore', 'theScore Bet', 'game'], ['br', 'BetRivers', 'BetRivers', 'home'],
+];
+const SLIP_BUTTONS = ['dk', 'fd'];   // shown as buttons; every book is in the "All books" list
+const LINK_DOES = { slip: 'opens the bet slip with this bet', game: 'opens the game page', home: 'opens the BetRivers site only' };
 function betLinks(g, c) {
   if (!c.books || g.statusName !== 'STATUS_SCHEDULED') return '';
-  const btns = SLIP_BOOKS.map(([k, short, name]) => {
-    const b = c.books[k];
-    if (!b?.link || b.point == null) return '';
-    const t = tierAt(g, c, b.point);
-    const num = c.market === 'spread' ? fmtSpread(b.point.toFixed(1)) : `${c.over ? 'O' : 'U'} ${b.point}`;
-    const price = b.price == null ? '' : ` (${b.price > 0 ? '+' : ''}${b.price})`;
-    const why = t ? `${t === 'take' ? 'Take' : 'Lean'} at this ${name} number` : `Not a bet at this ${name} number (the posted pick still counts)`;
-    return `<a class="bet-btn ${t || 'none'}" href="${esc(b.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(why)} — opens ${name} with this bet on the slip">${short} ${esc(num)}${esc(price)}</a>`;
-  }).filter(Boolean);
-  return btns.length ? `<span class="bet-links"><span class="bet-links-lbl">Bet:</span>${btns.join('')}</span>` : '';
+  // Better number for the bettor: more points on a spread, lower over, higher under; then better price
+  const better = c.market === 'spread' ? (a, b) => b.point - a.point
+               : c.over ? (a, b) => a.point - b.point : (a, b) => b.point - a.point;
+  const rows = SLIP_BOOKS.map(([k, short, name, does]) => ({ k, short, name, does, ...c.books[k] }))
+    .filter(r => r.link && r.point != null)
+    .map(r => ({ ...r, tier: tierAt(g, c, r.point),
+                 num: c.market === 'spread' ? fmtSpread(r.point.toFixed(1)) : `${c.over ? 'O' : 'U'} ${r.point}`,
+                 pr: r.price == null ? '' : ` (${r.price > 0 ? '+' : ''}${r.price})` }))
+    .sort((a, b) => better(a, b) || (b.price ?? -1e9) - (a.price ?? -1e9));   // same number: better odds first
+  if (!rows.length) return '';
+  const best = rows[0];
+  const isBest = r => better(r, best) === 0 && (r.price ?? null) === (best.price ?? null);
+  const why = r => `${r.tier ? `${r.tier === 'take' ? 'Take' : 'Lean'} at this ${r.name} number` : `Not a bet at this ${r.name} number (the posted pick still counts)`} — ${LINK_DOES[r.does]}`;
+  const link = (r, cls, label) => `<a class="${cls} ${r.tier || 'none'}" href="${esc(r.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(why(r))}">${label}</a>`;
+  const btns = rows.filter(r => SLIP_BUTTONS.includes(r.k)).sort((a, b) => SLIP_BUTTONS.indexOf(a.k) - SLIP_BUTTONS.indexOf(b.k))
+    .map(r => link(r, 'bet-btn', `${r.short} ${esc(r.num)}${esc(r.pr)}`));
+  const menu = rows.map(r => link(r, `bet-row ${r.does}`,
+    `<span class="br-name">${esc(r.name)}${isBest(r) ? ' <em>Best</em>' : ''}</span><span class="br-num">${esc(r.num)}${esc(r.pr)}</span>` +
+    `<span class="br-tier">${r.tier ? (r.tier === 'take' ? 'Take' : 'Lean') : 'No bet'}</span><span class="br-does">${r.does === 'slip' ? 'Bet slip' : r.does === 'game' ? 'Game page' : 'Site only'}</span>`)).join('');
+  return `<span class="bet-links" onclick="event.stopPropagation()"><span class="bet-links-lbl">Bet:</span>${btns.join('')}` +
+    `<details class="bet-more"><summary>All books (${rows.length}) ▾</summary><span class="bet-menu">${menu}</span></details></span>`;
 }
 
 const gameCalls = g => { const l = gameLines(g); return [l.spread, l.total].filter(c => c && c.tier).map(c => ({ ...c, range: betRange(g, c) })); };
