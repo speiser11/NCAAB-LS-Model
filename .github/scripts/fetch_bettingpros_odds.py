@@ -7,6 +7,8 @@ The output keeps the shape the site already parses (it was The Odds API's), one
 bookmaker: BettingPros' consensus line, so nothing downstream changes:
   {id, commence_time, home_team, away_team,
    bookmakers: [{key, title, markets: [{key: 'spreads'|'totals', outcomes: [...]}]}]}
+Each outcome may also carry books: {dk|fd: {point, price, link}} — that sportsbook's
+own line and a link that opens its bet slip with the bet on it.
 
 Teams are matched by BettingPros team id through data/ncaab-bettingpros-ids.json
 (all 365 D1 teams, audited 1:1 against Torvik) and written under their exact
@@ -79,6 +81,23 @@ def main_line(selection):
                 return ln['line'], ln.get('cost')
     return None
 
+# Sportsbooks whose own line, price and bet-slip link ride along on each outcome
+# (BettingPros returns a per-book `link` that opens that book with the bet on the
+# slip). The site shows them as "Bet" buttons; the model still uses only the
+# consensus line above.
+SLIP_BOOKS = {'dk': 12, 'fd': 10}
+
+def book_lines(selection):
+    """{'dk': {point, price, link}, ...} for SLIP_BOOKS that have an active main line."""
+    books = {b['id']: b for b in selection.get('books', [])}
+    out = {}
+    for key, book_id in SLIP_BOOKS.items():
+        for ln in (books.get(book_id) or {}).get('lines', []):
+            if ln.get('main') and ln.get('active') and not ln.get('is_off') and ln.get('line') is not None:
+                out[key] = {'point': ln['line'], 'price': ln.get('cost'), 'link': ln.get('link') or None}
+                break
+    return out
+
 try:
     events = get_all('events', 'events', sport='NCAAB', date=date_str)
 except urllib.error.URLError as e:
@@ -116,12 +135,13 @@ try:
                 ml = main_line(sel)
                 if not ml:
                     continue
+                extra = {'books': bl} if (bl := book_lines(sel)) else {}
                 if offer['market_id'] == SPREAD:
                     side = sel.get('participant')
                     name = g['home_team'] if side == g['_home_bp'] else g['away_team']
-                    outcomes.append({'name': name, 'point': ml[0], 'price': ml[1]})
+                    outcomes.append({'name': name, 'point': ml[0], 'price': ml[1], **extra})
                 elif sel.get('selection') in ('over', 'under'):
-                    outcomes.append({'name': sel['selection'].title(), 'point': ml[0], 'price': ml[1]})
+                    outcomes.append({'name': sel['selection'].title(), 'point': ml[0], 'price': ml[1], **extra})
             if len(outcomes) == 2:
                 g['markets']['spreads' if offer['market_id'] == SPREAD else 'totals'] = outcomes
 except urllib.error.URLError as e:

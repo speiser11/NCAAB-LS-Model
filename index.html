@@ -1160,6 +1160,14 @@ input[type=date] {
 .gc-call-text{font-weight:700;font-size:.9rem;color:var(--text);}
 .gc-call-note{font-size:.72rem;color:var(--muted);margin-left:.4rem;}
 .gc-call-range{flex-basis:100%;font-size:.72rem;color:var(--muted);}
+.bet-links{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-top:.15rem;}
+.bet-links-lbl{font-size:.7rem;color:var(--muted);font-weight:600;}
+.bet-btn{font-size:.72rem;font-weight:700;padding:.18rem .5rem;border-radius:6px;text-decoration:none;border:1px solid var(--border);color:var(--text);background:var(--surface);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.bet-btn.take{border-color:var(--green);color:var(--green);}
+.bet-btn.lean{border-color:var(--yellow);}
+.bet-btn.none{color:var(--muted);border-style:dashed;}
+.bet-btn:hover{background:var(--surface2);}
+.ncaab-pick-row .bet-links{margin-top:.3rem;}
 .gd-call .gc-call-range{font-size:.78rem;}
 .gc-call-none{font-size:.82rem;color:var(--muted);}
 .gc-more{margin-left:auto;font-size:.8rem;font-weight:600;color:var(--blue);white-space:nowrap;}
@@ -2604,14 +2612,17 @@ function getFormDelta(key) {
 // the odds file carries one book, the BettingPros consensus.
 function linePrices(bookmakers, market, homeTeamKey) {
   const outs = bookmakers.map(bm => bm.markets?.find(m => m.key === market)).find(Boolean)?.outcomes || [];
+  // books: {dk|fd: {point, price, link}} — that sportsbook's own line and bet-slip link
   if (market === 'totals') {
-    const pr = n => outs.find(o => normTeam(o.name) === n)?.price ?? null;
-    return { overPrice: pr('over'), underPrice: pr('under') };
+    const o = n => outs.find(o => normTeam(o.name) === n);
+    return { overPrice: o('over')?.price ?? null, underPrice: o('under')?.price ?? null,
+             overBooks: o('over')?.books || null, underBooks: o('under')?.books || null };
   }
   if (outs.length !== 2) return { homePrice: null, awayPrice: null };
   const homeIdx = outs.findIndex(o => (matchTeam(o.name) || normTeam(o.name)) === homeTeamKey);
   if (homeIdx < 0) return { homePrice: null, awayPrice: null };
-  return { homePrice: outs[homeIdx].price ?? null, awayPrice: outs[1 - homeIdx].price ?? null };
+  const h = outs[homeIdx], a = outs[1 - homeIdx];
+  return { homePrice: h.price ?? null, awayPrice: a.price ?? null, homeBooks: h.books || null, awayBooks: a.books || null };
 }
 
 // Extract consensus (averaged) line from all bookmakers for a given market
@@ -2898,6 +2909,7 @@ function gameLines(g) {
                 && Math.abs(e) >= cfg.spreadLean && Math.abs(e) <= cfg.spreadMaxEdge;
     out.spread = { market: 'spread', e, edge: p ? p.edge : Math.abs(e), home, line, tier: p ? p.tier : null,
       price: p ? p.price ?? null : null, nowLine: now, nowPrice: v ? (home ? v.homePrice : v.awayPrice) ?? null : null, active,
+      books: v ? (home ? v.homeBooks : v.awayBooks) || null : null,
       side: teamAbbr(g, home ? 'h' : 'a'),
       label: `${displayName(home ? g.hKey : g.aKey, home ? g.home : g.away)} ${fmtSpread(line.toFixed(1))}`,
       note: p ? note(p, now == null ? null : fmtSpread(now.toFixed(1)), fmtSpread(line.toFixed(1))) : '' };
@@ -2911,6 +2923,7 @@ function gameLines(g) {
     const active = e != null && (e > 0) === over && Math.abs(e) >= cfg.totalLean;
     out.total = { market: 'total', e, edge: p ? p.edge : Math.abs(e), over, line, tier: p ? p.tier : null,
       price: p ? p.price ?? null : null, nowLine: v ? v.point : null, nowPrice: v ? (over ? v.overPrice : v.underPrice) ?? null : null, active,
+      books: v ? (over ? v.overBooks : v.underBooks) || null : null,
       side: over ? 'O' : 'U',
       label: `${over ? 'Over' : 'Under'} ${line}`,
       note: p ? note(p, v ? String(v.point) : null, String(line)) : '' };
@@ -2948,6 +2961,37 @@ function betRange(g, c) {
   const t = up(T + cfg.totalTake), l = up(T + cfg.totalLean);
   return `Take ≥ ${t} · Lean ${l < t - .5 ? `${l}–${t - .5}` : l}`;
 }
+// The tier a pick's side would get at `line` (that side's number), under the
+// current model and the same rules as the posted picks: 'take' | 'lean' | null.
+function tierAt(g, c, line) {
+  if (!g.pred || line == null) return null;
+  if (c.market === 'spread') {
+    const e = (c.home ? g.pred.margin : -g.pred.margin) + line;
+    if (Math.abs(line) >= cfg.maxPickLine || e < cfg.spreadLean || e > cfg.spreadMaxEdge) return null;
+    return e >= cfg.spreadTake ? 'take' : 'lean';
+  }
+  const e = c.over ? g.pred.total - line : line - g.pred.total;
+  return e >= cfg.totalTake ? 'take' : e >= cfg.totalLean ? 'lean' : null;
+}
+
+// "Bet" buttons: each sportsbook's own number for the pick's side, colored by the
+// tier at that number, linking to that book with the bet on the slip (links come
+// from BettingPros). Pre-game only.
+const SLIP_BOOKS = [['dk', 'DK', 'DraftKings'], ['fd', 'FD', 'FanDuel']];
+function betLinks(g, c) {
+  if (!c.books || g.statusName !== 'STATUS_SCHEDULED') return '';
+  const btns = SLIP_BOOKS.map(([k, short, name]) => {
+    const b = c.books[k];
+    if (!b?.link || b.point == null) return '';
+    const t = tierAt(g, c, b.point);
+    const num = c.market === 'spread' ? fmtSpread(b.point.toFixed(1)) : `${c.over ? 'O' : 'U'} ${b.point}`;
+    const price = b.price == null ? '' : ` (${b.price > 0 ? '+' : ''}${b.price})`;
+    const why = t ? `${t === 'take' ? 'Take' : 'Lean'} at this ${name} number` : `Not a bet at this ${name} number (the posted pick still counts)`;
+    return `<a class="bet-btn ${t || 'none'}" href="${esc(b.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="${esc(why)} — opens ${name} with this bet on the slip">${short} ${esc(num)}${esc(price)}</a>`;
+  }).filter(Boolean);
+  return btns.length ? `<span class="bet-links"><span class="bet-links-lbl">Bet:</span>${btns.join('')}</span>` : '';
+}
+
 const gameCalls = g => { const l = gameLines(g); return [l.spread, l.total].filter(c => c && c.tier).map(c => ({ ...c, range: betRange(g, c) })); };
 
 // Edge bar: centre = agrees with the market, fill grows toward the side the model likes,
@@ -3078,7 +3122,7 @@ function renderCard(g) {
   }
   let callHtml;
   if (calls.length) {
-    callHtml = calls.map(c => `<span class="gc-callrow"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="gc-call-text">${esc(c.label)}</span>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${result(c)}</span>${c.range ? `<span class="gc-call-range">Still a bet at: ${esc(c.range)}</span>` : ''}`).join('');
+    callHtml = calls.map(c => `<span class="gc-callrow"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="gc-call-text">${esc(c.label)}</span>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${result(c)}</span>${c.range ? `<span class="gc-call-range">Still a bet at: ${esc(c.range)}</span>` : ''}${betLinks(g, c)}`).join('');
   } else if (!pred) {
     callHtml = `<span class="gc-callrow"><span class="gc-pill none">No line</span><span class="gc-call-none">No model line for this game</span></span>`;
   } else if (!vegasSpread && !vegasTotal) {
@@ -3136,6 +3180,7 @@ function showNCAABPicks() {
         <div class="mlb-pick-row-matchup">${esc(a)} @ ${esc(h)} · ${c.market === 'spread' ? 'Spread' : 'Total'}${state ? ' · ' + esc(state) : ''}</div>
         <div class="mlb-pick-row-action ${r === 'won' ? 'hit' : r === 'lost' ? 'miss' : c.tier}">${esc(c.label)}${c.price != null ? ` <span style="font-weight:500">(${fmtPrice(c.price)})</span>` : ''}</div>
         <div class="mlb-pick-row-why">${esc(detail)}</div>
+        ${betLinks(g, c)}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;flex-shrink:0">
         <span class="mlb-pick-row-edge">edge ${c.edge.toFixed(1)}</span>
@@ -3756,7 +3801,7 @@ function gdSummary(g) {
     const tier = calls.some(c => c.tier === 'take') ? 'take' : 'lean';
     html += `<div class="gd-call ${tier}">${calls.map(c => {
       const r = callResult(g, c);
-      return `<div class="gd-call-row"><span class="gc-pill ${c.tier}">${c.tier}</span><strong>${esc(c.label)}</strong>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${r ? `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>` : ''}</div>${c.range ? `<div class="gc-call-range">Still a bet at: ${esc(c.range)}</div>` : ''}`;
+      return `<div class="gd-call-row"><span class="gc-pill ${c.tier}">${c.tier}</span><strong>${esc(c.label)}</strong>${c.note ? `<span class="gc-call-note">${esc(c.note)}</span>` : ''}${r ? `<span class="gc-pill ${r}">${r === 'push' ? 'Push' : r === 'won' ? 'Won' : 'Lost'}</span>` : ''}</div>${c.range ? `<div class="gc-call-range">Still a bet at: ${esc(c.range)}</div>` : ''}${betLinks(g, c)}`;
     }).join('')}</div>`;
     html += calls.map(c => `<p class="gd-plain">${esc(sentence(c))}</p>`).join('');
   } else {
