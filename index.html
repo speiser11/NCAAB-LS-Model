@@ -1217,6 +1217,8 @@ input[type=date] {
 #top-picks-bar .pick-card.lean .pick-edge{color:var(--yellow);}
 #top-picks-bar .pick-main{font-family:'Archivo','Inter',sans-serif;font-stretch:105%;font-weight:800;font-size:1.05rem;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #top-picks-bar .pick-matchup{font-family:'Inter',sans-serif;font-size:.74rem;margin:0;}
+#top-picks-bar .pick-status{font-family:'Inter',sans-serif;font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#top-picks-bar .pick-status b{color:var(--text);}
 #top-picks-bar .pick-why{font-family:'Inter',sans-serif;font-size:.7rem;margin-top:.2rem;padding-top:.4rem;border-top:1px solid var(--border);}
 
 /* ── Game details drawer (NCAAB): Summary / Deep dive ── */
@@ -2881,6 +2883,22 @@ function stopLiveRefresh() {
   if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
 }
 
+// Poll while a game is live or just past its tip time (ESPN can lag); otherwise
+// wake up at the next tip so an open page flips to live without a reload.
+let _tipTimer = null;
+function scheduleLiveRefresh(games) {
+  clearTimeout(_tipTimer);
+  const now = Date.now();
+  const poll = games.some(g =>
+    ['STATUS_IN_PROGRESS', 'STATUS_HALFTIME', 'STATUS_END_PERIOD'].includes(g.statusName) ||
+    (g.statusName === 'STATUS_SCHEDULED' && now >= Date.parse(g.time) && now - Date.parse(g.time) < 30 * 60000));
+  if (poll) { startLiveRefresh(); return; }
+  stopLiveRefresh();
+  const waits = games.filter(g => g.statusName === 'STATUS_SCHEDULED')
+    .map(g => Date.parse(g.time) - now).filter(ms => ms > 0 && ms < 24 * 3600000);
+  if (waits.length) _tipTimer = setTimeout(startLiveRefresh, Math.min(...waits));
+}
+
 // Returns the favored team's display name given a home-team spread point
 // spreadPt < 0 → home favored; spreadPt > 0 → away favored
 function spreadFavName(spreadPt, hKey, home, aKey, away) {
@@ -3263,6 +3281,17 @@ function scrollToGame(id) {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+// Top-plays status line: tip time before the game, clock + score once it starts.
+function pickGameStatus(g) {
+  const live  = g.statusName === 'STATUS_IN_PROGRESS' || g.statusName === 'STATUS_HALFTIME' || g.statusName === 'STATUS_END_PERIOD';
+  const final = g.statusName === 'STATUS_FINAL';
+  const score = `${teamAbbr(g, 'a')} ${parseInt(g.awayScore) || 0}, ${teamAbbr(g, 'h')} ${parseInt(g.homeScore) || 0}`;
+  if (live)  return `<span class="gc-live">${esc(g.shortDetail || 'Live')}</span> · ${esc(score)}`;
+  if (final) return `<b>Final</b> · ${esc(score)}`;
+  if (g.statusName !== 'STATUS_SCHEDULED') return `<b>${esc(g.shortDetail)}</b>`; // postponed, delayed, canceled
+  return g.time ? `<b>Tips ${new Date(g.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</b>` : '';
+}
+
 function renderTopPicks(games) {
   const bar = document.getElementById('top-picks-bar');
   // The posted picks (takes first, then by edge) — the same card everyone sees.
@@ -3279,6 +3308,7 @@ function renderTopPicks(games) {
         <div class="pick-top"><span class="gc-pill ${c.tier}">${c.tier}</span><span class="pick-edge">${c.edge.toFixed(1)}</span></div>
         <div class="pick-main">${esc(c.label)}</div>
         <div class="pick-matchup">${esc(short(g.aKey, g.away))} @ ${esc(short(g.hKey, g.home))} · ${c.market === 'spread' ? 'Spread' : 'Total'}</div>
+        <div class="pick-status">${pickGameStatus(g)}</div>
         <div class="pick-why">${esc(c.note)}</div>
       </button>`).join('')}</div>`;
 }
@@ -3609,6 +3639,7 @@ function render(games) {
   const el = document.getElementById('game-list');
   el.classList.remove('loading');
   loadAccuracyStats();
+  scheduleLiveRefresh(games || []); // all games, so list filters don't stop updates
   if (!games.length) {
     document.getElementById('top-picks-bar').style.display = 'none';
     renderRecordBand([], 0);
@@ -3684,10 +3715,6 @@ function render(games) {
     el.innerHTML = '<div class="loading" style="padding:2rem">No games match the current filters.</div>';
     return;
   }
-
-  // All-games live status (for live refresh timer)
-  const anyLive = visible.some(g => g.statusName==='STATUS_IN_PROGRESS'||g.statusName==='STATUS_HALFTIME');
-  if (anyLive) startLiveRefresh(); else stopLiveRefresh();
 
   const compactCls = filters.compact ? 'compact-list' : '';
 
